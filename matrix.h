@@ -1,0 +1,95 @@
+//A class for performing 3D rotation
+
+class MATRIX {
+
+    //3D ROTATION MATRIX VARIABLES
+
+    long Cz; //camera Z
+    long Sz; //projection screen Z (between camera and object)
+
+    //find our angles in radians
+    float alpha; //Z
+    float beta; //X;
+    float gamma; //Y
+
+    //store sin/cos in variables
+    float cZ;
+    float cX;
+    float cY;
+    float sZ;
+    float sX;
+    float sY;
+
+    //our rotation matrix
+    float matrix[3][3];
+    //END 3D ROTATION MATRIX VARIABLES
+
+    unsigned long update_time = millis();
+
+    void update() {
+        if (millis() - 16 > update_time) {
+            update_time = millis();
+
+
+            Cz = camera_scaler * 256L; //camera Z
+            Sz = screen_scaler * 256L; //projection screen Z (between camera and object)
+
+            //construct ZXY rotation matrix
+
+            //find our angles in radians
+            alpha = (rotation_alpha * PI) / 180.f; //Z
+            beta = (rotation_beta * PI) / 180.f; //X;
+            gamma = (rotation_gamma * PI) / 180.f; //Y
+
+            //store sin/cos in variables
+            cZ = cos( alpha );
+            cX = cos( beta );
+            cY = cos( gamma );
+            sZ = sin( alpha );
+            sX = sin( beta );
+            sY = sin( gamma );
+
+            //create our rotation matrix
+            matrix[0][0] = cZ * cY - sZ * sX * sY;
+            matrix[0][1] = - cX * sZ;
+            matrix[0][2] = cY * sZ * sX + cZ * sY;
+            matrix[1][0] = cY * sZ + cZ * sX * sY;
+            matrix[1][1] = cZ * cX;
+            matrix[1][2] = sZ * sY - cZ * cY * sX;
+            matrix[2][0] = - cX * sY;
+            matrix[2][1] = sX;
+            matrix[2][2] = cX * cY;
+        }
+    }
+
+    public:
+
+        //rotate X,Y,Z coordinate based on our current matrix
+        void rotate (long in[3], long out[3]) {
+        
+            //update the matrix if necessary
+            update();
+            
+            out[0] = in[0] * matrix[0][0] + in[1] * matrix[0][1] + in[2] * matrix[0][2];
+            out[2] = -(in[0] * matrix[1][0] + in[1] * matrix[1][1] + in[2] * matrix[1][2]);
+            out[1] = in[0] * matrix[2][0] + in[1] * matrix[2][1] + in[2] * matrix[2][2];
+
+        }
+
+        //take X,Y,Z coordinate
+        //modifies X,Y to screen coordinates
+        bool perspective(long p0[3]) {
+            if (p0[2] < Cz) {
+                p0[0] = ( p0[0] * (Sz - Cz) ) / ( p0[2] - Cz ) + (MATRIX_WIDTH * 256L) / 2;
+                p0[1] = ( p0[1] * (Sz - Cz) ) / ( p0[2] - Cz ) + (MATRIX_HEIGHT * 256L) / 2;
+                return true;
+            }
+            return false;
+        }
+        
+
+
+
+};
+
+MATRIX matrix;

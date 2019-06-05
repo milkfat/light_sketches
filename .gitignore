@@ -1,0 +1,10 @@
+lib
+.vscode
+include
+*.dSYM
+.DS_STORE
+main
+main2
+main_temp
+fire_backup.h
+waterfall.cpp
