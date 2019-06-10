@@ -1,7 +1,7 @@
 //#define CLOCK_HORIZONTAL
 #define SEGMENT_LENGTH 20
 #define SEGMENT_SPACING 4
-#define DIGIT_ROTATE
+
 
 
 class MATTCLOCK: public LIGHT_SKETCH {
@@ -9,7 +9,9 @@ class MATTCLOCK: public LIGHT_SKETCH {
         MATTCLOCK () {setup();}
     ~MATTCLOCK () {}
   private:
-
+    bool clock_scribble = true;
+    bool clock_digital = false;
+    bool digit_rotate = true;
     bool clock_3d = true;
     int x_shift = -10;
     int y_shift = 10;
@@ -51,14 +53,108 @@ class MATTCLOCK: public LIGHT_SKETCH {
       {
         {1,1,1,0,1,1,1}, //0
         {0,0,1,0,0,1,0}, //1
-        {1,0,1,1,1,0,1}, //2
-        {1,0,1,1,0,1,1}, //3
-        {0,1,1,1,0,1,0}, //4
-        {1,1,0,1,0,1,1}, //5
-        {1,1,0,1,1,1,1}, //6
-        {1,0,1,0,0,1,0}, //7
-        {1,1,1,1,1,1,1}, //8
-        {1,1,1,1,0,1,1}  //9
+        {1,0,1,1,1,0,1}, //2 000000000.00
+        {1,0,1,1,0,1,1}, //3 0000000.0000
+        {0,1,1,1,0,1,0}, //4 00000.000000
+        {1,1,0,1,0,1,1}, //5 0000.0000000
+        {1,1,0,1,1,1,1}, //6 000.00...000
+        {1,0,1,0,0,1,0}, //7 000.. 0000.0
+        {1,1,1,1,1,1,1}, //8 0000.0000.00
+        {1,1,1,1,0,1,1}  //9 000000..0000
+      };
+
+    uint8_t wire_character[10][6][2] = 
+      {
+        {
+          //zero
+          {128,240},
+          {32,200},
+          {64,32},
+          {196,64},
+          {158,220},
+          {80,246}
+        },
+        {
+          //one
+          {160,190},
+          {212,240},
+          {212,220},
+          {212,100},
+          {212,50},
+          {212,24}
+        },
+        {
+          //two
+          {32,192},
+          {128,240},
+          {220,128},
+          {32,24},
+          {48,60},
+          {220,32}
+        },
+        {
+          //three
+          {32,192},
+          {192,240},
+          {128,128},
+          {128,128},
+          {192,16},
+          {32,64}
+        },
+        {
+          //four
+          {192,0},
+          {192,230},
+          {192,255},
+          {32,128},
+          {48,128},
+          {255,128}
+        },
+        {
+          //five
+          {212,255},
+          {32,255},
+          {32,128},
+          {128,164},
+          {212,48},
+          {32, 48}
+        },
+        {
+          //six
+          {192,255},
+          {64,96},
+          {128,32},
+          {192,64},
+          {128,128},
+          {64,64}
+        },
+        {
+          //seven
+          {32,232},
+          {128,210},
+          {232,230},
+          {232,230},
+          {100,110},
+          {32,16}
+        },
+        {
+          //eight
+          {240,232},
+          {32,192},
+          {230,64},
+          {148,16},
+          {68,64},
+          {236,240}
+        },
+        {
+          //nine
+          {200,230},
+          {24,210},
+          {60,160},
+          {198,210},
+          {198,238},
+          {160,32}
+        }
       };
     
     //does our clock draw characters in the vertical or horizontal direction
@@ -101,6 +197,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
         d.update_time = millis() + my_delay;
         d.number_from = d.number_to;
         d.number_to = number;
+
         //figure out segment movement
         for (int i = 0; i < 7; i++) {
           if (numbers[d.number_from][i] != numbers[d.number_to][i]) {
@@ -196,11 +293,12 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
       if (clock_3d) {
 
-        #ifdef DIGIT_ROTATE
+        if (digit_rotate) {
           d = ease8InOutApprox(d);
           int d1 = d/2 + 64;
 
           int adjust = (SEGMENT_LENGTH+SEGMENT_SPACING*2)*128;
+
 
           //figure out our screen orientation
           //this allows us to change digits when perpendicular to the screen
@@ -245,6 +343,8 @@ class MATTCLOCK: public LIGHT_SKETCH {
             draw_part = 2;
             d1+=128;
           }
+          //END SCREEN ORIENTATION STUFF
+
         
           int x0_asdf = x0-adjust;
           x0 = (x0_asdf*sin16(d1*256))/32768;
@@ -256,7 +356,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
           x1 += adjust;
           z1 = (x1_asdf*cos16(d1*256))/32768;
         
-        #endif //DIGIT_ROTATE
+        } //DIGIT_ROTATE
 
 
         if (part == 0 || draw_part == part) {
@@ -303,12 +403,20 @@ class MATTCLOCK: public LIGHT_SKETCH {
     
     //draw seven-segment digit
     void draw_ss(bool n[]) {
-      //step through each segment
-      for (int i = 0; i < 7; i++) {
-        //check to see if the segment should be drawn
-        if (n[i]) {
-          //draw the segment
-          draw_s(i);
+      
+      if (clock_scribble) {
+        draw_scribble(digits[dpos]);
+      }
+
+      if (clock_digital) {
+        //step through each segment
+        for (int i = 0; i < 7; i++) {
+          //check to see if the segment should be drawn
+          if (n[i]) {
+            //draw the segment
+            draw_s(i);
+          }
+        
         }
       }
 
@@ -319,42 +427,55 @@ class MATTCLOCK: public LIGHT_SKETCH {
       cposx += (SEGMENT_LENGTH+SEGMENT_SPACING*3)*cx;
     }
 
+    void animate_digit(digit &d, int td) {
+      int tracker[7][7] = {0};
+        for (uint8_t i = 0; i < 7; i++) {
+          if (numbers[d.number_from][i] == 1 && numbers[d.number_to][i] == 1) {
+            //draw a basic digit segment
+            draw_s(i, td);
+          } else if (numbers[d.number_from][i] == 1) {
+            //this segment was removed; animate it.
+            if (digit_rotate) {
+              draw_s(i, td, 1);
+            } else {
+              if (tracker[i][d.segments_move[i]] == 0) {
+                draw_si(i, d.segments_move[i], td);
+                tracker[i][d.segments_move[i]] = 1;
+              }
+            }
+            
+          } else if (numbers[d.number_to][i] == 1) {
+            //this segment is new; animate it.
+            if (digit_rotate) {
+              draw_s(i, td, 2);
+            } else {     
+              if (tracker[d.segments_move[i]][i] == 0) {
+                draw_si(d.segments_move[i], i, td);
+                tracker[d.segments_move[i]][i] = 1;
+              }
+            }
+            
+          }
+        }
+    }
+
     //draw digit object, including animation when transitioning
     void draw_digit(digit &d) { 
+      
       int td = millis() - d.update_time;
       if (td < 0) {
         draw_digit(d.number_from + '0');
       } else if (td < 500) {
         td /= 2;
-
-        int tracker[7][7] = {0};
-        for (uint8_t i = 0; i < 7; i++) {
-          if (numbers[d.number_from][i] == 1 && numbers[d.number_to][i] == 1) {
-            draw_s(i, td);
-          } else if (numbers[d.number_from][i] == 1) {
-            
-            #ifdef DIGIT_ROTATE
-            draw_s(i, td, 1);
-            #else
-            if (tracker[i][d.segments_move[i]] == 0) {
-              draw_si(i, d.segments_move[i], td);
-              tracker[i][d.segments_move[i]] = 1;
-            }
-            #endif
-            
-          } else if (numbers[d.number_to][i] == 1) {
-            
-            #ifdef DIGIT_ROTATE
-            draw_s(i, td, 2);
-            #else     
-            if (tracker[d.segments_move[i]][i] == 0) {
-              draw_si(d.segments_move[i], i, td);
-              tracker[d.segments_move[i]][i] = 1;
-            }
-            #endif
-            
-          }
+        
+        if (clock_scribble) {
+          draw_scribble(digits[dpos]);
         }
+        
+        if (clock_digital) {
+          animate_digit(d, td);
+        }
+
         dpos++;
         //cposy += 14*cy;
         cposy += (SEGMENT_LENGTH*2+SEGMENT_SPACING*4)*cy;
@@ -416,6 +537,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
             val = 0;
           }
           if (!clock_3d) {
+            //draw a stupid colon on the stupid screen in the stupidest way possible
             if (SEGMENT_LENGTH > 4) {
               leds[XY(cposx + 0 + (SEGMENT_LENGTH-2)*cy, MATRIX_HEIGHT - 1 - cposy - 0 - (SEGMENT_LENGTH-1)*cx)] = 0x202020;
             }
@@ -437,6 +559,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
             //cposx += 4*cx;
             cposx += (SEGMENT_LENGTH-SEGMENT_SPACING)*cx;
           } else {
+            //draw a 3d colon
             long p[3];
       
             int x = (cposx+SEGMENT_SPACING+2)*256;
@@ -498,6 +621,11 @@ class MATTCLOCK: public LIGHT_SKETCH {
     }
 
     void setup() {
+      for (int i = 0; i < 6; i++) {
+        digits[i].number_from = 0;
+        digits[i].number_to = 0;
+        digits[i].update_time = millis();
+      }
     }
 
     void reset() {
@@ -545,6 +673,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
           draw_analog_clock();
         }
       }
+
     }//loop
 
   private:
@@ -615,6 +744,81 @@ class MATTCLOCK: public LIGHT_SKETCH {
         draw_line_fine(leds, clock_x, clock_y, clock_x+hour_x, clock_y+hour_y,90,0,64,-10000,64);
 
     } //draw analog clock
+
+
+
+    void draw_scribble(digit &d) {
+
+
+      #define SCRIBBLE_SPEED 600
+      #define X_SCALE 36
+      #define Y_SCALE 54
+      
+      uint32_t digit_time = d.update_time;
+      uint8_t old_digit = d.number_from;
+      uint8_t current_digit = d.number_to;
+      int td = millis() - digit_time;
+      
+      uint8_t val = 64; //default brightness
+
+      uint8_t percentage = _max(_min(((td-200)*255)/SCRIBBLE_SPEED,255),0);
+
+      if (td < 100) {
+        percentage = 255;
+        val = _max(_min(100-td,100)*64/100,0);
+        current_digit = old_digit;
+      }
+
+      long wire_digit[6][2];
+
+      if ( current_digit >= 0 && current_digit <= 9 ) {
+        
+        for (int i = 0; i < 6; i++) {
+
+          long p[3];
+
+
+
+          p[0] = wire_character[current_digit][i][0]*X_SCALE;
+          p[1] = (255-wire_character[current_digit][i][1])*Y_SCALE;
+/*
+          //animate from the old digit
+          if (td < SCRIBBLE_SPEED) {
+            td = _max(_min(td,SCRIBBLE_SPEED),0);
+            
+            p[0] = (p[0]*td)/SCRIBBLE_SPEED;
+            p[1] = (p[1]*td)/SCRIBBLE_SPEED;
+
+
+            p[0] += ((wire_character[old_digit][i][0]*X_SCALE)*(SCRIBBLE_SPEED-td))/SCRIBBLE_SPEED;
+            p[1] += (((255-wire_character[old_digit][i][1])*Y_SCALE)*(SCRIBBLE_SPEED-td))/SCRIBBLE_SPEED;
+          }
+*/        
+          int x = cposx*256;
+          int y = (MATRIX_HEIGHT-1-cposy)*256;
+
+          p[0] = x+p[0];
+          p[1] = y-p[1];
+          p[2] = 0;
+
+          long p0[3];
+
+          matrix.rotate(p, p0);
+
+          //translate vectors to coordinates
+          p0[2] += -180 * 256 + (200 * 256 * debug_scaler) / 256;
+
+          //correct 3d perspective
+          matrix.perspective(p0);
+
+          wire_digit[i][0] = p0[0];
+          wire_digit[i][1] = p0[1];
+
+        }
+      }  
+      
+      matt_curve8(wire_digit, 6, default_color, default_saturation, val, false, false, true, percentage);
+    }
 
 
 };

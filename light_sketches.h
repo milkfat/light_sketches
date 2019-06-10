@@ -32,6 +32,7 @@ class REGISTER_BASE {
   public:
     virtual void loop() = 0;
     virtual void next_effect() = 0;
+    virtual void reset() = 0;
     virtual void destroy() = 0;
     virtual void create() = 0;
 };
@@ -91,6 +92,10 @@ class LIGHT_SKETCHES {
       light_sketches[current_light_sketch]->loop();
     }
 
+    void reset() {
+      light_sketches[current_light_sketch]->reset();
+    }
+
     void next_effect() {
       light_sketches[current_light_sketch]->next_effect();
     }
@@ -130,6 +135,9 @@ class LIGHT_SKETCHES {
         void next_effect() {
           sketch->next_effect();
         }
+        void reset() {
+          sketch->reset();
+        }
         void create() {
             //construct our new light sketch object in the reserved memory location 
             //(effectively overwriting the previous sketch)
@@ -152,18 +160,18 @@ bool LIGHT_SKETCHES::need_to_allocate = true;
 
 LIGHT_SKETCHES light_sketches;
 
-// #include "balls_squishy.h"
-// #include "balls2d.h"
-// #include "cinco_de_mayo.h"
-// #include "curvy.h"
-// #include "fire.h"
-// #include "growcircle.h"
-// #include "mattclock.h"
-// #include "metaballs.h"
-// #include "neon.h"
-// #include "shapes.h"
-// #include "simplex.h"
-// #include "test2d.h"
- #include "test3d.h"
-// #include "phosphene.h"
-// #include "waves.h"
+#include "balls_squishy.h"
+#include "balls2d.h"
+//#include "cinco_de_mayo.h"
+#include "curvy.h"
+//#include "fire.h"
+//#include "growcircle.h"
+#include "mattclock.h"
+ //#include "metaballs.h"
+ #include "neon.h"
+ #include "shapes.h"
+ //#include "simplex.h"
+ //#include "test2d.h"
+ //#include "test3d.h"
+ #include "phosphene.h"
+ //#include "waves.h"

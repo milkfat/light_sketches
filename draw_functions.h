@@ -879,7 +879,7 @@ void matt_curve(long coordinate_array[][2], size_t len, uint8_t hue = default_co
 
 //draw a curve by simultaneously shortening and rotating the line segment vectors
 
-void matt_curve8(long coordinate_array[][2], size_t len, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255, bool flipXY = false, bool closedShape = false, bool extraSmooth = false) {
+void matt_curve8(long coordinate_array[][2], size_t len, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255, bool flipXY = false, bool closedShape = false, bool extraSmooth = false, uint8_t percentage = 255) {
 
   //a variable to store the angle for segment 2 from the previous pass (which will become segment 1 of the current pass)
   //we must blend the curves together to make one smooth continuous curve
@@ -893,6 +893,8 @@ void matt_curve8(long coordinate_array[][2], size_t len, uint8_t hue = default_c
   if (closedShape) {
     ending_point = len;
   }
+
+  int total_length = ending_point - starting_point;
 
   for (int i = starting_point;i<ending_point;i++) {
     int i0=i;
@@ -976,6 +978,9 @@ void matt_curve8(long coordinate_array[][2], size_t len, uint8_t hue = default_c
 
     
     int32_t max_len = _max(len0,len1); //maximum length
+    if (max_len == 0) {
+      continue;
+    }
     int32_t min_len = _min(len0,len1); //minimum length
     uint32_t len_d = (min_len << 8)/max_len; //ratio of length: 0 = infinite difference in length, 256 = equal lengths
     uint16_t w_x = len_d;
@@ -996,6 +1001,9 @@ void matt_curve8(long coordinate_array[][2], size_t len, uint8_t hue = default_c
     //do not draw the first segment
     while(stp <= 256 && i != -1) {
 
+      if ( ((i+1)*stp) / total_length > percentage) {
+        return;
+      }
       
       int stp_reverse = 256-stp;
       

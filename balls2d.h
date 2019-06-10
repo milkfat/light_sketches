@@ -12,6 +12,7 @@ class BALLS2D: public LIGHT_SKETCH {
     static float gravity_y;
     static float frame_delta;
     static unsigned long debug_time2;
+    unsigned long frame_time = millis();
 
   private:
     uint8_t current_variation = 0;
@@ -223,6 +224,7 @@ class BALLS2D: public LIGHT_SKETCH {
 
 
     void setup() {
+      frame_time = millis();
       rotation_alpha = 0;
       rotation_beta = 90;
       rotation_gamma = 0;
@@ -250,7 +252,6 @@ class BALLS2D: public LIGHT_SKETCH {
 
 
     void loop() {
-      static unsigned long frame_time = millis();
       //base our values on ~60FPS
       frame_delta = (millis() - frame_time) / 16.0f;
 

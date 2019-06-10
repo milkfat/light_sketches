@@ -566,7 +566,7 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
     } //process_collisions()
 
 
-    unsigned long update_time = 0;
+    unsigned long frame_time = 0;
 
   public:
     void next_effect() {
@@ -577,6 +577,7 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
 
 
     void setup() {
+      frame_time = millis();
       for ( int i = 0; i < NUM_BALLS; i++) {
         balls[i].h = random(256);
         //balls[i].h = 128;
@@ -608,7 +609,6 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
 
 
     void loop() {
-      static unsigned long frame_time = millis();
       
 
 

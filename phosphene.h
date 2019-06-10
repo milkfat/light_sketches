@@ -116,6 +116,8 @@ class PHOSPHENE: public LIGHT_SKETCH {
 
         for (int y = 0; y < SIZE_Y; y++) {
             for (int x = 0; x < SIZE_X; x++) {
+                pixels[y][x] = 0;
+                delta[y][x] = 0;
                 setVal(x, y, random(255)/455.f);
             }
         }

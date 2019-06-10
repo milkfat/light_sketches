@@ -13,7 +13,7 @@
 #include <string>
 #include <memory>
 
-//graphics/audio/keyboard/mouse/joystick library
+//graphics/au o/keyboard/mouse/joystick library
 //https://www.libsdl.org/index.php
 //SDL2-2.0.9
 #include <SDL2/SDL.h>
@@ -41,6 +41,10 @@ SDL_Renderer* renderer = NULL;
 
 uint32_t debug_time = millis();
 uint32_t debug_count = 0;
+
+bool spacebar = false;
+bool next_sketch = false;
+bool reset_sketch = false;
 
 SDL_bool done = SDL_FALSE;
 
@@ -118,6 +122,10 @@ void update_matrix() {
 		case SDL_KEYDOWN:
 			switch (event.key.keysym.sym)
 			{
+				case SDLK_ESCAPE: done=SDL_TRUE; break;
+				case SDLK_SPACE: spacebar=true; break;
+				case SDLK_r: reset_sketch=true; break;
+				case SDLK_n: next_sketch=true; break;
 				case SDLK_LEFT:  camera_scaler--; break;
 				case SDLK_RIGHT: camera_scaler++; break;
 				case SDLK_UP:    screen_scaler--; break;
@@ -159,17 +167,22 @@ int main(int argc, char **argv){
         if (SDL_CreateWindowAndRenderer(WINDOW_WIDTH, WINDOW_HEIGHT, 0, &window, &renderer) == 0) {
             
 			
-			unsigned long now = millis();
             while (!done) {
 
 				next_frame = next_frame + frames{1};
 				
-				if (millis() < 600000 || millis() - 600000 < now) {
-					light_sketches.loop();
-				} else {
+				light_sketches.loop();
+				if (spacebar) {
+					spacebar = false; 
 					light_sketches.next_sketch();
-					//light_sketches.next_effect();
-					now = millis();
+				}
+				if (next_sketch) {
+					next_sketch = false; 
+					light_sketches.next_effect();
+				}
+				if (reset_sketch) {
+					reset_sketch = false; 
+					light_sketches.reset();
 				}
 				 
 				

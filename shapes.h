@@ -8,7 +8,7 @@ class SHAPES: public LIGHT_SKETCH {
     ~SHAPES () {}
     
     private:
-#define NUM_CIRCLES_SHAPES (MATRIX_HEIGHT/18)
+#define NUM_CIRCLES_SHAPES _max((MATRIX_HEIGHT/18),2)
 
     class CIRCLE {
       public:

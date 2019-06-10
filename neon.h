@@ -1,18 +1,18 @@
 //NEON
 
 #if MATRIX_WIDTH > MATRIX_HEIGHT
-#define GRID_WIDTH MATRIX_HEIGHT
-#define GRID_HEIGHT MATRIX_WIDTH
+#define NEON_GRID_WIDTH MATRIX_HEIGHT
+#define NEON_GRID_HEIGHT MATRIX_WIDTH
 #else
-#define GRID_WIDTH MATRIX_WIDTH
-#define GRID_HEIGHT MATRIX_HEIGHT
+#define NEON_GRID_WIDTH MATRIX_WIDTH
+#define NEON_GRID_HEIGHT MATRIX_HEIGHT
 #endif
 
 class NEON: public LIGHT_SKETCH {
   public:
     NEON () {setup();}
     ~NEON () {}
-#define NUM_POINTS 24
+#define NUM_POINTS_NEON 24
 
 
   private:
@@ -29,11 +29,11 @@ class NEON: public LIGHT_SKETCH {
     long x2;
     long y2;
     long x3;
-    long my_points[NUM_POINTS][2];
+    long my_points[NUM_POINTS_NEON][2];
 
 
 
-    //POINT points[NUM_POINTS];
+    //POINT points[NUM_POINTS_NEON];
 
   public:
 
@@ -41,10 +41,10 @@ class NEON: public LIGHT_SKETCH {
     }
 
     void setup() {
-      for (int i = 0; i < NUM_POINTS; i++) {
+      for (int i = 0; i < NUM_POINTS_NEON; i++) {
         
-        my_points[i][0] = GRID_WIDTH * 256L / 2;
-        my_points[i][1] = (GRID_HEIGHT * 256L * -2) / 20 + (GRID_HEIGHT * 256L * i) / 20;
+        my_points[i][0] = NEON_GRID_WIDTH * 256L / 2;
+        my_points[i][1] = (NEON_GRID_HEIGHT * 256L * -2) / 20 + (NEON_GRID_HEIGHT * 256L * i) / 20;
 
       }
     }
@@ -73,7 +73,7 @@ class NEON: public LIGHT_SKETCH {
       //CALCULATE POINTS
 
 
-      for (int i = 0; i < NUM_POINTS; i++) {
+      for (int i = 0; i < NUM_POINTS_NEON; i++) {
         //movement in horizonal direction
 
 
@@ -93,8 +93,8 @@ class NEON: public LIGHT_SKETCH {
           //newx = my_my_points[i][0] + (newx - my_my_points[i][0]) / 2;
 
 
-          if (newx > (GRID_WIDTH - 1) * 256L) {
-            newx = (GRID_WIDTH - 1) * 256L;
+          if (newx > (NEON_GRID_WIDTH - 1) * 256L) {
+            newx = (NEON_GRID_WIDTH - 1) * 256L;
           }
           if (newx < 0) {
             newx = 0;
@@ -113,11 +113,11 @@ class NEON: public LIGHT_SKETCH {
           //constrain vertical height
           newy = my_points[i][1] + disty;
 
-          if (newy >  (GRID_HEIGHT * 256L * -2) / 20 + (GRID_HEIGHT * 256L * i) / 20 + 5 * 256L) {
-            newy =  (GRID_HEIGHT * 256L * -2) / 20 + (GRID_HEIGHT * 256L * i) / 20 + 5 * 256L;
+          if (newy >  (NEON_GRID_HEIGHT * 256L * -2) / 20 + (NEON_GRID_HEIGHT * 256L * i) / 20 + 5 * 256L) {
+            newy =  (NEON_GRID_HEIGHT * 256L * -2) / 20 + (NEON_GRID_HEIGHT * 256L * i) / 20 + 5 * 256L;
           }
-          if (newy <  (GRID_HEIGHT * 256L * -2) / 20 + (GRID_HEIGHT * 256L * i) / 20 - 5 * 256L) {
-            newy =  (GRID_HEIGHT * 256L * -2) / 20 + (GRID_HEIGHT * 256L * i) / 20 - 5 * 256L;
+          if (newy <  (NEON_GRID_HEIGHT * 256L * -2) / 20 + (NEON_GRID_HEIGHT * 256L * i) / 20 - 5 * 256L) {
+            newy =  (NEON_GRID_HEIGHT * 256L * -2) / 20 + (NEON_GRID_HEIGHT * 256L * i) / 20 - 5 * 256L;
           }
 
 
@@ -142,7 +142,7 @@ class NEON: public LIGHT_SKETCH {
           }
 
 
-          if (i < NUM_POINTS - 1 && newy > my_points[i + 1][1]) {
+          if (i < NUM_POINTS_NEON - 1 && newy > my_points[i + 1][1]) {
             //do not allow points to cross above a higher point
             if ( ( ( newx - my_points[i + 1][0] ) > 0 ) != ( ( (newx - distx) - my_points[i + 1][0] ) > 0 ) ) {
               continue;
@@ -165,11 +165,11 @@ class NEON: public LIGHT_SKETCH {
           }
 
           //do not allow points to get near a point that is 2 positions away
-          if (i > 1 && newy - my_points[i - 2][1] < GRID_HEIGHT/21 * 256L) {
+          if (i > 1 && newy - my_points[i - 2][1] < NEON_GRID_HEIGHT/21 * 256L) {
             continue;
           }
 
-          if (i < NUM_POINTS - 2 && my_points[i + 2][1] - newy < GRID_HEIGHT/21 * 256L) {
+          if (i < NUM_POINTS_NEON - 2 && my_points[i + 2][1] - newy < NEON_GRID_HEIGHT/21 * 256L) {
             continue;
           }
 
@@ -193,9 +193,9 @@ class NEON: public LIGHT_SKETCH {
       //draw curve
       //swap X and Y axis if our display width is greater than the height
 #if MATRIX_WIDTH > MATRIX_HEIGHT
-      matt_curve(my_points, NUM_POINTS, default_color, default_saturation, 255, true, false, false);
+      matt_curve(my_points, NUM_POINTS_NEON, default_color, default_saturation, 255, true, false, false);
 #else
-      matt_curve(my_points, NUM_POINTS, default_color, default_saturation, 255, false, false, false);
+      matt_curve(my_points, NUM_POINTS_NEON, default_color, default_saturation, 255, false, false, false);
 #endif
       
 

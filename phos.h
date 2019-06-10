@@ -115,6 +115,8 @@ class PHOS {
 
         for (int y = 0; y < PSIZE_Y; y++) {
             for (int x = 0; x < PSIZE_X; x++) {
+                pixels[y][x] = 0;
+                delta[y][x] = 0;
                 setVal(x, y, random(255)/255.f);
             }
         }
