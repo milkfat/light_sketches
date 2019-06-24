@@ -154,6 +154,7 @@ typedef class clampedByte
         operator uint8_t&() {
             return val;
         }
+        
 
 
         //default uninitialized
@@ -165,34 +166,34 @@ typedef class clampedByte
         }
 
         //overload +=
-        clampedByte& operator+= (const Uint8& rhs) {
-           if (this->val + rhs > 255) {
-               this->val = 255;
+         clampedByte& operator+= (const int& rhs) {
+            if (this->val + rhs > 255) {
+                this->val = 255;
+            } else {
+                this->val += rhs;
+            }
+            return *this;
+         }
+
+        //overload -=
+        clampedByte& operator-= (const int& rhs) {
+           if (this->val - rhs < 0) {
+               this->val = 0;
            } else {
-               this->val += rhs;
+               this->val -= rhs;
            }
            return *this;
         }
-
-        //overload -=
-        //clampedByte& operator-= (const Uint8& rhs) {
-        //    if (this->val - rhs < 0) {
-        //        this->val = 0;
-        //    } else {
-        //        this->val -= rhs;
-        //    }
-        //    return *this;
-        //}
  
         //overload =
-        //clampedByte& operator= (const Uint8& rhs) {
-        //    if (rhs > 255) {
-        //        this->val = 255;
-        //    } else {
-        //        this->val = rhs;
-        //    }
-        //    return *this;
-        //}
+        clampedByte& operator= (const int& rhs) {
+           if (rhs > 255) {
+               this->val = 255;
+           } else {
+               this->val = rhs;
+           }
+           return *this;
+        }
 
 } clampedByte;
 
@@ -312,8 +313,19 @@ typedef struct CRGB
         nscale8x3( r, g, b, 255 - fadefactor);
         return *this;
     }
+
+    /// divide each of the channels by a constant
+    inline CRGB& operator/= (uint8_t d )
+    {
+        r /= d;
+        g /= d;
+        b /= d;
+        return *this;
+    }
+    
     
 } CRGB;
+
 
 void nscale8( CRGB* leds, uint16_t num_leds, uint8_t scale)
 {
@@ -560,6 +572,8 @@ uint8_t inoise8(uint16_t x, uint16_t y, uint16_t z) {
 ///                 in steps of 0.00001525878
 typedef uint16_t  fract16;  ///< ANSI: unsigned       _Fract
 
+typedef uint8_t  fract8;  ///< ANSI: unsigned       _Fract
+
 
 #define FADE(x) scale16(x,x)
 #define LERP(a,b,u) lerp15by16(a,b,u)
@@ -708,3 +722,50 @@ uint16_t inoise16(uint32_t x, uint32_t y, uint32_t z) {
   // return scale16by8(inoise16_raw(x,y,z)+19052,220)<<1;
 }
 
+
+/// blend a variable proproportion(0-255) of one byte to another
+/// @param a - the starting byte value
+/// @param b - the byte value to blend toward
+/// @param amountOfB - the proportion (0-255) of b to blend
+/// @returns a byte value between a and b, inclusive
+
+uint8_t blend8( uint8_t a, uint8_t b, uint8_t amountOfB)
+{
+    uint16_t partial;
+    uint8_t result;
+    
+    uint8_t amountOfA = 255 - amountOfB;
+    
+    partial = (a * amountOfA);
+
+    partial += (b * amountOfB);
+
+    result = partial >> 8;
+    
+    return result;
+
+}
+
+
+CRGB& nblend( CRGB& existing, CRGB& overlay, fract8 amountOfOverlay )
+{
+    if( amountOfOverlay == 0) {
+        return existing;
+    }
+
+    if( amountOfOverlay == 255) {
+        existing = overlay;
+        return existing;
+    }
+
+    // Corrected blend method, with no loss-of-precision rounding errors
+    existing.r   = blend8( existing.r,   overlay.r,   amountOfOverlay);
+    existing.g = blend8( existing.g, overlay.g, amountOfOverlay);
+    existing.b  = blend8( existing.b,  overlay.b,  amountOfOverlay);
+    
+    return existing;
+}
+
+void memset8(void * ptr, uint8_t value, uint16_t num) {
+    memset(ptr, value, num);
+}

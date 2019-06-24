@@ -23,12 +23,12 @@ class GROWCIRCLE: public LIGHT_SKETCH {
         uint8_t next_level_max = 94;
         int x;
         int y;
-        uint16_t order = 0;
+        uint8_t order = 0;
         bool processed = false;
 
     };
-
-#define NUM_CIRCLES_GROWCIRCLE 10
+#define SPARKLE_AMOUNT 5
+#define NUM_CIRCLES_GROWCIRCLE 1
     CIRCLE_THING circles[NUM_CIRCLES_GROWCIRCLE];
     unsigned long time0 = millis();
     unsigned long time1 = millis();
@@ -39,7 +39,7 @@ class GROWCIRCLE: public LIGHT_SKETCH {
     uint8_t counter = 0; //counts 0-255,0-255,0-255,etc.
     uint8_t band_width = 10; //speed_multiplier * 10 is pretty good, lower = thinner, higher = fatter
     uint8_t flasher_zone = 50;
-    uint8_t sparkle = 0;
+    uint16_t sparkle[SPARKLE_AMOUNT] = {0};
     uint8_t fps = 0;
     unsigned long time_fps = millis() + 1000;
 
@@ -93,7 +93,7 @@ class GROWCIRCLE: public LIGHT_SKETCH {
           circles[next_circle + 1].y = pointers[i].y;
           circles[next_circle + 1].done = 2; //done == 2 means this is a "pointer" circle (as opposed to the automatic circe)
           next_circle++;
-          next_circle %= NUM_CIRCLES_GROWCIRCLE - 1;
+          next_circle %= _max(NUM_CIRCLES_GROWCIRCLE - 1,1);
         }
       }
 
@@ -146,7 +146,7 @@ class GROWCIRCLE: public LIGHT_SKETCH {
 
         while (processed_cnt < NUM_CIRCLES_GROWCIRCLE) {
           processed_cnt++;
-          uint16_t highest_order = -1;
+          uint8_t highest_order = -1;
           int c = -1;
           for (uint8_t i = 0; i < NUM_CIRCLES_GROWCIRCLE; i++) {
             if (circles[i].done == 0 && !circles[i].processed && circles[i].order < highest_order) {
@@ -163,12 +163,7 @@ class GROWCIRCLE: public LIGHT_SKETCH {
 
           if (circles[c].done == 0) {
             circles[c].done = 1;
-            //add a random flashes to create a trail behind the moving band
-            int8_t new_flasher_dist = random(0, flasher_zone - 20);
-            new_flasher_dist = (new_flasher_dist * new_flasher_dist) / (flasher_zone - 20) + 20;
-            new_flasher_dist *= -1;
-            //uint8_t flasher_done = 0;
-            uint8_t recent_flash = 0;
+            
             for (int i = 0; i < NUM_LEDS; i++) {
               int distance = circles[c].dists[i] - circles[c].stp;
               uint8_t hue = hues[i];
@@ -197,14 +192,27 @@ class GROWCIRCLE: public LIGHT_SKETCH {
                 high_bri = circles[c].next_level_max;
 
                 //flashers trail behind the band
-                if ( distance == new_flasher_dist && recent_flash == 0) {
-                  //Avoid flashing multiple side-by-side LEDs simultaneously.
-                  recent_flash = 1;
-                  flashers[i] = ((flasher_zone + distance) * 128) / (flasher_zone - 20) + 128;
-                  //flashers[i] = 255;
-                  //flasher_done = 1;
-                } else if ( distance != new_flasher_dist ) {
-                  recent_flash = 0;
+
+                //add a random flashes to create a trail behind the moving band
+                if (-distance > 0 && -distance < flasher_zone) {
+
+                int16_t flasher_odds = abs(distance);
+                flasher_odds *= flasher_odds;
+                  
+                  //uint8_t flasher_done = 0;
+                  uint8_t recent_flash = 0;
+
+                  if ( random(flasher_odds) == 0) {
+                    //Avoid flashing multiple side-by-side LEDs simultaneously.
+                    if (recent_flash == 0) {
+                      recent_flash = 1;
+                      flashers[i] = ((flasher_zone + distance) * 128) / (flasher_zone - 5 ) + 128;
+                    } else {
+                      recent_flash = 0;
+                    }
+                    //flashers[i] = 255;
+                    //flasher_done = 1;
+                  }
                 }
 
 
@@ -260,10 +268,12 @@ class GROWCIRCLE: public LIGHT_SKETCH {
           }
         }
 
-        levels[sparkle] = _min(levels[sparkle] + 64, 255);
-        if (levels[sparkle] == 255) {
-          level_deltas[sparkle] = -16;
-          sparkle = random(NUM_LEDS);
+        for (int i = 0; i < SPARKLE_AMOUNT; i++) {
+          levels[sparkle[i]] = _min(levels[sparkle[i]] + 64, 255);
+          if (levels[sparkle[i]] == 255) {
+            level_deltas[sparkle[i]] = -16;
+            sparkle[i] = random(NUM_LEDS);
+          }
         }
 
         LED_show();

@@ -4,6 +4,9 @@ class MATRIX {
 
     //3D ROTATION MATRIX VARIABLES
 
+
+    int z_scaler;
+
     long Cz; //camera Z
     long Sz; //projection screen Z (between camera and object)
 
@@ -30,6 +33,7 @@ class MATRIX {
         if (millis() - 16 > update_time) {
             update_time = millis();
 
+            z_scaler = -100 * 256 + (200 * 256 * debug_scaler) / 256;
 
             Cz = camera_scaler * 256L; //camera Z
             Sz = screen_scaler * 256L; //projection screen Z (between camera and object)
@@ -69,10 +73,21 @@ class MATRIX {
         
             //update the matrix if necessary
             update();
-            
             out[0] = in[0] * matrix[0][0] + in[1] * matrix[0][1] + in[2] * matrix[0][2];
             out[2] = -(in[0] * matrix[1][0] + in[1] * matrix[1][1] + in[2] * matrix[1][2]);
             out[1] = in[0] * matrix[2][0] + in[1] * matrix[2][1] + in[2] * matrix[2][2];
+
+        }
+
+        void rotate (long in[3]) {
+        
+            long temp[3] = {
+                in[0],
+                in[1],
+                in[2]
+            };
+
+            rotate(temp, in);
 
         }
 
@@ -80,11 +95,44 @@ class MATRIX {
         //modifies X,Y to screen coordinates
         bool perspective(long p0[3]) {
             if (p0[2] < Cz) {
-                p0[0] = ( p0[0] * (Sz - Cz) ) / ( p0[2] - Cz ) + (MATRIX_WIDTH * 256L) / 2;
-                p0[1] = ( p0[1] * (Sz - Cz) ) / ( p0[2] - Cz ) + (MATRIX_HEIGHT * 256L) / 2;
+                p0[0]/=2;
+                p0[1]/=2;
+                p0[2]/=2;
+                p0[0] = ( p0[0] * (Sz/2 - Cz/2) ) / ( p0[2] - Cz/2 ) + (MATRIX_WIDTH * 256L/2) / 2;
+                p0[1] = ( p0[1] * (Sz/2 - Cz/2) ) / ( p0[2] - Cz/2 ) + (MATRIX_HEIGHT * 256L/2) / 2;
+                p0[0]*=2;
+                p0[1]*=2;
+                p0[2]*=2;
                 return true;
             }
             return false;
+        }
+
+        void rotate_x(long p[3], uint8_t ang) {
+            long temp = ( p[1]*(cos8(ang)-128) - p[2]*(sin8(ang)-128) ) / 128;
+            p[2] = ( p[1]*(sin8(ang)-128) + p[2]*(cos8(ang)-128) ) / 128;
+            p[1] = temp;
+        }
+
+        void rotate_y(long p[3], uint8_t ang) {
+            long temp = ( p[0]*(cos8(ang)-128) - p[2]*(sin8(ang)-128) ) / 128;
+            p[2] = ( p[0]*(sin8(ang)-128) + p[2]*(cos8(ang)-128) ) / 128;
+            p[0] = temp;
+        }
+
+        void rotate_z(long p[3], uint8_t ang) {
+            long temp = ( p[0]*(cos8(ang)-128) - p[1]*(sin8(ang)-128) ) / 128;
+            p[1] = ( p[0]*(sin8(ang)-128) + p[1]*(cos8(ang)-128) ) / 128;
+            p[0] = temp;
+        }
+
+
+        void z_scale(long p0[3]) {
+            z_scale(p0[2]);
+        }
+
+        void z_scale(long& z) {
+            z += z_scaler;
         }
         
 

@@ -16,7 +16,27 @@ class TEST3D: public LIGHT_SKETCH {
     //4 = box
     //5 = tunnel
     //6 = firework!
-    uint8_t current_variation = 1;
+    enum effects {
+      TEST_OBJECT,
+      GRID,
+      SNOW,
+      SPIRAL,
+      BOX,
+      TUNNEL,
+      FIREWORK,
+      NUM_EFFECTS
+    };
+    
+    enum grid_types {
+      GRID_RED,
+      GRID_PHOS,
+      GRID_NOISE,
+      NUM_GRID_TYPES
+    };
+
+    uint8_t grid_type = GRID_RED;
+
+    uint8_t current_variation = BOX;
 
     uint16_t frame_count = 2100;
 
@@ -24,7 +44,7 @@ class TEST3D: public LIGHT_SKETCH {
 
     //x,y,z
     int cubesizex = 12 * 256;
-    int cubesizey = 3 * 256;
+    int cubesizey = 30 * 256;
     int cubesizez = 30 * 256;
     long cube[36][3] = {
       //front
@@ -158,9 +178,7 @@ class TEST3D: public LIGHT_SKETCH {
 
   private:
 
-  CRGB trails[MATRIX_HEIGHT*MATRIX_WIDTH+1];
-
-  #define NUM_PARTICLES 2700
+  #define NUM_PARTICLES 1000
   PARTICLE particles[NUM_PARTICLES];
   
   PARTICLE * current_particle() {
@@ -183,7 +201,7 @@ class TEST3D: public LIGHT_SKETCH {
 
 
   //create an array for storing attributes that are shared between multiple active particles
-  #define NUM_PARTICLE_ATTRIBUTES 256
+  #define NUM_PARTICLE_ATTRIBUTES 64
   PARTICLE_ATTRIBUTES particle_attributes[NUM_PARTICLE_ATTRIBUTES];
   
   uint16_t current_particle_attributes() {
@@ -208,17 +226,23 @@ class TEST3D: public LIGHT_SKETCH {
 
   public:
     void next_effect() {
-      current_variation++;
-      current_variation %= 7;
+      if (current_variation == GRID) {
+        grid_type++;
+        if (grid_type == NUM_GRID_TYPES) {
+          grid_type = 0;
+          current_variation++;
+        }
+      } else {
+        current_variation++;
+      }
+      current_variation %= NUM_EFFECTS;
 
 
       //reset rotation
-      rotation_alpha = 0;
-      rotation_beta = 0;
-      rotation_gamma = 0;
+      reset();
 
       //snow
-      if (current_variation == 2) {
+      if (current_variation == SNOW) {
         for (int i = 0; i < NUM_PARTICLES; i++) {
         particles[i].x = random(-30 * 256L, 30 * 256L);
         particles[i].y = random(-148 * 256L, 148 * 256L);
@@ -230,7 +254,7 @@ class TEST3D: public LIGHT_SKETCH {
       }
 
       //fireworks
-      if (current_variation == 6) {
+      if (current_variation == FIREWORK) {
         for (int i = 0; i < NUM_PARTICLES; i++) {
         particles[i].function = 0;
         }
@@ -599,8 +623,10 @@ class TEST3D: public LIGHT_SKETCH {
 
     //here we call the handling function for this particle
     void handle_particles() {
+      int active_particles = 0;
       for (int i = 0; i < NUM_PARTICLES; i++) {
         if (particles[i].function) {
+          active_particles++;
           (this->*particle_funcs[particles[i].function])(particles[i]);
         }
       }
@@ -622,9 +648,10 @@ class TEST3D: public LIGHT_SKETCH {
           PARTICLE_ATTRIBUTES * pa = &particle_attributes[particles[i].attributes];
           uint16_t age = particles[i].age/8;
           //darken (v = HSV value)
-          uint8_t v = _min(_max(255-(age*age*age*2)/(255*255),0), pa->v);
+          int16_t v_temp = 255-(age*age*age*2)/(255*255);
+          uint8_t v = _min(_max(v_temp,0), pa->v);
           //colors become more saturated over time
-          uint8_t s = _max(_min(age*8,pa->s),0);
+          uint8_t s = _max(_min(particles[i].age,pa->s),0);
           
           //create a three-dimensional structure that will be rotated
           long p[3] = {
@@ -638,11 +665,12 @@ class TEST3D: public LIGHT_SKETCH {
           rotate(p, p0);
 
           //translate vectors to coordinates
-          p0[2] += -100 * 256 + (200 * 256 * debug_scaler) / 256;
+          matrix.z_scale(p0[2]);
 
           //correct 3d perspective
           if (matrix.perspective(p0)) {
-            blendXY(leds, p0[0], p0[1], pa->h, s, (_max(_min((p0[2] + 148 * 256L) / 256L, 255), 0)*v)/256);
+            int16_t v_temp2 = (p0[2] + 148 * 256L) / 256L;
+            blendXY(leds, p0[0], p0[1], pa->h, s, (_max(_min(v_temp2, 255), 0)*v)/256);
           }
         }
       }
@@ -651,6 +679,13 @@ class TEST3D: public LIGHT_SKETCH {
 
     #define GRID_SIZE 20
     CHSV grid_hsv[GRID_SIZE*2+1][GRID_SIZE*2+1];
+
+    void grid_hsv_v(int x, int y, long &var, int &cnt) {
+      if (x >= 0 && x < GRID_SIZE*2+1 && y >= 0 && y < GRID_SIZE*2+1) {
+        var += grid_hsv[x][y].v;
+        cnt++;
+      }
+    }
 
 
     PHOS phos;
@@ -665,16 +700,10 @@ class TEST3D: public LIGHT_SKETCH {
         particles[i].vy = -255;
         particles[i].vz = random(-255, 256);
       }
-      rotation_alpha = 0;
-      rotation_beta = 90;
-      rotation_gamma = 0;
 
-      for (int i = 0; i < MATRIX_HEIGHT+MATRIX_WIDTH; i++) {
-        trails[i] = 0;
-      }
+      reset();
 
       phos.setup();
-     
 
     }
 
@@ -686,15 +715,54 @@ class TEST3D: public LIGHT_SKETCH {
 
     void loop() {
       
-
-
       if (effect_beat == 1) {
         effect_beat = 0;
         //reset();
       }
       if (millis() - 16 > update_time) {
+        update_time = millis();
 
-        if (current_variation == 0) {
+
+        switch (current_variation)
+        {
+          case TEST_OBJECT:
+            handle_test_object();
+            break;
+          case GRID:
+            handle_grid();
+            break;
+          case SNOW:
+            handle_snow();
+            break;
+          case SPIRAL:
+            handle_spiral();
+            break;
+          case BOX:
+            handle_cube();
+            break;
+          case TUNNEL:
+            handle_tunnel();
+            break;
+          case FIREWORK:
+            handle_fireworks();
+            break;
+        }
+
+        //update the display
+        if (!do_not_update) {
+          skipped_frames--;
+          //update LEDS
+          LED_show();
+          //clear LED buffer
+          LED_black();
+        }
+
+      }
+    } //loop();
+
+
+
+void handle_test_object() {
 
           //3D TEST OBJECT
           for (int i = 0; i < 4; i++) {
@@ -724,20 +792,19 @@ class TEST3D: public LIGHT_SKETCH {
 
           draw_line_fine(leds, r0[0] + 3 * 256, r0[1] + 50 * 256, r1[0] + 3 * 256, r1[1] + 50 * 256, 96);
 
+          rotation_alpha += 1;
+          rotation_beta += .77;
+          rotation_gamma += .68;
 
-        } else if (current_variation == 1) {
+} //handle_test_object()
+
+
+
+
+void handle_grid() {
+
 
           //GRID
-
-          phos.loop();
-          for (int x = 0; x < GRID_SIZE*2+1; x++) {
-            for (int y = 0; y < GRID_SIZE*2+1; y++) {
-              grid_hsv[x][y].h = 96;
-              grid_hsv[x][y].s = 255;
-              grid_hsv[x][y].v = _min(_max(phos.getVal(x,y)*255,0),255);
-            }
-          }
-
 
 /*
           //DISSOLVE EFFECT
@@ -861,7 +928,38 @@ class TEST3D: public LIGHT_SKETCH {
           }
           //END CRAWLER EFFECT
 */
-
+          uint8_t grid_z = 0;
+          if (grid_type == GRID_PHOS) {
+            phos.loop();
+            static int stp = 0;
+            grid_z = 5;
+            stp++;
+            for (int x = 0; x < GRID_SIZE*2+1; x++) {
+              for (int y = 0; y < GRID_SIZE*2+1; y++) {
+                grid_hsv[x][y].h = 96;
+                grid_hsv[x][y].s = 255;
+                grid_hsv[x][y].v = _min(_max(phos.getVal(x,y)*255,0),255);
+              }
+            }
+          } else {
+          
+            static int stp = 0;
+            grid_z = 25;
+            stp++;
+            for (int x = 0; x < GRID_SIZE*2+1; x++) {
+              for (int y = 0; y < GRID_SIZE*2+1; y++) {
+                int tmp_hue = 0;
+                int tmp_val = 255;
+                if (grid_type == GRID_NOISE) {
+                  tmp_hue = inoise8(x*15+stp*5,y*15+stp*5,stp*5);
+                  tmp_val = tmp_hue;
+                }
+                grid_hsv[x][y].h = tmp_hue;
+                grid_hsv[x][y].s = 255;
+                grid_hsv[x][y].v = tmp_val;
+              }
+            }
+          }
 
           static float step0 = 0;
           static float step1 = 0;
@@ -884,7 +982,6 @@ class TEST3D: public LIGHT_SKETCH {
             if (dist > 0) {
               val = dist*6;
             }
-
             for (int j = 0; j < GRID_SIZE+0; j++) {
               uint8_t y = j*2+1;
 
@@ -895,15 +992,34 @@ class TEST3D: public LIGHT_SKETCH {
               pt[0] = -(MATRIX_HEIGHT * 256L) / 2 - (MATRIX_HEIGHT * 256L) / (GRID_SIZE-1) + (j*MATRIX_HEIGHT * 256L) / (GRID_SIZE-1);
               pt[1] = (i * MATRIX_HEIGHT * 256L) / (GRID_SIZE-1) - (MATRIX_HEIGHT * 256L) / 2;
               pt[2] = 0;
+              if (grid_type > 0) {
+                int cnt = 0;
+                grid_hsv_v(x  ,y-2,pt[2],cnt);
+                grid_hsv_v(x  ,y  ,pt[2],cnt);
+                grid_hsv_v(x+1,y-1,pt[2],cnt);
+                grid_hsv_v(x-1,y-1,pt[2],cnt);
+                pt[2] -= 128*cnt;
+                pt[2] *= grid_z;
+              }
               rotate(pt, p0);
 
               //pt[0] *= -1;
               pt[0] += (MATRIX_HEIGHT * 256L) / (GRID_SIZE-1);
+              pt[2] = 0;
+              if (grid_type > 0) {
+                int cnt = 0;
+                grid_hsv_v(x  ,y+2,pt[2],cnt);
+                grid_hsv_v(x  ,y  ,pt[2],cnt);
+                grid_hsv_v(x+1,y+1,pt[2],cnt);
+                grid_hsv_v(x-1,y+1,pt[2],cnt);
+                pt[2] -= 128*cnt;
+                pt[2] *= grid_z;
+              }
               rotate(pt, p1);
 
               //translate vectors to coordinates
-              p0[2] += -100 * 256 + (200 * 256 * debug_scaler) / 256;
-              p1[2] += -100 * 256 + (200 * 256 * debug_scaler) / 256;
+              matrix.z_scale(p0[2]);
+              matrix.z_scale(p1[2]);
 
               //correct 3d perspective
 
@@ -941,15 +1057,34 @@ class TEST3D: public LIGHT_SKETCH {
               pt[0] = (-MATRIX_HEIGHT * 256L) / (GRID_SIZE-1) + (i * MATRIX_HEIGHT * 256L) / (GRID_SIZE-1) - (MATRIX_HEIGHT * 256L) / 2;
               pt[1] = -(MATRIX_HEIGHT * 256L) / 2 + (j * MATRIX_HEIGHT * 256L) / (GRID_SIZE-1);
               pt[2] = 0;
+              if (grid_type > 0) {
+                int cnt = 0;
+                grid_hsv_v(x-2,y  ,pt[2],cnt);
+                grid_hsv_v(x  ,y  ,pt[2],cnt);
+                grid_hsv_v(x-1,y+1,pt[2],cnt);
+                grid_hsv_v(x-1,y-1,pt[2],cnt);
+                pt[2] -= 128*cnt;
+                pt[2] *= grid_z;
+              }
               rotate(pt, p0);
 
               //pt[1] *= -1;
               pt[1] += (MATRIX_HEIGHT * 256L) / (GRID_SIZE-1);
+              pt[2] = 0;
+              if (grid_type > 0) {
+                int cnt = 0;
+                grid_hsv_v(x+2,y  ,pt[2],cnt);
+                grid_hsv_v(x  ,y  ,pt[2],cnt);
+                grid_hsv_v(x+1,y+1,pt[2],cnt);
+                grid_hsv_v(x+1,y-1,pt[2],cnt);
+                pt[2] -= 128*cnt;
+                pt[2] *= grid_z;
+              }
               rotate(pt, p1);
 
               //translate vectors to coordinates
-              p0[2] += -100 * 256 + (200 * 256 * debug_scaler) / 256;
-              p1[2] += -100 * 256 + (200 * 256 * debug_scaler) / 256;
+              matrix.z_scale(p0[2]);
+              matrix.z_scale(p1[2]);
 
 
               //correct 3d perspective
@@ -978,26 +1113,29 @@ class TEST3D: public LIGHT_SKETCH {
             step_time = millis();
           }
 
-          rotation_alpha += (elapsed_time/20000.f);
+
+          float rotation_dividy_thing = 1;
+          if (grid_type > 0) {
+            rotation_dividy_thing = .2;
+          }
+          rotation_alpha += (elapsed_time/20000.f)*rotation_dividy_thing;
           if (rotation_alpha > 360) {
             rotation_alpha -= 360;
           }
-          rotation_beta += elapsed_time/18000.f;
+          rotation_beta += (elapsed_time/18000.f)*rotation_dividy_thing;
           if (rotation_beta > 360) {
             rotation_beta -= 360;
           }
-          rotation_gamma += elapsed_time/17000.f;
+          rotation_gamma += (elapsed_time/17000.f)*rotation_dividy_thing;
           if (rotation_gamma > 360) {
             rotation_gamma -= 360;
           }
 
+} //handle_grid()
 
 
 
-
-
-
-        } else if (current_variation == 2) {
+void handle_snow() {
 
           //SNOW
           for (int i = 0; i < NUM_PARTICLES; i++) {
@@ -1006,7 +1144,7 @@ class TEST3D: public LIGHT_SKETCH {
             particles[i].z += particles[i].vz;
             if (particles[i].y < -127 * 256L) {
               particles[i].x = random(-100 * 256L, 100 * 256L);
-              particles[i].y += 299 * 256L;
+              particles[i].y = 32767;
               particles[i].z = random(-148 * 256L, 148 * 256L);
               particles[i].vx = random(-128, 128);
               particles[i].vz = random(-255, 256);
@@ -1022,7 +1160,7 @@ class TEST3D: public LIGHT_SKETCH {
             rotate(p, p0);
 
             //translate vectors to coordinates
-            p0[2] += -100 * 256 + (200 * 256 * debug_scaler) / 256;
+            matrix.z_scale(p0[2]);
 
             //correct 3d perspective
               
@@ -1031,7 +1169,11 @@ class TEST3D: public LIGHT_SKETCH {
             }
 
           }
-        } else if (current_variation == 3) {
+        
+} //handle_snow()
+
+
+void handle_spiral() {
 
           //SPIRAL
           long coords[12][2];
@@ -1057,7 +1199,7 @@ class TEST3D: public LIGHT_SKETCH {
             rotate(p, p0);
 
             //translate vectors to coordinates
-            p0[2] += -100 * 256 + (200 * 256 * debug_scaler) / 256;
+            matrix.z_scale(p0[2]);
 
             //correct 3d perspective
 
@@ -1074,25 +1216,14 @@ class TEST3D: public LIGHT_SKETCH {
           matt_curve8(coords, 12, default_color, default_saturation, 255, false, false, true);
           rotation_alpha+=.2;
           rotation_beta+=.3;
-        } else if (current_variation == 4) {
+
+} //handle_spiral();
+
+
+
+void handle_cube() {
 
           //3D SHADING
-
-
-          //rotation_alpha += 1;
-          //            if (rotation_alpha > 179) {
-          //              rotation_alpha = -180;
-          //            }
-          //rotation_beta = 90;
-          //rotation_beta += 1;
-          //            if (rotation_beta > 179) {
-          //              rotation_beta = -180;
-          //            }
-          //            rotation_gamma += 1;
-          //            if (rotation_gamma > 179) {
-          //              rotation_gamma = -180;
-          //            }
-
 
           uint8_t hue;
 
@@ -1101,7 +1232,11 @@ class TEST3D: public LIGHT_SKETCH {
 
           for (int i = 0; i < 12; i++) {
 
-            hue = 96;//( 256 * (i/2) ) /12; //one color for each side of the cube
+            uint8_t a = i * 3;
+            uint8_t b = a + 1;
+            uint8_t c = b + 1;
+
+            hue = ( 256 * (i/2) ) /12; //one color for each side of the cube
 
 
             //clear the buffer to be used for filling the triangle
@@ -1113,12 +1248,12 @@ class TEST3D: public LIGHT_SKETCH {
             //find the surface normal of our side
             long normal[3] = {0, 0, 0};
             long n[3];
-            if (cube[i * 3][0] == cube[i * 3 + 1][0] && cube[i * 3 + 1][0] == cube[i * 3 + 2][0]) {
-              normal[0] = 128 * (cube[i * 3][0] / abs(cube[i * 3][0]));
-            } else if (cube[i * 3][1] == cube[i * 3 + 1][1] && cube[i * 3 + 1][1] == cube[i * 3 + 2][1]) {
-              normal[1] = 128 * (cube[i * 3][1] / abs(cube[i * 3][1]));
-            } else if (cube[i * 3][2] == cube[i * 3 + 1][2] && cube[i * 3 + 1][2] == cube[i * 3 + 2][2]) {
-              normal[2] = 128 * (cube[i * 3][2] / abs(cube[i * 3][2]));
+            if (cube[a][0] == cube[b][0] && cube[b][0] == cube[c][0]) {
+              normal[0] = 128 * (cube[a][0] / abs(cube[a][0]));
+            } else if (cube[a][1] == cube[b][1] && cube[b][1] == cube[c][1]) {
+              normal[1] = 128 * (cube[a][1] / abs(cube[a][1]));
+            } else if (cube[a][2] == cube[b][2] && cube[b][2] == cube[c][2]) {
+              normal[2] = 128 * (cube[a][2] / abs(cube[a][2]));
             }
             rotate(normal, n);
             uint8_t bri = _min(_max(0, n[2]), 128) + 10;
@@ -1130,123 +1265,121 @@ class TEST3D: public LIGHT_SKETCH {
             long v2[3];
 
             //rotate them vectors
-            rotate(cube[i * 3],   v0);
-            rotate(cube[i * 3 + 1], v1);
-            rotate(cube[i * 3 + 2], v2);
-
-            //get the combined (average) z_depth of this triangle
-            int z_depth = _max(v0[2], v1[2]);
-            z_depth = _max(z_depth, v2[2]);
+            rotate(cube[a], v0);
+            rotate(cube[b], v1);
+            rotate(cube[c], v2);
 
             //translate vectors to coordinates
-            v0[2] += -100 * 256 + (200 * 256 * debug_scaler) / 256;
-            v1[2] += -100 * 256 + (200 * 256 * debug_scaler) / 256;
-            v2[2] += -100 * 256 + (200 * 256 * debug_scaler) / 256;
+            matrix.z_scale(v0[2]);
+            matrix.z_scale(v1[2]);
+            matrix.z_scale(v2[2]);
 
             //correct 3d perspective
-
-
-            
             matrix.perspective(v0);
             matrix.perspective(v1);
             matrix.perspective(v2);
 
-            //draw the line on our temporary canvas
-            draw_line_fine(temp_canvas, v0[0], v0[1], v1[0], v1[1], hue, 255, bri, -10000);
-            draw_line_fine(temp_canvas, v1[0], v1[1], v2[0], v2[1], hue, 255, bri, -10000);
-            draw_line_fine(temp_canvas, v2[0], v2[1], v0[0], v0[1], hue, 255, bri, -10000);
+            //"draw the line" to our y buffer
+            draw_line_ybuffer(v0[0], v0[1], v1[0], v1[1]);
+            draw_line_ybuffer(v1[0], v1[1], v2[0], v2[1]);
+            draw_line_ybuffer(v2[0], v2[1], v0[0], v0[1]);
 
             //fill between the pixels of our lines
             for (int y = 0; y < MATRIX_HEIGHT; y++) {
               if (y_buffer[y][0] + 1 < y_buffer[y][1]) {
-                //leds[XY(y_buffer[y][0],y)] += temp_canvas[XY(y_buffer[y][0],y)];
-                //leds[XY(y_buffer[y][1],y)] += temp_canvas[XY(y_buffer[y][1],y)];
-                //for (int x = y_buffer[y][0] + 1; x < y_buffer[y][1]; x++) {
 
                 for (int x = y_buffer[y][0]; x <= y_buffer[y][1]; x++) {
-                  //drawXYZ(leds, x, y, n[2]+j*200*priority, hue, 255, bri );
                   drawXYZ(leds, x, y, n[2], hue, 255, bri );
                 }
+
               }
             }
 
-            for (int i = 0; i < NUM_LEDS; i++) {
-              temp_canvas[i] = CRGB::Black;
-            }
-
-          }
-
-
-        } else if (current_variation == 5) {
-          static uint16_t stp = 0; //rotation
-          static uint8_t cnt = 0;
-          static uint8_t stp2 = 0; //bright light
-          static uint8_t stp3 = 0; //circle width
-          static uint16_t stp4 = 0; //tunnel speed
-          #define TUNNEL_DETAIL 32
-          for (int i = 0; i < TUNNEL_DETAIL+1; i++) {
-            //wavy
-            //long v0[3] = {0, 20*256L-2*256L*i, -150*256L};
-            //long v1[3] = {-3*256L+6*sin8(stp+i*20), 17*256L-4*256L*i, 210*256L};
-            static long old_v1[3];
-            //tunnel thing
-            //float val = (36.f * sin8(stp3)) / 256.f;
-            long v0[3] = {static_cast<long>(cos16(stp + i * (65536L/TUNNEL_DETAIL)))/7, static_cast<long>(sin16(stp + i * (65536L/TUNNEL_DETAIL)))/7, -10000 * 256L};
-            long v1[3] = {static_cast<long>(cos16(stp + i * (65536L/TUNNEL_DETAIL)))/7, static_cast<long>(sin16(stp + i * (65536L/TUNNEL_DETAIL)))/7, 210 * 256L};
-            long p0[3];
-            long p1[3];
-
-            rotate(v0, p0);
-            rotate(v1, p1);
-
-            //translate vectors to coordinates
-            //p0[2] += -100*256 + (200*256*debug_scaler)/256;
-            //p1[2] += -100*256 + (200*256*debug_scaler)/256;
-
-            //correct 3d perspective
             
-            matrix.perspective(p0);
-            matrix.perspective(p1);
-
-
-            if (i!=TUNNEL_DETAIL) {
-              draw_line_fine(leds, p0[0], p0[1], p1[0], p1[1], i * (256/TUNNEL_DETAIL), 255, 4, -10000, 255, true);
-              if ((i+stp2)%8 == 0 ) {
-                draw_line_fine(leds, p0[0], p0[1], p1[0], p1[1], i * (256/TUNNEL_DETAIL), 255, 128, -10000, 255, true);
-              }
-            }
-            //draw_line_fine(CRGB crgb_object[], long x1, long y1, long x2, long y2, uint8_t hue = 0, uint8_t sat = 255, uint8_t val = 255, int z_depth = -10000, uint8_t val2 = 255)
-
-            #define NUM_CIRCLES_TEST3D 4
-            if ( i > 0 ) {
-              for (int j = 0; j < NUM_CIRCLES_TEST3D; j++) {
-                v1[2] = stp4 - j * 65536 - 40*256;
-                old_v1[2] = stp4 - j * 65536 - 40*256;
-                rotate(old_v1, p0);
-                rotate(v1, p1);
-                
-                matrix.perspective(p0);
-                matrix.perspective(p1);
-
-                draw_line_fine(leds, p0[0], p0[1], p1[0], p1[1], i * (256/TUNNEL_DETAIL), 255, sq((255 - (255 / NUM_CIRCLES_TEST3D)) + stp4/256 / NUM_CIRCLES_TEST3D - j * (255 / NUM_CIRCLES_TEST3D)) / 256L, -10000, sq((255 - (255 / NUM_CIRCLES_TEST3D)) + stp4/256 / NUM_CIRCLES_TEST3D - j * (255 / NUM_CIRCLES_TEST3D)) / 256L , true);
-              }
-            }
-
-            old_v1[0] = v1[0];
-            old_v1[1] = v1[1];
-            old_v1[2] = v1[2];
-
-
           }
 
-          stp  = millis()*3;       //rotation
-          stp2 = millis()/64;    //bright light
-          stp3 = millis()/96; //circle width
-          stp4 = millis()*128;   //tunnel speed
-
-        } else if (current_variation == 6) {
           
-          //
+          rotation_alpha += 1;
+          rotation_beta += .77;
+          rotation_gamma += .68;
+
+
+} //handle_cube()
+
+
+void handle_tunnel() {
+
+  static uint16_t stp = 0; //rotation
+  static uint8_t cnt = 0;
+  static uint8_t stp2 = 0; //bright light
+  static uint8_t stp3 = 0; //circle width
+  static uint16_t stp4 = 0; //tunnel speed
+  #define TUNNEL_DETAIL 32
+  for (int i = 0; i < TUNNEL_DETAIL+1; i++) {
+    //wavy
+    //long v0[3] = {0, 20*256L-2*256L*i, -150*256L};
+    //long v1[3] = {-3*256L+6*sin8(stp+i*20), 17*256L-4*256L*i, 210*256L};
+    static long old_v1[3];
+    //tunnel thing
+    //float val = (36.f * sin8(stp3)) / 256.f;
+    long v0[3] = {static_cast<long>(cos16(stp + i * (65536L/TUNNEL_DETAIL)))/7, static_cast<long>(sin16(stp + i * (65536L/TUNNEL_DETAIL)))/7, -10000 * 256L};
+    long v1[3] = {static_cast<long>(cos16(stp + i * (65536L/TUNNEL_DETAIL)))/7, static_cast<long>(sin16(stp + i * (65536L/TUNNEL_DETAIL)))/7, 210 * 256L};
+    long p0[3];
+    long p1[3];
+
+    rotate(v0, p0);
+    rotate(v1, p1);
+
+    //translate vectors to coordinates
+    //p0[2] += -100*256 + (200*256*debug_scaler)/256;
+    //p1[2] += -100*256 + (200*256*debug_scaler)/256;
+
+    //correct 3d perspective
+    
+    matrix.perspective(p0);
+    matrix.perspective(p1);
+
+
+    if (i!=TUNNEL_DETAIL) {
+      draw_line_fine(leds, p0[0], p0[1], p1[0], p1[1], i * (256/TUNNEL_DETAIL), 255, 4, -10000, 255, true);
+      if ((i+stp2)%8 == 0 ) {
+        draw_line_fine(leds, p0[0], p0[1], p1[0], p1[1], i * (256/TUNNEL_DETAIL), 255, 128, -10000, 255, true);
+      }
+    }
+    //draw_line_fine(CRGB crgb_object[], long x1, long y1, long x2, long y2, uint8_t hue = 0, uint8_t sat = 255, uint8_t val = 255, int z_depth = -10000, uint8_t val2 = 255)
+
+    #define NUM_CIRCLES_TEST3D 4
+    if ( i > 0 ) {
+      for (int j = 0; j < NUM_CIRCLES_TEST3D; j++) {
+        v1[2] = stp4 - j * 65536 - 40*256;
+        old_v1[2] = stp4 - j * 65536 - 40*256;
+        rotate(old_v1, p0);
+        rotate(v1, p1);
+        
+        matrix.perspective(p0);
+        matrix.perspective(p1);
+
+        draw_line_fine(leds, p0[0], p0[1], p1[0], p1[1], i * (256/TUNNEL_DETAIL), 255, sq((255 - (255 / NUM_CIRCLES_TEST3D)) + stp4/256 / NUM_CIRCLES_TEST3D - j * (255 / NUM_CIRCLES_TEST3D)) / 256L, -10000, sq((255 - (255 / NUM_CIRCLES_TEST3D)) + stp4/256 / NUM_CIRCLES_TEST3D - j * (255 / NUM_CIRCLES_TEST3D)) / 256L , true);
+      }
+    }
+
+    old_v1[0] = v1[0];
+    old_v1[1] = v1[1];
+    old_v1[2] = v1[2];
+
+
+  }
+
+  stp  = millis()*3;       //rotation
+  stp2 = millis()/64;    //bright light
+  stp3 = millis()/96; //circle width
+  stp4 = millis()*128;   //tunnel speed
+
+} //handle_tunnel();
+
+
+void handle_fireworks() {
+  //
           //
           //FIREWORKS!!!
           //
@@ -1295,22 +1428,19 @@ class TEST3D: public LIGHT_SKETCH {
 
           //render particles to the LED buffer
           draw_particles();
-            
-        }
+          
+} //handle_fireworks()
 
-        //update the display
-        if (!do_not_update) {
-          skipped_frames--;
-          //update LEDS
-          LED_show();
-          //clear LED buffer
-          LED_black();
-        }
 
-      }
-    }
 
-};
+
+
+
+
+}; //TEST3D
+
+
+
 
 
 LIGHT_SKETCHES::REGISTER<TEST3D> test3d("test3d");

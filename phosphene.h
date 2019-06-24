@@ -1,17 +1,22 @@
-
+#define HALF_SIZE
 
 
 class PHOSPHENE: public LIGHT_SKETCH {
   public:
         PHOSPHENE () {setup();}
     ~PHOSPHENE () {}
+    
+    #ifdef HALF_SIZE
+    #define GRID_DIVISOR 2
+    #else
+    #define GRID_DIVISOR 1
+    #endif
 
-    #define SIZE_X (MATRIX_WIDTH/2)
-    #define SIZE_Y (MATRIX_HEIGHT/2)
-    #define SIZE_PIX 5
+    #define SIZE_X (MATRIX_WIDTH/GRID_DIVISOR)
+    #define SIZE_Y (MATRIX_HEIGHT/GRID_DIVISOR)
 
 
-    #define FPS 30 // frames per second setting
+    #define FPS 60 // frames per second setting
 
     uint16_t pixels[SIZE_Y][SIZE_X];
     uint16_t delta[SIZE_Y][SIZE_X];
@@ -103,10 +108,10 @@ class PHOSPHENE: public LIGHT_SKETCH {
 
 
     #define fullUpdateEvery 3
-    #define fullFrameUpdateSpeed 6
+    #define fullFrameUpdateSpeed 4
     int32_t curIdx = 0;
-    uint32_t pixOrder[(SIZE_Y * SIZE_X) * fullUpdateEvery];
-    uint32_t updatePerFrame = (SIZE_Y*SIZE_X*fullUpdateEvery) / fullFrameUpdateSpeed;
+
+    uint32_t updatePerFrame = (SIZE_Y*SIZE_X) / fullFrameUpdateSpeed;  //number of pixels to be processed per frame
 
     void next_effect() {}
 
@@ -120,56 +125,22 @@ class PHOSPHENE: public LIGHT_SKETCH {
                 delta[y][x] = 0;
                 setVal(x, y, random(255)/455.f);
             }
-        }
-/*
-        for (int y = 0; y < 50; y++) {
-            for (int x = 0; x < 50; x++) {
-                setVal(x+SIZE_X/2-25, y+SIZE_Y/2-25, 1);
-            }
-        }
-*/
-        for (int i = 0; i < (SIZE_Y * SIZE_X) * fullUpdateEvery; i++) {
-            pixOrder[i] = i%(SIZE_Y * SIZE_X);
-        }
-        
+        }        
     }
-
+    
 
     void loop() {
         static uint32_t phosphene_time = millis();
-        if (millis() - 50 > phosphene_time) {
+        if (millis() - 1000/FPS > phosphene_time) {
             phosphene_time = millis();
 
-            if (curIdx >= (SIZE_Y*SIZE_X)) {
-                //random.shuffle(pixOrder);
-                for (int i = 0; i < (SIZE_Y * SIZE_X) * fullUpdateEvery; i++) {
-                    uint32_t temp = pixOrder[i];
-                    uint32_t r = random((SIZE_Y * SIZE_X) * fullUpdateEvery);
-                    pixOrder[i] = pixOrder[r];
-                    pixOrder[r] = temp;
-                }
-                curIdx = 0;
-            }
-            
-            int32_t nextIdx = curIdx + updatePerFrame;
-            while (curIdx < nextIdx && curIdx < (SIZE_Y*SIZE_X)) {
-                uint32_t coord = pixOrder[curIdx];
-                processPix(coord%SIZE_X, coord/SIZE_X);
-                curIdx += 1;
-            }
 
-            //each pixel is comprised of four sub-pixels
-            //
-            //  AB  AB  AB
-            //  CD  CD  CD
-            //
-            //  AB  AB  AB
-            //  CD  CD  CD
-            //
-            //  AB  AB  AB
-            //  CD  CD  CD
-            //
-            //
+
+            curIdx = 0;
+            while (curIdx < updatePerFrame) {
+                processPix(random(SIZE_X), random(SIZE_Y));
+                curIdx++;
+            }
 
             //interpolate between pixels 
            
@@ -180,16 +151,26 @@ class PHOSPHENE: public LIGHT_SKETCH {
                     
 
                     float bri = FC.decompress(pixels[y][x]);
-                    
-                    leds[XY(x*2-1,y*2-1)].g += (uint8_t)_min(_max((bri*255)/4,0),255);
-                    leds[XY(x*2-1,y*2)].g += (uint8_t)_min(_max((bri*255)/2,0),255);
-                    leds[XY(x*2-1,y*2+1)].g += (uint8_t)_min(_max((bri*255)/4,0),255);
-                    leds[XY(x*2,y*2-1)].g += (uint8_t)_min(_max((bri*255)/2,0),255);
-                    leds[XY(x*2,y*2)].g = (uint8_t)_min(_max(bri*255,0),255);
-                    leds[XY(x*2,y*2+1)].g += (uint8_t)_min(_max((bri*255)/2,0),255);
-                    leds[XY(x*2+1,y*2-1)].g += (uint8_t)_min(_max((bri*255)/4,0),255);
-                    leds[XY(x*2+1,y*2)].g += (uint8_t)_min(_max((bri*255)/2,0),255);
-                    leds[XY(x*2+1,y*2+1)].g += (uint8_t)_min(_max((bri*255)/4,0),255);
+                    CRGB rgb = CHSV(96,255,_min(_max(bri*255,0),255));
+                    #ifdef HALF_SIZE
+                    leds[XY(x*2,y*2)] = rgb;
+                    rgb.r /= 2;
+                    rgb.g /= 2;
+                    rgb.b /= 2;
+                    leds[XY(x*2-1,y*2)] += rgb;
+                    leds[XY(x*2,y*2-1)] += rgb;
+                    leds[XY(x*2,y*2+1)] += rgb;
+                    leds[XY(x*2+1,y*2)] += rgb;
+                    rgb.r /= 2;
+                    rgb.g /= 2;
+                    rgb.b /= 2;
+                    leds[XY(x*2-1,y*2-1)] += rgb;
+                    leds[XY(x*2-1,y*2+1)] += rgb;
+                    leds[XY(x*2+1,y*2-1)] += rgb;
+                    leds[XY(x*2+1,y*2+1)] += rgb;
+                    #else
+                    leds[XY(x,y)] += rgb;
+                    #endif
 
                
                 }

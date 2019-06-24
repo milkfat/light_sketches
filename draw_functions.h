@@ -13,6 +13,10 @@
 #define HEIGHTMAP_WIDTH (MATRIX_WIDTH+2)
 #define HEIGHTMAP_HEIGHT (MATRIX_HEIGHT+2)
 
+bool button0_down = false;
+bool button1_down = false;
+bool button2_down = false;
+bool button3_down = false;
 
 //https://stackoverflow.com/questions/1659440/32-bit-to-16-bit-floating-point-conversion
 //by Phernost
@@ -213,7 +217,7 @@ int adjust (int p) {
 
 //return LED position from X,Y coordinates
 //return NUM_LEDS-1 (our safety "invisible" pixel) if coordinates are off-screen
-uint32_t XY(int x, int y) {
+__attribute__ ((always_inline)) uint32_t XY(int x, int y) {
     if (x >= 0 && x < MATRIX_WIDTH && y >= 0 && y < MATRIX_HEIGHT) {
       int32_t location = y*MATRIX_WIDTH + x;
       if (location > NUM_LEDS-1 || location < 0) {
@@ -264,17 +268,20 @@ void drawXYZ(CRGB crgb_object[], int x, int y, int z, uint8_t hue = default_colo
   if (y >= 0 && y < MATRIX_HEIGHT) {
     y_buffer[y][0] = _min(y_buffer[y][0], x);
     y_buffer[y][1] = _max(y_buffer[y][1], x);
-  }
   
-  if (x >= 0 && x < MATRIX_WIDTH && y >= 0 && y < MATRIX_HEIGHT) {
-    if (z > -10000 && z > z_buffer[x][y]) {
-      z_buffer[x][y] = z; 
-      crgb_object[XY(x,y)] = CHSV(hue,sat,val);
-    } else if (z == -10000) {
-      hsv2rgb_spectrum(CHSV(hue,sat,val), rgb);
-      crgb_object[XY(x,y)] += rgb;   
+  
+    if (x >= 0 && x < MATRIX_WIDTH) {
+      if (z > -10000 && z > z_buffer[x][y]) {
+        z_buffer[x][y] = z; 
+        crgb_object[XY(x,y)] = CHSV(hue,sat,val);
+      } else if (z == -10000) {
+        hsv2rgb_rainbow(CHSV(hue,sat,val), rgb);
+        crgb_object[XY(x,y)] += rgb;   
+      }
     }
+
   }
+
 }
 
 void blendXY_RGB(CRGB crgb_object[], long xpos, long ypos, uint8_t r, uint8_t g, uint8_t b) {
@@ -401,6 +408,66 @@ void blendXY_RGBA(alpha_pixel ap[], long xpos, long ypos, uint8_t r, uint8_t g, 
 //  leds[XY(x,y+1)] += CHSV(hue,sat,(x2val*yval*1L*val)/(255L*255L));
 //  leds[XY(x+1,y+1)] += CHSV(hue,sat,(xval*yval*1L*val)/(255L*255L));
 }
+
+
+
+
+void draw_line_ybuffer(long x1, long y1, long x2, long y2) {
+  long x_dist = x2-x1;
+  long y_dist = y2-y1;
+  long ax_dist = abs(x_dist);
+  long ay_dist = abs(y_dist);
+  int x_step = 256;
+  int y_step = 256;
+  int steps;
+
+  bool x_add = false;
+  bool y_add = false;
+  
+  if (ax_dist > ay_dist) {
+    //step in x direction
+    if (x_dist == 0) {
+      return;
+    }
+    y_add = 1;
+    steps = ax_dist/256+1;
+    x_step *= x_dist/ax_dist;
+    y_step = (y_dist*256)/ax_dist;
+    
+  } else {
+    //step in y direction
+    if (y_dist == 0) {
+      return;
+    }
+    x_add = 1;
+    steps = ay_dist/256+1;
+    x_step = (x_dist*256)/ay_dist;
+    y_step *= y_dist/ay_dist;
+  }
+
+
+  while (steps > 0) {
+    int x = x1/256;
+    int y = y1/256;
+    if (y >= 0 && y < MATRIX_HEIGHT) {
+      y_buffer[y][0] = _min(y_buffer[y][0], x);
+      y_buffer[y][1] = _max(y_buffer[y][1], x);
+    }
+    x+=x_add;
+    y+=y_add;
+    if (y >= 0 && y < MATRIX_HEIGHT) {
+      y_buffer[y][0] = _min(y_buffer[y][0], x);
+      y_buffer[y][1] = _max(y_buffer[y][1], x);
+    }
+    //drawXYZ(crgb_object, x, y, -10000);
+    //drawXYZ(crgb_object, x+x_add, y+y_add, -10000);
+    x1+=x_step;
+    y1+=y_step;
+    steps--;
+  }
+
+}
+
 
 
 
@@ -879,7 +946,15 @@ void matt_curve(long coordinate_array[][2], size_t len, uint8_t hue = default_co
 
 //draw a curve by simultaneously shortening and rotating the line segment vectors
 
-void matt_curve8(long coordinate_array[][2], size_t len, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255, bool flipXY = false, bool closedShape = false, bool extraSmooth = false, uint8_t percentage = 255) {
+void matt_curve8_base(CRGB crgb_object[], long coordinate_array[][2], size_t len, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255, bool flipXY = false, bool closedShape = false, bool extraSmooth = false, uint8_t percentage = 255, uint8_t step_size = 32) {
+  
+  //draw simple lines for step size of 255
+  if (step_size == 255) {
+    for (int i = 1; i < len; i++) {
+      draw_line_fine(crgb_object,coordinate_array[i-1][0],coordinate_array[i-1][1],coordinate_array[i][0],coordinate_array[i][1],hue, sat, val, -10000, val, true);
+    } 
+    return;
+  }
 
   //a variable to store the angle for segment 2 from the previous pass (which will become segment 1 of the current pass)
   //we must blend the curves together to make one smooth continuous curve
@@ -1015,11 +1090,13 @@ void matt_curve8(long coordinate_array[][2], size_t len, uint8_t hue = default_c
       }
 
       //our current offset angle for segment 1
-      int16_t angle = (a2*stp)/256;
+      int16_t angle = (a2*stp)/65536;
 
       //calculate the angle for segment 1
-      int32_t x = ( cos16(angle)*(x0-x1)/32768 - sin16(angle)*(y0-y1)/32768 );
-      int32_t y = ( sin16(angle)*(x0-x1)/32768 + cos16(angle)*(y0-y1)/32768 );
+      int16_t angle_c = cos8(angle)-128;
+      int16_t angle_s = sin8(angle)-128;
+      int32_t x = ( angle_c*(x0-x1) - angle_s*(y0-y1) )/128;
+      int32_t y = ( angle_s*(x0-x1) + angle_c*(y0-y1) )/128;
 
 
       //calculate the length for segment 1
@@ -1042,11 +1119,13 @@ void matt_curve8(long coordinate_array[][2], size_t len, uint8_t hue = default_c
         }
 
         //our angle offset for segment 2 from the previous pass (which is segment 1 of the current pass)
-        int16_t angle2 = (last_a2b*stp_reverse)/256; 
+        int16_t angle2 = (last_a2b*stp_reverse)/65536; 
 
         //calculate the angle
-        int32_t xl = ( cos16(angle2)*(x1-x0)/32768 - sin16(angle2)*(y1-y0)/32768 );
-        int32_t yl = ( sin16(angle2)*(x1-x0)/32768 + cos16(angle2)*(y1-y0)/32768 );
+        int16_t angle2_c = cos8(angle2)-128;
+        int16_t angle2_s = sin8(angle2)-128;
+        int32_t xl = ( angle2_c*(x1-x0) - angle2_s*(y1-y0) )/128;
+        int32_t yl = ( angle2_s*(x1-x0) + angle2_c*(y1-y0) )/128;
 
 
         //calculate the length
@@ -1066,8 +1145,8 @@ void matt_curve8(long coordinate_array[][2], size_t len, uint8_t hue = default_c
         //int stp_blend = ease8InOutQuad(_min(stp,255));
         int stp_blend = _min(stp,255);
         int stp_blend2 = 255-stp_blend;
-        x = (x*(stp_blend))/256 + (xl*stp_blend2)/256;
-        y = (y*(stp_blend))/256 + (yl*stp_blend2)/256;
+        x = ((x*stp_blend) + (xl*stp_blend2))/256;
+        y = ((y*stp_blend) + (yl*stp_blend2))/256;
 
 
         
@@ -1080,11 +1159,11 @@ void matt_curve8(long coordinate_array[][2], size_t len, uint8_t hue = default_c
       if (stp > 0) {
         //draw line between points
         if (flipXY) {
-          draw_line_fine(leds, last_y, last_x, y, x, hue, sat, val, -10000, val, true);
+          draw_line_fine(crgb_object, last_y, last_x, y, x, hue, sat, val, -10000, val, true);
             //blendXY(leds, y, x, 0, 0, 255);
         } else {
 
-          draw_line_fine(leds, last_x, last_y, x, y, hue, sat, val, -10000, val, true);
+          draw_line_fine(crgb_object, last_x, last_y, x, y, hue, sat, val, -10000, val, true);
             //blendXY(leds, x, y, 0, 0, 255);
         }
       }
@@ -1104,11 +1183,11 @@ void matt_curve8(long coordinate_array[][2], size_t len, uint8_t hue = default_c
         //blendXY(leds,x2,y2,48);
         
         //our current offset angle for segment 2
-        int16_t angle2 = (a2b*stp)/256;
+        int16_t angle2 = (a2b*stp)/65536;
 
         //calculate the current angle
-        int32_t xb = ( cos16(angle2)*(x2-x1)/32768 - sin16(angle2)*(y2-y1)/32768 );
-        int32_t yb = ( sin16(angle2)*(x2-x1)/32768 + cos16(angle2)*(y2-y1)/32768 );
+        int32_t xb = ( cos8(angle2)*(x2-x1)/128 - sin8(angle2)*(y2-y1)/128 );
+        int32_t yb = ( sin8(angle2)*(x2-x1)/128 + cos8(angle2)*(y2-y1)/128 );
 
         //calculate the current length
         xb = (xb*(256-stp))/256;
@@ -1124,10 +1203,10 @@ void matt_curve8(long coordinate_array[][2], size_t len, uint8_t hue = default_c
         if (stp > 0) {
           //draw line between points
           if (flipXY) {
-            draw_line_fine(leds, last_yb, last_xb, yb, xb, 48, sat, val, -10000, val, true);
+            draw_line_fine(crgb_object, last_yb, last_xb, yb, xb, 48, sat, val, -10000, val, true);
             //blendXY(leds, yb, xb, 0, 0, 255);
           } else {
-            draw_line_fine(leds, last_xb, last_yb, xb, yb, 48, sat, val, -10000, val, true);
+            draw_line_fine(crgb_object, last_xb, last_yb, xb, yb, 48, sat, val, -10000, val, true);
             //blendXY(leds, xb, yb, 0, 0, 255);
           }
         }
@@ -1138,14 +1217,28 @@ void matt_curve8(long coordinate_array[][2], size_t len, uint8_t hue = default_c
       }
 
       //iterate time
-      stp+=32;
+      stp+=step_size;
     }
     
     //store our segment 2 angle to blend with the next pair of line segments
     last_a2b = a2b;
     last_w = w;
   }
-} //matt_curve8
+} //matt_curve8_base
+
+
+void matt_curve8(long coordinate_array[][2], size_t len, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255, bool flipXY = false, bool closedShape = false, bool extraSmooth = false, uint8_t percentage = 255, uint8_t step_size = 32) {
+
+  matt_curve8_base(leds, coordinate_array, len, hue, sat, val, flipXY, closedShape, extraSmooth, percentage, step_size);
+
+}
+
+void matt_curve8(CRGB crgb_object[], long coordinate_array[][2], size_t len, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255, bool flipXY = false, bool closedShape = false, bool extraSmooth = false, uint8_t percentage = 255, uint8_t step_size = 32) {
+
+  matt_curve8_base(crgb_object, coordinate_array, len, hue, sat, val, flipXY, closedShape, extraSmooth, percentage, step_size);
+
+}
+
 
 
 
@@ -1161,7 +1254,13 @@ void reset_circle_angles() {
   }
 }
 
-void draw_circle_fine(long x, long y, long r, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255, int ballnum = -1) {
+void draw_circle_fine(long x, long y, long r, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255, int ballnum = -1, uint8_t step_size = 16) {
+  
+  if(step_size == 255) {
+    blendXY(leds, x, y, hue, sat, val);
+    return;
+  }
+
   int t0 = 0;
   long xl2;
   long yl2;
@@ -1169,7 +1268,7 @@ void draw_circle_fine(long x, long y, long r, uint8_t hue = default_color, uint8
     uint8_t t = t0;
     long radius = r;
     if(ballnum > -1) {
-      radius = r*circle_angles[ballnum][t/16]/256;
+      radius = r*circle_angles[ballnum][t/step_size]/256;
     }
     long xl = ((cos8(t)-128)*radius)/128;
     long yl = ((sin8(t)-128)*radius)/128;
@@ -1180,9 +1279,9 @@ void draw_circle_fine(long x, long y, long r, uint8_t hue = default_color, uint8
     }
     xl2 = xl;
     yl2 = yl;
-    t0+=16;
+    t0+=step_size;
   }
-  blendXY(leds, x, y, hue, sat, val);
+  //blendXY(leds, x, y, hue, sat, val);
 }
 
 
@@ -1290,23 +1389,16 @@ void LED_show() {
 void LED_black() {
   
   //clear the string
-  for (int i = 0; i < NUM_LEDS; i++) {
-    #ifdef __INC_FASTSPI_LED2_H 
-    leds[i] = CRGB::Black;
-    #else
-    leds[i] = CRGB::Black;
-    //leds[i].r = 32;
-    //leds[i].g = 32;
-    //leds[i].b = 32;
-    #endif
-  }
+  memset8(&leds[0].r, 0, NUM_LEDS*3);
   
   //clear the Z buffer
   for (int x = 0; x < MATRIX_WIDTH; x++) {
     for (int y = 0; y < MATRIX_HEIGHT; y++) {
       z_buffer[x][y] = -10000;
+      height_map[x][y] = 0;
     }
   }
+
 }
 
 //mixer algorithm from MurmerHash3
@@ -1322,3 +1414,408 @@ uint32_t fmix32 ( uint32_t h )
 
   return h;
 }
+
+
+
+uint16_t matt_compress(int32_t val) {
+    uint32_t aval = abs(val);
+    uint32_t sign = ((uint32_t)val >> 31) << 10;
+		uint shift = 0;
+    uint shift1 = 0;
+		uint shift2 = 0;
+    uint offset = 0;
+    uint offset2 = 0;
+    if (aval >= 64) {  //precision of 1
+      offset = 64;
+      shift1++;
+      if (aval >= 128) { //precision of 1
+        shift++;
+        if (aval >= 256) { //precision of 2
+          shift++;
+          if (aval >= 512) { //precision of 4
+            shift++;
+            if (aval >= 1024) { //precision of 16
+              shift++;
+              if (aval >= 2048) { //precision of 32
+                shift++;
+                if (aval >= 4096) { //precision of 32
+                  offset2 = (aval-2048)/2048;
+                  if (aval >= 16384) { //precision of 256
+                    shift2+=4;
+                    shift+=3;
+                    offset2 = 0;
+                    if (aval >= 32786) { //precision of 512
+                      shift++;
+                      if (aval >= 65536) { //precision of 1024
+                        shift++;
+                        if (aval >= 131071) { //max value
+                          aval = 131071;
+                        }
+                      }
+                    }
+                  } else {
+                    shift2 += offset2;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    uint tshift = shift+shift1+shift2;
+		uint cval = ( ( (aval - offset2*2048) >> shift ) - offset );
+    uint16_t creturn = (tshift << 6) | cval | sign;
+    return creturn; 
+	}
+
+
+int32_t matt_decompress(uint16_t val) {
+  bool sign = (val >> 10);
+  val &= 0b01111111111;
+  int32_t shift = val >> 6;
+  int32_t cval = val & 0b0000111111;
+  int32_t rval = 0;
+  if (shift == 0) {
+    rval = cval;
+  } else if (shift < 7) {
+    rval = cval + 64;
+    rval <<= (shift-1);
+  } else if (shift > 12) {
+    rval = cval + 64;
+    rval <<= (shift-5);
+  } else {
+    rval = cval + 64;
+    rval <<= (6-1);
+    rval += 2048*(shift-6);
+  }
+  return (sign) ? -rval : rval;
+}
+
+uint16_t matt_compress8(int32_t val) {
+    uint32_t aval = abs(val);
+    uint32_t sign = ((uint32_t)val >> 31) << 7;
+		uint shift = 0;
+    uint div = 4;
+    if (aval >= 32) {
+      shift++;
+      aval -= 32;
+      div = 4;
+      if (aval >= 32) {
+        shift++;
+        aval -= 32;
+        div = 8;
+        if(aval >= 64) {
+          shift++;
+          aval -= 64;
+          div = 16;
+          if(aval >= 128) {
+            shift++;
+            aval -= 128;
+            div = 32;
+            if(aval >= 256) {
+              shift++;
+              aval -= 256;
+              div = 64;
+              if(aval >= 512) {
+                shift++;
+                aval -= 512;
+                div = 128;
+                if(aval >= 1024) {
+                  shift++;
+                  aval -= 1024;
+                  div = 256;
+                  if(aval >= 2048) {
+                    shift++;
+                    aval -= 2048;
+                    if (aval >= 2048) {
+                      shift++;
+                      aval -= 2048;
+                      if (aval >= 2048) {
+                        shift++;
+                        aval -= 2048;
+                        if (aval >= 2048) {
+                          shift++;
+                          aval -= 2048;
+                          if(aval >= 2048) {
+                            shift++;
+                            aval -= 2048;
+                            div = 4096;
+                            if(aval > 32768) {
+                              shift++;
+                              aval -= 32768;
+                              if(aval > 32768) {
+                                shift++;
+                                aval -= 32768;
+                                if(aval > 32768) {
+                                  shift++;
+                                  aval -= 32768;
+                                  if(aval >= 32768) {
+                                    aval = 32767;
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    } 
+
+		uint cval = aval / div;
+    uint8_t creturn = (shift << 3) | cval | sign;
+    return creturn; 
+	}
+
+int32_t matt_decompress8(uint8_t val) {
+  bool sign = (val >> 7);
+  val &= 0b01111111;
+  int32_t shift = val >> 3;
+  int32_t cval = val & 0b00000111;
+  int32_t rval = 0;
+  if (shift == 0) {
+    rval = cval*4;
+  } else if (shift < 8) {
+    rval = cval << (shift+1);
+    rval += 32 << (shift-1);
+  } else if (shift < 12) {
+    rval = 4096 + cval*256 + (shift-8)*2048;
+  } else {
+    rval += 12288 + cval*4096 + (shift-12)*32768;
+  }
+  return (sign) ? -rval : rval;
+}
+
+    
+  //create a datatype that uses 11 bits to store numbers from -131072 to 131072
+  typedef class cint
+  {
+    private:
+        uint16_t val;
+
+    public:
+        
+        //conversion to int
+        operator int() {
+            return matt_decompress(val);
+        }
+
+
+        //conversion from int
+        cint(int n) {
+            val = matt_compress(n);
+        }
+
+        //conversion from float
+        cint(float n) {
+            val = matt_compress(n);
+        }
+
+
+         //overload +=
+         void operator+= (int rhs) {
+            val = matt_compress(matt_decompress(val) + rhs);
+         }
+
+
+         //overload -=
+         void operator-= (int rhs) {
+            val = matt_compress(matt_decompress(val) - rhs);
+         }
+
+
+         //overload *=
+         void operator*= (int rhs) {
+            val = matt_compress(matt_decompress(val) * rhs);
+         }
+
+
+         //overload /=
+         void operator/= (int rhs) {
+            val = matt_compress(matt_decompress(val) / rhs);
+         }
+
+
+         //overload +=
+         void operator+= (float rhs) {
+            val = matt_compress(matt_decompress(val) + rhs);
+         }
+
+
+         //overload -=
+         void operator-= (float rhs) {
+            val = matt_compress(matt_decompress(val) - rhs);
+         }
+
+
+         //overload *=
+         void operator*= (float rhs) {
+            val = matt_compress(matt_decompress(val) * rhs);
+         }
+
+
+         //overload /=
+         void operator/= (float rhs) {
+            val = matt_compress(matt_decompress(val) / rhs);
+         }
+
+
+   } cint;
+
+   //create a datatype that uses 8 bits to store numbers from -139264 to 139264
+  typedef class cint8
+  {
+    private:
+        uint8_t val;
+
+    public:
+        
+        //conversion to int
+        operator int() {
+            return matt_decompress8(val);
+        }
+
+
+        //conversion from int
+        cint8(int n) {
+            val = matt_compress8(n);
+        }
+
+        //conversion from float
+        cint8(float n) {
+            val = matt_compress8(n);
+        }
+
+
+         //overload +=
+         void operator+= (int rhs) {
+            val = matt_compress8(matt_decompress8(val) + rhs);
+         }
+
+
+         //overload -=
+         void operator-= (int rhs) {
+            val = matt_compress8(matt_decompress8(val) - rhs);
+         }
+
+
+         //overload *=
+         void operator*= (int rhs) {
+            val = matt_compress8(matt_decompress8(val) * rhs);
+         }
+
+
+         //overload /=
+         void operator/= (int rhs) {
+            val = matt_compress8(matt_decompress8(val) / rhs);
+         }
+
+
+         //overload +=
+         void operator+= (float rhs) {
+            val = matt_compress8(matt_decompress8(val) + rhs);
+         }
+
+
+         //overload -=
+         void operator-= (float rhs) {
+            val = matt_compress8(matt_decompress8(val) - rhs);
+         }
+
+
+         //overload *=
+         void operator*= (float rhs) {
+            val = matt_compress8(matt_decompress8(val) * rhs);
+         }
+
+
+         //overload /=
+         void operator/= (float rhs) {
+            val = matt_compress8(matt_decompress8(val) / rhs);
+         }
+
+
+   } cint8;
+
+  //create a datatype that uses 16 bits to store an 18-bit integer (-131072 to 131068)
+  typedef class cint18
+  {
+    private:
+        int16_t val;
+
+    public:
+        #define CINT18_MULT 4
+        //conversion to int
+        operator int() {
+            return val*CINT18_MULT;
+        }
+
+
+        //conversion from int
+        cint18(int n) {
+            val = n/CINT18_MULT;
+        }
+
+        //conversion from float
+        cint18(float n) {
+            val = n/CINT18_MULT;
+        }
+
+
+        //  //overload +=
+        //  void operator+= (int rhs) {
+        //     val = val + rhs/CINT18_MULT;
+        //  }
+
+
+        //  //overload -=
+        //  void operator-= (int rhs) {
+        //     val = val - rhs/CINT18_MULT;
+        //  }
+
+
+        //  //overload *=
+        //  void operator*= (int rhs) {
+        //     val = val * rhs;
+        //  }
+
+
+        //  //overload /=
+        //  void operator/= (int rhs) {
+        //     val = val / rhs;
+        //  }
+
+
+         //overload +=
+         void operator+= (float rhs) {
+            val = val + rhs/CINT18_MULT;
+         }
+
+
+         //overload -=
+         void operator-= (float rhs) {
+            val = val - rhs/CINT18_MULT;
+         }
+
+
+         //overload *=
+         void operator*= (float rhs) {
+            val = val * rhs;
+         }
+
+
+         //overload /=
+         void operator/= (float rhs) {
+            val = val / rhs;
+         }
+
+
+   } cint18;

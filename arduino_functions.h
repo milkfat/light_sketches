@@ -35,6 +35,9 @@ int random(int a, int b) {
 }
 
 int random(int a) {
+  if (a == 0) {
+    return 0;
+  }
   return rand() % a;
 }
 

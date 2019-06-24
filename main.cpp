@@ -3,7 +3,7 @@
 // #define MATRIX_WIDTH 360
 // #define MATRIX_HEIGHT 250
 
-#define WINDOW_WIDTH 980
+#define WINDOW_WIDTH 300
 #define WINDOW_HEIGHT 980
 #define MATRIX_WIDTH 32
 #define MATRIX_HEIGHT 192
@@ -13,7 +13,7 @@
 #include <string>
 #include <memory>
 
-//graphics/au o/keyboard/mouse/joystick library
+//graphics/audio/keyboard/mouse/joystick library
 //https://www.libsdl.org/index.php
 //SDL2-2.0.9
 #include <SDL2/SDL.h>
@@ -36,10 +36,15 @@ SDL_Renderer* renderer = NULL;
 //functions from Arduino
 #include "arduino_functions.h"
 
+uint32_t debug_micros0 = 0;
+uint32_t debug_micros1 = 0;
+//     uint32_t debug_time2 = micros();
+//     debug_micros1 += micros() - debug_time2;
+
 //load all the magical light sketches
 #include "light_sketches.h"
 
-uint32_t debug_time = millis();
+uint32_t debug_time = 0;
 uint32_t debug_count = 0;
 
 bool spacebar = false;
@@ -124,12 +129,20 @@ void update_matrix() {
 			{
 				case SDLK_ESCAPE: done=SDL_TRUE; break;
 				case SDLK_SPACE: spacebar=true; break;
-				case SDLK_r: reset_sketch=true; break;
+				case SDLK_f: button2_down=true; break;
 				case SDLK_n: next_sketch=true; break;
+				case SDLK_r: reset_sketch=true; break;
 				case SDLK_LEFT:  camera_scaler--; break;
 				case SDLK_RIGHT: camera_scaler++; break;
 				case SDLK_UP:    screen_scaler--; break;
 				case SDLK_DOWN:  screen_scaler++; break;
+			}
+			break;
+		
+		case SDL_KEYUP:
+			switch (event.key.keysym.sym)
+			{
+				case SDLK_f: button2_down=false; break;
 			}
 			break;
 		}
@@ -140,6 +153,13 @@ void update_matrix() {
 }
 
 int main(int argc, char **argv){
+	
+
+	// for (int i = -120000; i > -190000; i-=1024) {
+	// 	uint16_t c = matt_compress8(i);
+	// 	int d = matt_decompress8(c);
+	// 	std::cout << i << "  matt_compress " << " = " << (c) << "  matt_decompress " << " = " << (d) << "\n";
+	// }
 
 	//clock stuff to set frames-per-second
 	using clock = std::chrono::steady_clock;
@@ -169,9 +189,18 @@ int main(int argc, char **argv){
 			
             while (!done) {
 
+				if (millis()-1000 > debug_time && debug_micros0 > 0) {
+						debug_time = millis();
+						std::cout << (debug_micros1/(debug_micros0*1.f)) << " " << debug_micros1 << " " << debug_micros0 << "\n";
+						debug_micros0 = 0;
+						debug_micros1 = 0;
+					}
+
 				next_frame = next_frame + frames{1};
 				
+        uint32_t debug_time = micros();
 				light_sketches.loop();
+        debug_micros0 += micros() - debug_time;
 				if (spacebar) {
 					spacebar = false; 
 					light_sketches.next_sketch();

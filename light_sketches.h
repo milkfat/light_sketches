@@ -60,11 +60,20 @@ class LIGHT_SKETCHES {
         buffer = new char[largest_sketch];
         //buffer = (char*)ps_malloc(largest_sketch);
         leds = new CRGB[NUM_LEDS+1];
+        for (int i = 0; i < NUM_LEDS; i++) {
+          leds[i] = CRGB::Black;
+        }
         //leds = (CRGB*)ps_malloc(sizeof(CRGB)*(NUM_LEDS+1));
         temp_canvas = new CRGB[NUM_LEDS+1];
+        for (int i = 0; i < NUM_LEDS; i++) {
+          temp_canvas[i] = CRGB::Black;
+        }
         //temp_canvas = (CRGB*)ps_malloc(sizeof(CRGB)*(NUM_LEDS+1));
         for (int i = 0; i < HEIGHTMAP_WIDTH; i++) {
           height_map[i] = new int[HEIGHTMAP_HEIGHT];
+          for (int j = 0; j < HEIGHTMAP_WIDTH; j++) {
+            height_map[i][j] = 0;
+          }
         }
         led_mask = new uint8_t[NUM_LEDS];
         led_mask2 = new uint8_t[NUM_LEDS];
@@ -160,18 +169,18 @@ bool LIGHT_SKETCHES::need_to_allocate = true;
 
 LIGHT_SKETCHES light_sketches;
 
-#include "balls_squishy.h"
-#include "balls2d.h"
+//#include "balls_squishy.h"
+//#include "balls2d.h"
 //#include "cinco_de_mayo.h"
 #include "curvy.h"
 //#include "fire.h"
 //#include "growcircle.h"
-#include "mattclock.h"
- //#include "metaballs.h"
- #include "neon.h"
- #include "shapes.h"
- //#include "simplex.h"
- //#include "test2d.h"
- //#include "test3d.h"
- #include "phosphene.h"
- //#include "waves.h"
+//#include "mattclock.h"
+//#include "metaballs.h"
+//#include "neon.h"
+//#include "shapes.h"
+//#include "simplex.h"
+//#include "test2d.h"
+#include "test3d.h"
+//#include "phosphene.h"
+//#include "waves.h"

@@ -15,18 +15,34 @@ class MATTCLOCK: public LIGHT_SKETCH {
     bool clock_3d = true;
     int x_shift = -10;
     int y_shift = 10;
+    int update_count = 0; //keep track of how many digits were updated in a cycle
+    int erase_delay = 0;
+    int draw_delay = 0;
+
+    
     //uint8_t SEGMENT_LENGTH = 5;
     //uint8_t SEGMENT_SPACING = 1;
     
+    enum clock_types {
+      DIGITAL_CLOCK,
+      HAND_DRAWN_CLOCK,
+      TEXT_CLOCK,
+      ANALOG_CLOCK,
+      NUMBER_OF_CLOCK_TYPES
+    };
+
     //0 = digital clock
     //1 = text clock
     //2 = analog clock
-    uint8_t current_effect = 2;
+    //3 = hand-drawn digital clock
+    uint8_t current_effect = DIGITAL_CLOCK+(NUMBER_OF_CLOCK_TYPES-1);
 
     char timebuffer[15];
     struct tm ti;
     struct tm * timeinfo = &ti;
 
+    int old_seconds = 0;
+    int seconds;
     uint32_t tick_time = 0;
 
     //define the (x,y) start and (x,y) end coordinates of each segment in a 7-segment digit
@@ -179,68 +195,103 @@ class MATTCLOCK: public LIGHT_SKETCH {
       //current number
       uint8_t number_to = 0;
 
-
       //any segment that has changed states will be matched up with a non-changing segment (to animate the merging/spawning of segments)
       //store the matching segments here
       uint8_t segments_move[7] = {0,0,0,0,0,0,0};
 
       //millis() of last change
       uint32_t update_time;
+      //time at which to erase the old digit
+      uint32_t erase_time;
+      //time at which to draw the new digit
+      uint32_t draw_time;
     };
 
     digit digits[6];
 
     //update a digit
     //figure out which segments will move and merge with the old segments
-    void update_digit(digit &d, uint8_t number, uint16_t my_delay = 0) {
-      if (d.number_to != number) {
-        d.update_time = millis() + my_delay;
-        d.number_from = d.number_to;
-        d.number_to = number;
+    void update_digit(uint8_t dig, uint8_t number) {
+      digit * d = &digits[dig];
+      
+
+      
+      if (d->number_to != number) {
+
+        //calculate our delay for erasing the old digit
+        int erase_delay2 = update_count * erase_delay;
+        if (erase_delay < 0) {
+          //negative delays indicate reverse order
+          erase_delay2 = (5 - dig) * -erase_delay;
+        }
+        //calculate our delay for drawing the new digit
+        int draw_delay2 = update_count * draw_delay;
+        if (draw_delay < 0) {
+          //negative delays indicate reverse order
+          draw_delay2 = (5 - dig) * -draw_delay;
+        }
+
+        uint32_t new_update_time = millis();
+      
+        //do not update the number if the previous number is currently drawing
+        if (new_update_time < d->draw_time || new_update_time > d->draw_time+500) {
+          d->number_from = d->number_to;
+          d->number_to = number;
+        }
+        
+        //do not update times until the previous update is complete
+        if (new_update_time > d->draw_time + 500) {
+          d->update_time = new_update_time;
+          d->erase_time = new_update_time + erase_delay2;
+          d->draw_time = new_update_time + draw_delay2;
+        }
+
+        update_count++;
+        
 
         //figure out segment movement
         for (int i = 0; i < 7; i++) {
-          if (numbers[d.number_from][i] != numbers[d.number_to][i]) {
+          if (numbers[d->number_from][i] != numbers[d->number_to][i]) {
             //old segment goes away (find new segment with which to merge)
-            if (numbers[d.number_from][i] == 1) {
+            if (numbers[d->number_from][i] == 1) {
               uint8_t min_dist = 10;
               for (int j = 0; j < 7; j++) {
-                if (numbers[d.number_to][j] == 1) {
+                if (numbers[d->number_to][j] == 1) {
                   uint8_t dist = abs(i - j)+2;
-                  if (numbers[d.number_from][j] == 0) {
+                  if (numbers[d->number_from][j] == 0) {
                     dist -= 2;
                   }
                   if (dist < min_dist) {
                     min_dist = dist;
-                    d.segments_move[i] = j;
+                    d->segments_move[i] = j;
                   }
                 }
               }
-            } else { //d.number_to == 1
+            } else { //d->number_to == 1
               //new segment comes into existence (find old segment from which to spawn)
               uint8_t min_dist = 10;
               for (int j = 0; j < 7; j++) {
-                if (numbers[d.number_from][j] == 1) {
+                if (numbers[d->number_from][j] == 1) {
                   uint8_t dist = abs(i - j)+2;
-                  if (numbers[d.number_to][j] == 0) {
+                  if (numbers[d->number_to][j] == 0) {
                     dist -= 2;
                   }
                   if (dist < min_dist) {
                     min_dist = dist;
-                    d.segments_move[i] = j;
+                    d->segments_move[i] = j;
                   }
                 }
               }
             }
           }
         }
-        draw_digit(d);
+        draw_digit(*d);
       } else {
-        draw_digit(d);
+        draw_digit(*d);
       }
     }
 
-    void draw_3d(int x0, int y0, int z0, int x1, int y1, int z1, uint8_t hue = 0, uint8_t sat = 255, uint8_t val = 64) {
+    void draw_3d(int x0, int y0, int z0, int x1, int y1, int z1, uint8_t hue = 0, uint8_t sat = 255, uint8_t val = 255) {
 
       long p[3];
       
@@ -463,17 +514,19 @@ class MATTCLOCK: public LIGHT_SKETCH {
     void draw_digit(digit &d) { 
       
       int td = millis() - d.update_time;
-      if (td < 0) {
+      int ed = millis() - d.erase_time;
+      int dd = millis() - d.draw_time;
+      if (ed < 0) {
         draw_digit(d.number_from + '0');
-      } else if (td < 500) {
-        td /= 2;
+      } else if (dd < 500) {
+        dd /= 2;
         
         if (clock_scribble) {
           draw_scribble(digits[dpos]);
         }
         
         if (clock_digital) {
-          animate_digit(d, td);
+          animate_digit(d, dd);
         }
 
         dpos++;
@@ -489,7 +542,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
     //draw digits (and colons) on the screen
     void draw_digit(char dig) {
-      uint8_t val = 64;
+      uint8_t val = 255;
 
       switch (dig)
       {
@@ -592,15 +645,14 @@ class MATTCLOCK: public LIGHT_SKETCH {
     }
 
     void draw_digital_clock() {
-      uint8_t d = 5;
+      update_count = 0;
         for (int i = 0; i < sizeof(timebuffer); i++) {
           if (timebuffer[i] == '\0') {
             break;
           }
           //draw the characters from our buffer
           if ( timebuffer[i] >= '0' && timebuffer[i] <= '9' ) {
-            update_digit(digits[dpos], timebuffer[i] - '0', d*175); //delay between digits when multiple are updated (rolling effect)
-            d--;
+            update_digit(dpos, timebuffer[i] - '0'); //delay between digits when multiple are updated (rolling effect)
           } else {
             draw_digit(timebuffer[i]);
           }
@@ -613,11 +665,25 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
 
     void next_effect() {
-      if (current_effect == 1) {
+      if (current_effect == TEXT_CLOCK) {
         display_text = "";
       }
       current_effect++;
-      current_effect %= 3;
+      current_effect %= NUMBER_OF_CLOCK_TYPES;
+      if (current_effect == DIGITAL_CLOCK) {
+        //seven-segment digital clock
+        clock_scribble = false;
+        clock_digital = true;
+        digit_rotate = true;
+        erase_delay = -175;
+        draw_delay = -175;
+      } else if (current_effect == HAND_DRAWN_CLOCK) {
+        //hand-drawn digital clock
+        clock_scribble = true;
+        clock_digital = false;
+        erase_delay = 100;
+        draw_delay = 400;
+      }
     }
 
     void setup() {
@@ -625,7 +691,10 @@ class MATTCLOCK: public LIGHT_SKETCH {
         digits[i].number_from = 0;
         digits[i].number_to = 0;
         digits[i].update_time = millis();
+        digits[i].erase_time = millis();
+        digits[i].draw_time = millis();
       }
+      next_effect();
     }
 
     void reset() {
@@ -656,20 +725,27 @@ class MATTCLOCK: public LIGHT_SKETCH {
         LED_black();
 
         
-        //get current time and add it to display
-        
+        //get the current time
         update_timebuffer();
 
-        if (current_effect == 0) {
+        //read the current time and update tick_time if necessary
+        seconds = timeinfo->tm_sec;
+        
+        if (seconds != old_seconds) {
+          tick_time = millis();
+          old_seconds = seconds;
+        }
+
+        //run the active sketch
+        if (current_effect == DIGITAL_CLOCK || current_effect == HAND_DRAWN_CLOCK) {
           draw_digital_clock();
         }
 
-        if (current_effect == 1) {
+        if (current_effect == TEXT_CLOCK) {
           display_text = timebuffer;
         }
 
-        if (current_effect == 2) {
-          draw_digital_clock();
+        if (current_effect == ANALOG_CLOCK) {
           draw_analog_clock();
         }
       }
@@ -706,14 +782,6 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
 
         //draw the hands
-        static int old_seconds = 0;
-
-        int seconds = timeinfo->tm_sec;
-        
-        if (seconds != old_seconds) {
-          tick_time = millis();
-        }
-        old_seconds = seconds;
 
         int second_angle = (seconds*65536)/60;
 
@@ -755,17 +823,24 @@ class MATTCLOCK: public LIGHT_SKETCH {
       #define Y_SCALE 54
       
       uint32_t digit_time = d.update_time;
+      uint32_t erase_time = d.erase_time;
+      uint32_t draw_time = d.draw_time;
+
+      int td = millis() - digit_time;
+      int ed = millis() - erase_time;
+      int dd = millis() - draw_time;
+
       uint8_t old_digit = d.number_from;
       uint8_t current_digit = d.number_to;
-      int td = millis() - digit_time;
       
-      uint8_t val = 64; //default brightness
+      
+      uint8_t val = 255; //default brightness
 
-      uint8_t percentage = _max(_min(((td-200)*255)/SCRIBBLE_SPEED,255),0);
+      uint8_t percentage = _max(_min(((dd-200)*255)/SCRIBBLE_SPEED,255),0);
 
-      if (td < 100) {
+      if (ed < 100) {
         percentage = 255;
-        val = _max(_min(100-td,100)*64/100,0);
+        val = _max(_min(100-ed,100)*64/100,0);
         current_digit = old_digit;
       }
 

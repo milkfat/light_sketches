@@ -6,7 +6,7 @@ class PHOS {
     #define SIZE_PIX 5
 
 
-    #define FPS 30 // frames per second setting
+    #define FPS 60 // frames per second setting
 
     uint16_t pixels[PSIZE_Y][PSIZE_X];
 
@@ -17,36 +17,24 @@ class PHOS {
     private:
     uint16_t delta[PSIZE_Y][PSIZE_X];
 
-
     void setVal(uint32_t x, uint32_t y, float val) {
         float old = getVal(x,y);
         pixels[y][x] = FC.compress(val);
         delta[y][x] = FC.compress(val-old);
     }
 
-
-
     float getDel(uint32_t x, uint32_t y) {
         return FC.decompress(delta[y][x]);
     }
 
-
-
     #define ADVANCE 0.1f
-
-
-    float boost(float val) {
-        return val+0.5f;
-    }
-    float boost2(float val) {
-        return val-0.5f;
-    }
     
-    void processPix(uint16_t x, uint16_t y) {
+    void processPix(uint32_t x, uint32_t y) {
         // get block values
         float vals = 0;
-        uint8_t vals_cnt = 0;
+        float vals_cnt = 0;
         float dels = 0;
+
         for (int iy = 0; iy < 3; iy++) {
             float ty = y+iy-1;
             if ( ty < 0 || ty >= PSIZE_Y ) {
@@ -59,51 +47,58 @@ class PHOS {
                 }
                 vals += getVal(tx, ty);
                 float tempDel = getDel(tx, ty);
-                dels += tempDel * abs(tempDel);
+                dels += tempDel * fabs(tempDel);
                 vals_cnt++;
             }
         }
-
-        
 
         // compute shit
 
 
         float me = getVal(x, y);
-        float avg = vals/vals_cnt;
+        float avg = (vals*1.f)/(vals_cnt*1.f);
 
         float ddd = dels;
+
+        
         if ( ddd < 0 ) {
             ddd = -sqrt(-ddd);
         } else {
             ddd = sqrt(ddd);
         }
 
+        
         float out;
         
         if ( me > 1 ) {
+            //if over this, then drop off
             out = 0.5f;
-        } else if ( me < 0.3 ) {
+        } else if ( me < 0.3f ) {
+            //if less than this, then start advancing (stop dropping off)
             out = me + ADVANCE;
         } else {
-            if ( ddd > 0 ) {
-                out = me + ddd*.3f;
-            } else {
+            if ( ddd > 0.f ) {
+                //grow faster as neighbors grow faster
+                out = me + ddd*.37f;
+            } else if (ddd < -.15f) {
+                //drop off as neighbors drop off
                 out = me + ddd*.9f;
+            } else {
+                out = me + ADVANCE;
             }
         }
-        out = (5*out + avg)/6;
-        
+        //try not to get too far away from neighbors
+        out = (3.f*out + avg)/4.f;
         //update value
         setVal(x, y, out);
+        
     }
 
 
     #define fullUpdateEvery 3
-    #define fullFrameUpdateSpeed 6
+    #define fullFrameUpdateSpeed 4
     int16_t curIdx = 0;
-    uint16_t pixOrder[(PSIZE_Y * PSIZE_X) * fullUpdateEvery];
-    uint16_t updatePerFrame = (PSIZE_Y*PSIZE_X*fullUpdateEvery) / fullFrameUpdateSpeed;
+    uint16_t updatePerFrame = (PSIZE_Y*PSIZE_X) / fullFrameUpdateSpeed;
 
     void next_effect() {}
 
@@ -120,41 +115,19 @@ class PHOS {
                 setVal(x, y, random(255)/255.f);
             }
         }
-/*
-        for (int y = 0; y < 50; y++) {
-            for (int x = 0; x < 50; x++) {
-                setVal(x+PSIZE_X/2-25, y+PSIZE_Y/2-25, 1);
-            }
-        }
-*/
-        for (int i = 0; i < (PSIZE_Y * PSIZE_X) * fullUpdateEvery; i++) {
-            pixOrder[i] = i%(PSIZE_Y * PSIZE_X);
-        }
         
     }
 
 
     void loop() {
         static uint32_t phosphene_time = millis();
-        if (millis() - 33 > phosphene_time) {
+        if (millis() - 1000/FPS > phosphene_time) {
             phosphene_time = millis();
 
-            if (curIdx >= (PSIZE_Y*PSIZE_X)) {
-                //random.shuffle(pixOrder);
-                for (int i = 0; i < (PSIZE_Y * PSIZE_X) * fullUpdateEvery; i++) {
-                    uint16_t temp = pixOrder[i];
-                    uint16_t r = random((PSIZE_Y * PSIZE_X) * fullUpdateEvery);
-                    pixOrder[i] = pixOrder[r];
-                    pixOrder[r] = temp;
-                }
-                curIdx = 0;
-            }
-            
-            int16_t nextIdx = curIdx + updatePerFrame;
-            while (curIdx < nextIdx && curIdx < (PSIZE_Y*PSIZE_X)) {
-                uint16_t coord = pixOrder[curIdx];
-                processPix(coord%PSIZE_X, coord/PSIZE_X);
-                curIdx += 1;
+            curIdx = 0;
+            while (curIdx < updatePerFrame) {
+                processPix(random(PSIZE_X), random(PSIZE_Y));
+                curIdx++;
             }
 
             
