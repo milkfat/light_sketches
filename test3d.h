@@ -665,7 +665,7 @@ class TEST3D: public LIGHT_SKETCH {
           rotate(p, p0);
 
           //translate vectors to coordinates
-          matrix.z_scale(p0[2]);
+          matrix.scale_z(p0[2]);
 
           //correct 3d perspective
           if (matrix.perspective(p0)) {
@@ -1018,8 +1018,8 @@ void handle_grid() {
               rotate(pt, p1);
 
               //translate vectors to coordinates
-              matrix.z_scale(p0[2]);
-              matrix.z_scale(p1[2]);
+              matrix.scale_z(p0[2]);
+              matrix.scale_z(p1[2]);
 
               //correct 3d perspective
 
@@ -1083,8 +1083,8 @@ void handle_grid() {
               rotate(pt, p1);
 
               //translate vectors to coordinates
-              matrix.z_scale(p0[2]);
-              matrix.z_scale(p1[2]);
+              matrix.scale_z(p0[2]);
+              matrix.scale_z(p1[2]);
 
 
               //correct 3d perspective
@@ -1160,7 +1160,7 @@ void handle_snow() {
             rotate(p, p0);
 
             //translate vectors to coordinates
-            matrix.z_scale(p0[2]);
+            matrix.scale_z(p0[2]);
 
             //correct 3d perspective
               
@@ -1199,7 +1199,7 @@ void handle_spiral() {
             rotate(p, p0);
 
             //translate vectors to coordinates
-            matrix.z_scale(p0[2]);
+            matrix.scale_z(p0[2]);
 
             //correct 3d perspective
 
@@ -1270,9 +1270,9 @@ void handle_cube() {
             rotate(cube[c], v2);
 
             //translate vectors to coordinates
-            matrix.z_scale(v0[2]);
-            matrix.z_scale(v1[2]);
-            matrix.z_scale(v2[2]);
+            matrix.scale_z(v0[2]);
+            matrix.scale_z(v1[2]);
+            matrix.scale_z(v2[2]);
 
             //correct 3d perspective
             matrix.perspective(v0);

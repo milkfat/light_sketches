@@ -127,11 +127,11 @@ class MATRIX {
         }
 
 
-        void z_scale(long p0[3]) {
-            z_scale(p0[2]);
+        void scale_z(long p0[3]) {
+            scale_z(p0[2]);
         }
 
-        void z_scale(long& z) {
+        void scale_z(long& z) {
             z += z_scaler;
         }
         
