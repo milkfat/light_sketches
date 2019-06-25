@@ -84,7 +84,6 @@ class CURVY: public LIGHT_SKETCH {
       int16_t vz = 0;
     };
     #define NUM_TENTACLES 10
-    tentacle_segment tentacles[NUM_TENTACLES][NUM_TENTACLE_SEGMENTS];
 
     //POINT points[NUM_POINTS];
 
@@ -150,7 +149,7 @@ class CURVY: public LIGHT_SKETCH {
 
         handle_bubbles();
 
-        handle_jelly();
+        handle_jellies();
 
         handle_fish();
 
@@ -166,174 +165,219 @@ class CURVY: public LIGHT_SKETCH {
 
 
 
+    struct JELLY {
+      int32_t x = -20*256;
+      int32_t y = 300*256;
+      int32_t z = 0*256;
+      uint8_t az = -5;
+      uint8_t step = 0;
+      uint8_t speed = 2;
+      int32_t age = millis();
+      tentacle_segment tentacles[NUM_TENTACLES][NUM_TENTACLE_SEGMENTS];
+    };
 
-    int jelly_position_y = 300*256;
-    int jelly_position_x = -20*256;
-    int jelly_position_z = 0*256;
-
-    int jelly_angle_z = -5;
+    #define NUM_JELLIES 2
+    JELLY jellies[NUM_JELLIES];
     
-    void handle_jelly() {
-
-      static uint8_t jelly_step = 0;
-      jelly_step += 2;
-
-      int jelly_speed = sin8(jelly_step-48)-64;
-      jelly_speed = _max(jelly_speed,0)/2;
-
-      uint8_t jelly_step2 = jelly_step+64;
-
-      long last_x;
-      long last_y;
-
-      uint8_t z_rotate = 32;
-
-      if (jelly_position_y > 250*256 || jelly_position_x > 100*256 || jelly_position_x < -100*256) {
-        jelly_position_x = 50*256;
-        jelly_position_y = -100*256;
-        jelly_angle_z = 5+random(40);
-        if (random(2)) {
-          jelly_position_x *= -1;
-          jelly_angle_z *= -1;
-        }
-        for (int i = 0; i < NUM_TENTACLES; i++) {
-          for (int j = 0; j < NUM_TENTACLE_SEGMENTS; j++) {
-            tentacles[i][j].x = jelly_position_x;
-            tentacles[i][j].y = jelly_position_y;
-            tentacles[i][j].z = jelly_position_z;
-            tentacles[i][j].vx = 0;
-            tentacles[i][j].vy = 0;
-            tentacles[i][j].vz = 0;
-          }
-        }
+    void handle_jellies() {
+      for (int i = 0; i < NUM_JELLIES; i++) {
+        handle_jelly(jellies[i]);
       }
-      
-      #define NUM_JELLY_SEGMENTS 10
-      long ring_points[NUM_JELLY_SEGMENTS][2];
+    }
 
-      //a jellyfish consists of a segment rotated around an axis (the center of the jellyfish)
-      //each segment is made up of three points
-      long jelly_points[3][3] = {
-        {2*256,100*42,0},
-        {70*24,70*42,0},
-        {100*24,0,0}
-      };
+    bool draw_jelly;
+    bool update_jelly;
+    void handle_jelly(JELLY& jelly) {
 
-      //animate midpoint
-      long jp1x = jelly_points[1][0] + sin8(jelly_step2)*8;
-      long jp1y = jelly_points[1][1] + cos8(jelly_step2)*8;
+      draw_jelly = false;
+      update_jelly = true;
+      while (!draw_jelly) {
 
-      //animate tips
-      long jp2x = jelly_points[2][0] + sin8(jelly_step)*12;
-      long jp2y = jelly_points[2][1] + cos8(jelly_step)*12;
+        if (loop_time - 16 > jelly.age) {
+          jelly.age += 16;
+          if (loop_time - 16 <= jelly.age) {
+            draw_jelly = true;
+          }
+        } else {
+          draw_jelly = true;
+          update_jelly = false;
+        }
 
-      //process each segment of the jellyfish
-      for (int i = 0; i < NUM_JELLY_SEGMENTS; i++) {
-        uint8_t ang = i*(256/NUM_JELLY_SEGMENTS)+NUM_JELLY_SEGMENTS;
-        uint8_t s = sin8(ang);
-        uint8_t c = cos8(ang);
+        if (update_jelly) {
+          jelly.step += jelly.speed;
+        }
 
-        long p0[3];
-        long p1[3];
-        long p2[3];
+        int jelly_speed = sin8(jelly.step-48)-64;
+        jelly_speed = _max(jelly_speed,0)/2;
+        jelly_speed = (jelly_speed*jelly.speed)/2;
 
-        //build the jellyfish by rotating around y-axis:
-        //rotate x coord
-        p0[0] = ( jelly_points[0][0]*( c - 128 ) - jelly_points[0][2]*( s - 128 )  )/128;
-        p1[0] = ( jp1x*( c - 128 ) - jelly_points[1][2]*( s - 128 )  )/128;
-        p2[0] = ( jp2x*( c - 128 ) - jelly_points[2][2]*( s - 128 )  )/128;
+        uint8_t jelly_step2 = jelly.step+64;
+
+
+        if (jelly.y > 250*256 || jelly.x > 100*256 || jelly.x < -100*256) {
+          
+          jelly.x = 50*256;
+          jelly.y = random(200*256) - 100*256;
+          jelly.az = 5+random(40);
+          
+          if (random(2)) {
+            jelly.x *= -1;
+            jelly.az *= -1;
+          }
+
+          jelly.speed = random(1,6);
+
+          for (int i = 0; i < NUM_TENTACLES; i++) {
+            for (int j = 0; j < NUM_TENTACLE_SEGMENTS; j++) {
+              jelly.tentacles[i][j].x = jelly.x;
+              jelly.tentacles[i][j].y = jelly.y;
+              jelly.tentacles[i][j].z = jelly.z;
+              jelly.tentacles[i][j].vx = 0;
+              jelly.tentacles[i][j].vy = 0;
+              jelly.tentacles[i][j].vz = 0;
+            }
+          }
+
+        }
         
-        //don't rotate y coords
-        p0[1] = jelly_points[0][1];
-        p1[1] = jp1y;
-        p2[1] = jp2y;
+        #define NUM_JELLY_SEGMENTS 10
+        long ring_points[NUM_JELLY_SEGMENTS][2];
 
-        //rotate z coords
-        p0[2] = ( jelly_points[0][0]*( s - 128 ) + jelly_points[0][2]*( c - 128 )  )/128;
-        p1[2] = ( jp1x*( s - 128 ) + jelly_points[1][2]*( c - 128 )  )/128;
-        p2[2] = ( jp2x*( s - 128 ) + jelly_points[2][2]*( c - 128 )  )/128;
-
-        //rotate the jellyfish to particular orientation
-        matrix.rotate_z(p0,jelly_angle_z);
-        matrix.rotate_z(p1,jelly_angle_z);
-        matrix.rotate_z(p2,jelly_angle_z);
-
-        //translate to coordinates
-        p0[0] += jelly_position_x;
-        p0[1] += jelly_position_y;
-        p0[2] += jelly_position_z;
-
-        p1[0] += jelly_position_x;
-        p1[1] += jelly_position_y;
-        p1[2] += jelly_position_z;
-
-        p2[0] += jelly_position_x;
-        p2[1] += jelly_position_y;
-        p2[2] += jelly_position_z;
-
-        //update the tentacles
-        tentacles[i][0].x = p2[0];
-        tentacles[i][0].y = p2[1];
-        tentacles[i][0].z = p2[2];
-
-        //rotate the jellyfish as part of our global 3d matrix
-        matrix.rotate(p0);
-        matrix.rotate(p1);
-        matrix.rotate(p2);
-
-        
-
-        //some sort of screen scaling
-        matrix.z_scale(p0);
-        matrix.z_scale(p1);
-        matrix.z_scale(p2);
-
-        //map our 3d coordinates to screen coordinates
-        matrix.perspective(p0);
-        matrix.perspective(p1);
-        matrix.perspective(p2);
-
-        long points[3][2] {
-          {p0[0],p0[1]},
-          {p1[0],p1[1]},
-          {p2[0],p2[1]}
+        //a jellyfish consists of a segment rotated around an axis (the center of the jellyfish)
+        //each segment is made up of three points
+        long jelly_points[3][3] = {
+          {2*256,100*42,0},
+          {70*24,70*42,0},
+          {100*24,0,0}
         };
 
-        //draw each segment
-        matt_curve8(points, 3,212,128,64,false,false,true,255,128);
+        //animate midpoint
+        long jp1x = jelly_points[1][0] + sin8(jelly_step2)*8;
+        long jp1y = jelly_points[1][1] + cos8(jelly_step2)*8;
 
-        //add the outer point of each segment to an array
-        //we use this array to draw a circle around the jelly at the end
-        ring_points[i][0] = p2[0];
-        ring_points[i][1] = p2[1];
-        
+        //animate tips
+        long jp2x = jelly_points[2][0] + sin8(jelly.step)*12;
+        long jp2y = jelly_points[2][1] + cos8(jelly.step)*12;
+
+        //process each segment of the jellyfish
+        for (int i = 0; i < NUM_JELLY_SEGMENTS; i++) {
+          uint8_t ang = i*(256/NUM_JELLY_SEGMENTS)+NUM_JELLY_SEGMENTS;
+          uint8_t s = sin8(ang);
+          uint8_t c = cos8(ang);
+
+          long p0[3];
+          long p1[3];
+          long p2[3];
+
+          //build the jellyfish by rotating around y-axis:
+          //rotate x coord
+          p0[0] = ( jelly_points[0][0]*( c - 128 ) - jelly_points[0][2]*( s - 128 )  )/128;
+          p1[0] = ( jp1x*( c - 128 ) - jelly_points[1][2]*( s - 128 )  )/128;
+          p2[0] = ( jp2x*( c - 128 ) - jelly_points[2][2]*( s - 128 )  )/128;
+          
+          //don't rotate y coords
+          p0[1] = jelly_points[0][1];
+          p1[1] = jp1y;
+          p2[1] = jp2y;
+
+          //rotate z coords
+          p0[2] = ( jelly_points[0][0]*( s - 128 ) + jelly_points[0][2]*( c - 128 )  )/128;
+          p1[2] = ( jp1x*( s - 128 ) + jelly_points[1][2]*( c - 128 )  )/128;
+          p2[2] = ( jp2x*( s - 128 ) + jelly_points[2][2]*( c - 128 )  )/128;
+
+          //rotate the jellyfish to particular orientation
+          matrix.rotate_z(p0,jelly.az);
+          matrix.rotate_z(p1,jelly.az);
+          matrix.rotate_z(p2,jelly.az);
+
+          //translate to coordinates
+          p0[0] += jelly.x;
+          p0[1] += jelly.y;
+          p0[2] += jelly.z;
+
+          p1[0] += jelly.x;
+          p1[1] += jelly.y;
+          p1[2] += jelly.z;
+
+          p2[0] += jelly.x;
+          p2[1] += jelly.y;
+          p2[2] += jelly.z;
+
+          if (update_jelly) {
+            //update the tentacles
+            jelly.tentacles[i][0].x = p2[0];
+            jelly.tentacles[i][0].y = p2[1];
+            jelly.tentacles[i][0].z = p2[2];
+          }
+
+          //rotate the jellyfish as part of our global 3d matrix
+          matrix.rotate(p0);
+          matrix.rotate(p1);
+          matrix.rotate(p2);
+
+          //some sort of screen scaling
+          matrix.z_scale(p0);
+          matrix.z_scale(p1);
+          matrix.z_scale(p2);
+
+          //map our 3d coordinates to screen coordinates
+          matrix.perspective(p0);
+          matrix.perspective(p1);
+          matrix.perspective(p2);
+
+          long points[3][2] {
+            {p0[0],p0[1]},
+            {p1[0],p1[1]},
+            {p2[0],p2[1]}
+          };
+
+          if (draw_jelly) {
+            //draw each segment
+            matt_curve8(points, 3,212,128,64,false,false,true,255,128);
+          }
+
+          //add the outer point of each segment to an array
+          //we use this array to draw a circle around the jelly at the end
+          ring_points[i][0] = p2[0];
+          ring_points[i][1] = p2[1];
+          
+        }
+
+        if (draw_jelly) {
+          //draw a circle tying the jelly's segments together
+          matt_curve8(ring_points,NUM_JELLY_SEGMENTS,212,128,64,false,true,true,255,128);
+        }
+
+        //a unit vector representing the jelly's speed
+        long speed[3] = {0,256,0};
+
+        //rotate the unit vector to figure out how far the jelly should move in each direction
+        matrix.rotate_z(speed,jelly.az);
+
+        if (update_jelly) {
+          //update the jelly's position
+          jelly.x += (jelly_speed*speed[0])/256;
+          jelly.y += (jelly_speed*speed[1])/256;
+          jelly.z += (jelly_speed*speed[2])/256;
+        }
+
+        handle_tentacles(jelly.tentacles);
+
       }
-      //draw a circle tying the jelly's segments together
-      matt_curve8(ring_points,NUM_JELLY_SEGMENTS,212,128,64,false,true,true,255,128);
-
-      //a unit vector representing the jelly's speed
-      long speed[3] = {0,256,0};
-
-      //rotate the unit vector to figure out how far the jelly should move in each direction
-      matrix.rotate_z(speed,jelly_angle_z);
-
-      //update the jelly's position
-      jelly_position_x += (jelly_speed*speed[0])/256;
-      jelly_position_y += (jelly_speed*speed[1])/256;
-      jelly_position_z += (jelly_speed*speed[2])/256;
-
-      handle_tentacles();
 
     } //handle_jelly()
 
-    void handle_tentacles() {
+
+    
+
+    void handle_tentacles(tentacle_segment tentacles[NUM_TENTACLE_SEGMENTS][NUM_TENTACLE_SEGMENTS]) {
       for (int i = 0; i < NUM_JELLY_SEGMENTS; i++) {
         long tentacle_points[NUM_TENTACLE_SEGMENTS][2];
         for (int j = 0; j < NUM_TENTACLE_SEGMENTS; j++) {
 
           //apply physics to all but the first point (which is affixed to the jelly)
           //points pull against eachother
-          if (j > 0) {
+          if (j > 0 && update_jelly) {
             
             int32_t dx = (tentacles[i][j-1].x - tentacles[i][j].x);
             int32_t dy = (tentacles[i][j-1].y - tentacles[i][j].y);
@@ -355,6 +399,8 @@ class CURVY: public LIGHT_SKETCH {
               dx = (od*dx)/d;
               dy = (od*dy)/d;
               dz = (od*dz)/d;
+              
+              
               //if our current speed is less than the overage distance, then speed up
               if ( dx != 0 && tentacles[i][j].vx / dx < 1 ) {
                 tentacles[i][j].vx += (dx-tentacles[i][j].vx)/2;
@@ -365,6 +411,7 @@ class CURVY: public LIGHT_SKETCH {
               if ( dz != 0 && tentacles[i][j].vz / dz < 1 ) {
                 tentacles[i][j].vz += (dz-tentacles[i][j].vz)/2;
               }
+              
 
               //accelerate the other point along each axis
               if (j > 1) {
@@ -372,6 +419,7 @@ class CURVY: public LIGHT_SKETCH {
                 dx *= -1;
                 dy *= -1;
                 dz *= -1;
+                
                 //if our current speed is less than the overage distance, then speed up
                 if ( dx != 0 && tentacles[i][j-1].vx / dx < 1 ) {
                   tentacles[i][j-1].vx += (dx-tentacles[i][j-1].vx)/2;
@@ -382,38 +430,45 @@ class CURVY: public LIGHT_SKETCH {
                 if ( dz != 0 && tentacles[i][j-1].vz / dz < 1 ) {
                   tentacles[i][j-1].vz += (dz-tentacles[i][j-1].vz)/2;
                 }
+                
               }
 
 
             } 
-
 
             //update position
             tentacles[i][j].x += tentacles[i][j].vx;
             tentacles[i][j].y += tentacles[i][j].vy;
             tentacles[i][j].z += tentacles[i][j].vz;
             
+            
           }
 
-          long p[3];
-          p[0] = tentacles[i][j].x;
-          p[1] = tentacles[i][j].y;
-          p[2] = tentacles[i][j].z;
+          if (draw_jelly) {
+            long p[3];
+            p[0] = tentacles[i][j].x;
+            p[1] = tentacles[i][j].y;
+            p[2] = tentacles[i][j].z;
 
-          //rotate with global matrix
-          matrix.rotate(p);
+            //rotate with global matrix
+            matrix.rotate(p);
 
-          //some sort of screen scaling
-          matrix.z_scale(p);
+            //some sort of screen scaling
+            matrix.z_scale(p);
 
-          //map our 3d coordinates to screen coordinates
-          matrix.perspective(p);
+            //map our 3d coordinates to screen coordinates
+            matrix.perspective(p);
 
-          tentacle_points[j][0] = p[0];
-          tentacle_points[j][1] = p[1];
+            tentacle_points[j][0] = p[0];
+            tentacle_points[j][1] = p[1];
+          }
+
         }
 
-        matt_curve8(tentacle_points,NUM_TENTACLE_SEGMENTS,96,64,64,false,false,true,255,128);
+        if (draw_jelly) {
+          matt_curve8(tentacle_points,NUM_TENTACLE_SEGMENTS,96,64,64,false,false,true,255,128);
+        }
+
       }
     }
 
