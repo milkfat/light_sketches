@@ -58,11 +58,11 @@ void update_matrix() {
 
     uint32_t start_time = micros();
 
-
 	//draw stuff
 	SDL_Event event;
 
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+
 	SDL_RenderClear(renderer);
 
 	SDL_SetRenderDrawColor(renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
@@ -186,9 +186,10 @@ int main(int argc, char **argv){
 
         if (SDL_CreateWindowAndRenderer(WINDOW_WIDTH, WINDOW_HEIGHT, 0, &window, &renderer) == 0) {
             
+			while (millis() < 1000) {};
 			
             while (!done) {
-
+				
 				if (millis()-1000 > debug_time && debug_micros0 > 0) {
 						debug_time = millis();
 						std::cout << (debug_micros1/(debug_micros0*1.f)) << " " << debug_micros1 << " " << debug_micros0 << "\n";

@@ -76,16 +76,16 @@ class CURVY: public LIGHT_SKETCH {
     //some jellyfish tentacles
 
     #define NUM_JELLIES 1
-    #define NUM_JELLY_SEGMENTS 5
+    #define NUM_JELLY_SEGMENTS 10
     #define NUM_TENTACLES NUM_JELLY_SEGMENTS
-    #define NUM_TENTACLE_SEGMENTS 10
+    #define NUM_TENTACLE_SEGMENTS 12
     struct tentacle_segment {
       int32_t x = -20*256;
       int32_t y = -150*256;
       int32_t z = 0;
-      int16_t vx = 0;
-      int16_t vy = 0;
-      int16_t vz = 0;
+      float vx = 0;
+      float vy = 0;
+      float vz = 0;
     };
 
 
@@ -97,11 +97,13 @@ class CURVY: public LIGHT_SKETCH {
     }
 
     void setup() {
-
+      rotation_alpha = 0;
+      rotation_beta = 90;
+      rotation_gamma = 0;
       //jellyfish
       for (int i = 0; i < NUM_JELLIES; i++) {
-        jellies[i].on_screen_last_frame = true;
-        jellies[i].on_screen_this_frame = false;
+        jellies[i].on_screen = false;
+        jellies[i].live_until = 0;
       }
 
       //bubbles
@@ -154,15 +156,15 @@ class CURVY: public LIGHT_SKETCH {
         LED_show();
         LED_black();
 
-        //handle_bubbles();
+        handle_bubbles();
 
         handle_jellies();
 
-        //handle_fish();
+        handle_fish();
 
-        //draw_grass();
+        draw_grass();
 
-        //draw_water();
+        draw_water();
 
       }
 
@@ -178,11 +180,14 @@ class CURVY: public LIGHT_SKETCH {
       int32_t z = 0*256;
       uint8_t az = -5;
       uint8_t ax = 0;
+      uint8_t ay = 0;
+      uint32_t steps = 0;
       uint8_t step = 0;
+      uint8_t step2 = 32;
       uint8_t speed = 2;
       int32_t age = millis();
-      bool on_screen_last_frame = true;
-      bool on_screen_this_frame = false;
+      int32_t live_until = millis();
+      bool on_screen = false;
       tentacle_segment tentacles[NUM_TENTACLES][NUM_TENTACLE_SEGMENTS];
     };
 
@@ -200,15 +205,18 @@ class CURVY: public LIGHT_SKETCH {
       int this_step = (jelly.speed * (loop_time-jelly.age))/16;
       
       //update jelly step
+      jelly.steps++;
       jelly.step += this_step;  
+      jelly.step2 += this_step;   
 
-      //double step to give the jelly some "snap"
+      //double speed to give the jelly some "snap" on its down stroke
       if (jelly.step > 32 && jelly.step < 164) {
         jelly.step+=this_step;
       }
+      if (jelly.step2 > 32 && jelly.step2 < 164) {
+        jelly.step2+=this_step;
+      }
       
-      //second animation step with a slight offset
-      uint8_t jelly_step2 = jelly.step+64;   
 
       //jelly velocity is based on a sine wave (same as the animation)
       int jelly_velocity =  (sin8(jelly.step-32)-64);
@@ -221,15 +229,29 @@ class CURVY: public LIGHT_SKETCH {
 
       jelly.age = millis(); 
 
-      //reset the jelly if it goes out-of-bounds
-      if (jelly.on_screen_last_frame && !jelly.on_screen_this_frame) {
+      //reset the jelly if it goes off the screen
+      if (!jelly.on_screen && loop_time > jelly.live_until) {
         
-        //reset to off-screen position
-        jelly.x = 50*256;
-        jelly.z = random(150*256) - 100*256;
-        jelly.y = random(200*256) - 100*256;
-        jelly.az = 8+random(40);
-        jelly.ax = random(20);
+        jelly.live_until = millis()+10000; //live at least 10 seconds
+        jelly.steps = 0;
+        jelly.step = 0;
+        jelly.step2 = 32;
+
+        //reset to a position that is just off the side of the screen
+        long p[3];
+        p[0] = MATRIX_WIDTH*256;
+        p[1] = random(MATRIX_HEIGHT*160) + MATRIX_HEIGHT*32;
+        p[2] = random(400);
+        p[2] = (p[2]*p[2])/400;
+        p[2] = -p[2];
+        p[2] *= 256;
+        matrix.reverse_perspective(p); //translate screen coordinates to 3D coordinates
+        p[0] += 70*48+256*16; //adjust for the size of the jelly (push it off the screen)
+        jelly.x = p[0]; 
+        jelly.y = p[1];
+        jelly.z = p[2];
+        jelly.az = 8+random(30);
+        jelly.ax = random(20)-10;
         
         //random side of the screen
         if (random(2)) {
@@ -245,11 +267,11 @@ class CURVY: public LIGHT_SKETCH {
         //random speed
         jelly.speed = random(2,6);
 
-        jelly.x = 0;        //debug
-        jelly.y = -50*256;  //debug
-        jelly.z = 100*256;  //debug
-        jelly.az = 0;       //debug
-        jelly.speed = 4;    //debug
+        //jelly.x = 0;        //debug
+        // jelly.y = -50*256;  //debug
+        // jelly.z = 100*256;  //debug
+        // jelly.az = 0;       //debug
+        // jelly.speed = 2;    //debug
 
         //reset tentacles
         for (int i = 0; i < NUM_TENTACLES; i++) {
@@ -265,30 +287,31 @@ class CURVY: public LIGHT_SKETCH {
 
       }//end jelly reset
 
-      jelly.on_screen_last_frame = jelly.on_screen_this_frame;
-      jelly.on_screen_this_frame = false;
+      jelly.on_screen = false;
+
+      long jelly_lines[NUM_JELLY_SEGMENTS/2][5][2];
       
       long ring_points[NUM_JELLY_SEGMENTS][2];
 
       //a jellyfish consists of a segment rotated around an axis (the center of the jellyfish)
       //each segment is made up of three points
       long jelly_points[3][3] = {
-        {128,75*42,0},
-        {70*24,50*42,0},
-        {100*24,0,0}
+        {256,75*84,0},
+        {70*48,50*84,0},
+        {100*48,0,0}
       };
 
       //animate midpoint
-      long jp1x = jelly_points[1][0] + sin8(jelly_step2)*6;
-      long jp1y = jelly_points[1][1] + cos8(jelly_step2)*4;
+      long jp1x = jelly_points[1][0] + sin8(jelly.step2)*12;
+      long jp1y = jelly_points[1][1] + cos8(jelly.step2)*8;
 
       //animate tips
-      long jp2x = jelly_points[2][0] + sin8(jelly.step)*8;
-      long jp2y = jelly_points[2][1] + cos8(jelly.step)*6;
+      long jp2x = jelly_points[2][0] + sin8(jelly.step)*18;
+      long jp2y = jelly_points[2][1] + cos8(jelly.step)*12;
 
-      //process each segment of the jellyfish
+      //process each segment of the jellyfish, like slices of pizza
       for (int i = 0; i < NUM_JELLY_SEGMENTS; i++) {
-        uint8_t ang = i*(256/NUM_JELLY_SEGMENTS)+NUM_JELLY_SEGMENTS + ( (fmix32(i) % 16) - 8);
+        uint8_t ang = (i*256/NUM_JELLY_SEGMENTS)+NUM_JELLY_SEGMENTS + ( (fmix32(i) % 16) - 8);
         uint8_t s = sin8(ang);
         uint8_t c = cos8(ang);
 
@@ -318,6 +341,11 @@ class CURVY: public LIGHT_SKETCH {
         p2[2] = ( (jp2x+x_r2)*( s - 128 ) + jelly_points[2][2]*( c - 128 )  )/128;
 
         //rotate the jellyfish to particular orientation
+        matrix.rotate_y(p0,jelly.ay);
+        matrix.rotate_y(p1,jelly.ay);
+        matrix.rotate_y(p2,jelly.ay);
+
+        //rotate the jellyfish to particular orientation
         matrix.rotate_z(p0,jelly.az);
         matrix.rotate_z(p1,jelly.az);
         matrix.rotate_z(p2,jelly.az);
@@ -341,9 +369,14 @@ class CURVY: public LIGHT_SKETCH {
         p2[2] += jelly.z;
 
         //update the tentacles
-        jelly.tentacles[i][0].x = p2[0];
-        jelly.tentacles[i][0].y = p2[1];
-        jelly.tentacles[i][0].z = p2[2];
+
+        jelly.tentacles[i][0].x = p1[0];
+        jelly.tentacles[i][0].y = p1[1];
+        jelly.tentacles[i][0].z = p1[2];
+
+        jelly.tentacles[i][1].x = p2[0];
+        jelly.tentacles[i][1].y = p2[1];
+        jelly.tentacles[i][1].z = p2[2];
 
         //rotate the jellyfish as part of our global 3d matrix
         matrix.rotate(p0);
@@ -360,29 +393,34 @@ class CURVY: public LIGHT_SKETCH {
         matrix.perspective(p1);
         matrix.perspective(p2);
 
-        if (!jelly.on_screen_this_frame) {
+        if (!jelly.on_screen) {
           if (p0[0] >= 0 && p0[0] < MATRIX_WIDTH*256 && p0[1] >= 0 && p0[1] < MATRIX_HEIGHT*256) {
-            jelly.on_screen_this_frame = true;
+            jelly.on_screen = true;
           }
 
           if (p1[0] >= 0 && p1[0] < MATRIX_WIDTH*256 && p1[1] >= 0 && p1[1] < MATRIX_HEIGHT*256) {
-            jelly.on_screen_this_frame = true;
+            jelly.on_screen = true;
           }
 
           if (p2[0] >= 0 && p2[0] < MATRIX_WIDTH*256 && p2[1] >= 0 && p2[1] < MATRIX_HEIGHT*256) {
-            jelly.on_screen_this_frame = true;
+            jelly.on_screen = true;
           }
         }
-
-        long points[3][2] {
-          {p0[0],p0[1]},
-          {p1[0],p1[1]},
-          {p2[0],p2[1]}
-        };
-
-        //draw each segment
-        matt_curve8(points, 3,212,96,96,false,false,true,255,128);
         
+        if (i < 5) {
+          jelly_lines[i][2][0] = p0[0];
+          jelly_lines[i][2][1] = p0[1];
+          jelly_lines[i][1][0] = p1[0];
+          jelly_lines[i][1][1] = p1[1];
+          jelly_lines[i][0][0] = p2[0];
+          jelly_lines[i][0][1] = p2[1];
+         } else {
+          jelly_lines[i-5][3][0] = p1[0];
+          jelly_lines[i-5][3][1] = p1[1];
+          jelly_lines[i-5][4][0] = p2[0];
+          jelly_lines[i-5][4][1] = p2[1];
+         }
+
 
         //add the outer point of each segment to an array
         //we use this array to draw a circle around the jelly at the end
@@ -391,8 +429,15 @@ class CURVY: public LIGHT_SKETCH {
         
       }
 
+        int bri = jelly.z/700+150;
+        bri = _max(_min(bri,255),0);
+     for (int i = 0; i < NUM_JELLY_SEGMENTS/2; i++) {
+        //draw each segment
+        matt_curve8(jelly_lines[i], 5,212,80,bri,false,false,true,255,128);
+     }
+
       //draw a circle tying the jelly's segments together
-      matt_curve8(ring_points,NUM_JELLY_SEGMENTS,212,96,96,false,true,true,255,128);
+      matt_curve8(ring_points,NUM_JELLY_SEGMENTS,212,80,bri,false,true,true,255,128);
       
 
       //a unit vector representing the jelly's velocity
@@ -403,10 +448,13 @@ class CURVY: public LIGHT_SKETCH {
       matrix.rotate_x(v,jelly.ax);
 
       //update the jelly's position
-      jelly.x += (jelly_velocity*v[0])/256;
-      jelly.y += (jelly_velocity*v[1])/256;
-      jelly.z += (jelly_velocity*v[2])/256;
-      
+      jelly.x += 2*(jelly_velocity*v[0])/256;
+      jelly.y += 2*(jelly_velocity*v[1])/256;
+      jelly.z += 2*(jelly_velocity*v[2])/256;
+
+      if (jelly.steps % 16 == 0) {
+        jelly.ay += 1;
+      }
 
       handle_tentacles(jelly);
 
@@ -415,7 +463,28 @@ class CURVY: public LIGHT_SKETCH {
     } //handle_jelly()
 
 
-    
+    /*
+    Calculating bending force:
+    1) Start with points a,b,c
+    2) Calculate d   [midpoint of a,c]
+    3) Calculate e   [midpoint of b,d]
+    4) b change = d - e
+    5) a and c change = e - d
+                         a (tentacles[i][j-1])
+                        /|
+                       / |
+                      /  |
+                     /   |
+                    /    |
+(tentacles[i][j])  b--e--d
+                    \    |
+                     \   |
+                      \  |
+                       \ |
+                        \|
+                         c (tentacles[i][j-1])
+
+     */
 
     void handle_tentacles(JELLY& jelly) {
       tentacle_segment (*tentacles)[NUM_TENTACLE_SEGMENTS] = jelly.tentacles;
@@ -426,43 +495,124 @@ class CURVY: public LIGHT_SKETCH {
           //apply physics to all but the first point (which is affixed to the jelly)
           //points pull against eachother
           if (j > 0) {
+                        
+            tentacle_segment* a = &tentacles[i][j-1]; //previous point
+            tentacle_segment* b = &tentacles[i][j];   //this point
+
+            // BENDING FORCE
+            if (false && j < NUM_TENTACLE_SEGMENTS-1) {
+
+              tentacle_segment temp0;
+              tentacle_segment temp1;
+              tentacle_segment* c = &tentacles[i][j+1]; //next point
+              tentacle_segment* d = &temp0;
+              tentacle_segment* e = &temp1;
+              
+              //a,c midpoint
+              d->x = (a->x + c->x) / 2;
+              d->y = (a->y + c->y) / 2;
+              d->z = (a->z + c->z) / 2;
+              
+              //b,d midpoint -- this is our target for point b (or j)
+              e->x = (b->x + d->x) / 2;
+              e->y = (b->y + d->y) / 2;
+              e->z = (b->z + d->z) / 2;
+
+
+              int32_t dx = (d->x - e->x);
+              int32_t dy = (d->y - e->y);
+              int32_t dz = (d->z - e->z);
+
+              int32_t acx = a->x - c->x;
+              int32_t acy = a->x - c->x;
+              int32_t acz = a->x - c->x;
+
+              int32_t ac = sqrt( acx*acx + acy*acy + acz*acz);
+
+              //255 = no bending force, 0 = max bending force
+              ac = ac/6;
+              ac = _min(_max(ac,0),255);
+              //0 = no bending force, 255 = max bending force
+              ac = 255 - ac;
+
+              dx = (dx*ac)/255;
+              dy = (dy*ac)/255;
+              dz = (dz*ac)/255;
+              
+              if (j > 1) {
+                b->x += dx;
+                b->y += dy;
+                b->z += dz;
+                b->vx += dx/2;
+                b->vy += dy/2;
+                b->vz += dz/2;
+              }
+
+              dx *= -1;
+              dy *= -1;
+              dz *= -1;
+
+              if (j > 2) {
+                a->x += dx;
+                a->y += dy;
+                a->z += dz;
+                a->vx += dx/2;
+                a->vy += dy/2;
+                a->vz += dz/2;
+              }
+
+              c->x += dx;
+              c->y += dy;
+              c->z += dz;
+              c->vx += dx/2;
+              c->vy += dy/2;
+              c->vz += dz/2;
             
-            int32_t dx = (tentacles[i][j-1].x - tentacles[i][j].x);
-            int32_t dy = (tentacles[i][j-1].y - tentacles[i][j].y);
-            int32_t dz = (tentacles[i][j-1].z - tentacles[i][j].z);
+            }
+
+
+
+
+
+
+            // TENSION/COMPRESSION FORCE
+            int32_t dx = (a->x - b->x);
+            int32_t dy = (a->y - b->y);
+            int32_t dz = (a->z - b->z);
 
             int32_t d2 = dx*dx + dy*dy + dz*dz;
 
-            if ( d2 > ((4*256) * (4*256)) ) {
+            //segments are fixed in length, any longer/shorter causes push/pull action
+            if ( j > 1 && d2 != ((4*256) * (4*256)) ) {
               //distance between points
               int32_t d = sqrt(d2);
+              if (d == 0) {
+                d = 1;
+              }
               //overage distance
               int32_t od = (d - 4*256);
+              od/=16;
               //points pull equally on one-another, except for the first point
-              if (j > 1) {
-                od/=2;
-              }
+              
 
               //overage distance along each axis
               dx = (od*dx)/d;
               dy = (od*dy)/d;
               dz = (od*dz)/d;
-              
-              
+
+                            
               //if our current speed is less than the overage distance, then speed up
-              if ( dx != 0 && tentacles[i][j].vx / dx < 1 ) {
-                tentacles[i][j].vx += (dx-tentacles[i][j].vx);
-              }
-              if ( dy != 0 && tentacles[i][j].vy / dy < 1 ) {
-                tentacles[i][j].vy += (dy-tentacles[i][j].vy);
-              }
-              if ( dz != 0 && tentacles[i][j].vz / dz < 1 ) {
-                tentacles[i][j].vz += (dz-tentacles[i][j].vz);
-              }
+              
+              b->x += dx/2;
+              b->y += dy/2;
+              b->z += dz/2;
+              b->vx += dx/2;
+              b->vy += dy/2;
+              b->vz += dz/2;
               
 
               //accelerate the other point along each axis
-              if (j > 1) {
+              if (j > 2) {
                 
                 //overage distance along each axis
                 dx *= -1;
@@ -470,25 +620,32 @@ class CURVY: public LIGHT_SKETCH {
                 dz *= -1;
                 
                 //if our current speed is less than the overage distance, then speed up
-                if ( dx != 0 && tentacles[i][j-1].vx / dx < 1 ) {
-                  tentacles[i][j-1].vx += (dx-tentacles[i][j-1].vx);
-                }
-                if ( dy != 0 && tentacles[i][j-1].vy / dy < 1 ) {
-                  tentacles[i][j-1].vy += (dy-tentacles[i][j-1].vy);
-                }
-                if ( dz != 0 && tentacles[i][j-1].vz / dz < 1 ) {
-                  tentacles[i][j-1].vz += (dz-tentacles[i][j-1].vz);
-                }
+                a->x += dx;
+                a->y += dy;
+                a->z += dz;
+                a->vx += dx/2;
+                a->vy += dy/2;
+                a->vz += dz/2;
+              
                 
               }
 
+              //gravity
+              //b->vy -= 4;
 
-            } 
+              //drag
+              b->vx *= .95;
+              b->vy *= .95;
+              b->vz *= .95;
+
+
+            }
 
             //update position
-            tentacles[i][j].x += tentacles[i][j].vx;
-            tentacles[i][j].y += tentacles[i][j].vy;
-            tentacles[i][j].z += tentacles[i][j].vz;
+            b->x += b->vx;
+            b->y += b->vy;
+            b->z += b->vz;
+
             
           }
 
@@ -506,20 +663,24 @@ class CURVY: public LIGHT_SKETCH {
           //map our 3d coordinates to screen coordinates
           matrix.perspective(p);
 
-          if (!jelly.on_screen_this_frame) {
+          if (!jelly.on_screen) {
           if (p[0] >= 0 && p[0] < MATRIX_WIDTH*256 && p[1] >= 0 && p[1] < MATRIX_HEIGHT*256) {
-            jelly.on_screen_this_frame = true;
+            jelly.on_screen = true;
           }
 
         }
-
-          tentacle_points[j][0] = p[0];
-          tentacle_points[j][1] = p[1];
+          if (j > 0) {
+            tentacle_points[j-1][0] = p[0];
+            tentacle_points[j-1][1] = p[1];
+          }
         
         }
 
-        matt_curve8(tentacle_points,NUM_TENTACLE_SEGMENTS,212,80,80,false,false,true,255,255);
         
+        int bri = jelly.z/700+150;
+        bri = _max(_min(bri,255),0);
+        matt_curve8(tentacle_points,NUM_TENTACLE_SEGMENTS-1,212,48,bri,false,false,true,255,255);
+        //matt_curve8(tentacle_points,NUM_TENTACLE_SEGMENTS-1,96,80,160,false,false,true,255,255);
 
       }
     }
@@ -726,11 +887,10 @@ class CURVY: public LIGHT_SKETCH {
 
 
     void draw_grass() {
-
       int y = -loop_time/4;
       int max_y;
       
-      for (uint i = 0; i < NUM_THINGS; i++) {
+      for (int i = 0; i < NUM_THINGS; i++) {
         int offset = fmix32(i)%((MATRIX_WIDTH+3)*256);
         int speed = fmix32(i)%(64);
 
@@ -750,33 +910,14 @@ class CURVY: public LIGHT_SKETCH {
 
           //draw curve
           //swap X and Y axis if our display width is greater than the height
-          uint8_t b = (i*96)/NUM_THINGS+5;
+          uint8_t b = (i*140)/NUM_THINGS+5;
           #if MATRIX_WIDTH > MATRIX_HEIGHT
-          matt_curve8(temp_canvas, my_points[i], NUM_POINTS, 96, default_saturation, 255, true, false, true, 255, 255);
+          matt_curve8(leds, my_points[i], NUM_POINTS, 96, default_saturation, b, true, false, true, b, 255);
           #else
-          matt_curve8(temp_canvas, my_points[i], NUM_POINTS, 96, default_saturation, 255, false, false, true, 255, 255);
+          matt_curve8(leds, my_points[i], NUM_POINTS, 96, default_saturation, b, false, false, true, b, 255);
           #endif
 
-          CRGB grass_rgb = CHSV(96,default_saturation,b);
-          CRGB full_rgb = CHSV(96, default_saturation, 255);
-          int full_total = full_rgb.r + full_rgb.g + full_rgb.b;
-
-          int led = 0;
-          for (int y = 0; y < max_y+1; y++) {
-            for(int x = 0; x < MATRIX_WIDTH; x++) {
-              int temp_total = temp_canvas[led].r + temp_canvas[led].g + temp_canvas[led].b;
-              
-              if (temp_total > 0) {
-                temp_canvas[led].r = 0;
-                temp_canvas[led].g = 0;
-                temp_canvas[led].b = 0;
-                nblend(leds[led], grass_rgb, temp_total*255/full_total);
-              }
-
-              led++;
-            }
-          }
-
+          
       }
 
     }

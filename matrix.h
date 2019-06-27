@@ -3,12 +3,18 @@
 class MATRIX {
 
     //3D ROTATION MATRIX VARIABLES
+    public:
+    MATRIX() {
+        update();
+    }
 
-
+    private:
     int z_scaler;
 
     long Cz; //camera Z
     long Sz; //projection screen Z (between camera and object)
+    long Cz2;
+    long Sz2;
 
     //find our angles in radians
     float alpha; //Z
@@ -37,6 +43,8 @@ class MATRIX {
 
             Cz = camera_scaler * 256L; //camera Z
             Sz = screen_scaler * 256L; //projection screen Z (between camera and object)
+            Cz2 = Cz/2;
+            Sz2 = Sz/2;
 
             //construct ZXY rotation matrix
 
@@ -93,42 +101,76 @@ class MATRIX {
 
         //take X,Y,Z coordinate
         //modifies X,Y to screen coordinates
-        bool perspective(long p0[3]) {
-            if (p0[2] < Cz) {
-                p0[0]/=2;
-                p0[1]/=2;
-                p0[2]/=2;
-                p0[0] = ( p0[0] * (Sz/2 - Cz/2) ) / ( p0[2] - Cz/2 ) + (MATRIX_WIDTH * 256L/2) / 2;
-                p0[1] = ( p0[1] * (Sz/2 - Cz/2) ) / ( p0[2] - Cz/2 ) + (MATRIX_HEIGHT * 256L/2) / 2;
-                p0[0]*=2;
-                p0[1]*=2;
-                p0[2]*=2;
+        bool perspective(long p[3]) {
+            if (p[2] < Cz) {
+                p[0]/=2;//half precision to double each axis of our available coordinate space
+                p[1]/=2;
+                p[2]/=2;
+                p[0] = ( p[0] * (Sz - Cz) ) / ( p[2] - Cz ) + (MATRIX_WIDTH * 256L/2) / 2;
+                p[1] = ( p[1] * (Sz - Cz) ) / ( p[2] - Cz ) + (MATRIX_HEIGHT * 256L/2) / 2;
+                p[0]*=2;
+                p[1]*=2;
+                p[2]*=2;
                 return true;
             }
             return false;
         }
 
-        void rotate_x(long p[3], uint8_t ang) {
-            long temp = ( p[1]*(cos8(ang)-128) - p[2]*(sin8(ang)-128) ) / 128;
-            p[2] = ( p[1]*(sin8(ang)-128) + p[2]*(cos8(ang)-128) ) / 128;
+        //find the 3D coordinate of a pixel on the screen
+        //takes screen X,Y coordinate along with the desired Z coordinate
+        //modifies X,Y to provide X,Y,Z coordinate
+        bool reverse_perspective(long p[3]) {
+            p[0]/=2;//half precision to double each axis of our available coordinate space
+            p[1]/=2;
+            p[2]/=2;
+            p[0] = ( ( p[0] - (MATRIX_WIDTH*256L/2)/2 ) * ( p[2] - Cz ) ) / ( Sz - Cz );
+            p[1] = ( ( p[1] - (MATRIX_HEIGHT*256L/2)/2 ) * ( p[2] - Cz ) ) / ( Sz - Cz );
+            p[0]*=2;
+            p[1]*=2;
+            p[2]*=2;
+            return true;
+        }
+
+        void rotate_x(long p[3], int8_t s, int8_t c) {
+            long temp = ( p[1]*c - p[2]*s ) / 128;
+            p[2] = ( p[1]*s + p[2]*c ) / 128;
             p[1] = temp;
         }
 
+        void rotate_x(long p[3], uint8_t ang) {
+            int8_t s = sin8(ang)-128;
+            int8_t c = cos8(ang)-128;
+            rotate_x(p, s, c);
+        }
+
+
+        void rotate_y(long p[3], int8_t s, int8_t c) {
+            long temp = ( p[0]*c - p[2]*s ) / 128;
+            p[2] = ( p[0]*s + p[2]*c ) / 128;
+            p[0] = temp;
+        }
+
         void rotate_y(long p[3], uint8_t ang) {
-            long temp = ( p[0]*(cos8(ang)-128) - p[2]*(sin8(ang)-128) ) / 128;
-            p[2] = ( p[0]*(sin8(ang)-128) + p[2]*(cos8(ang)-128) ) / 128;
+            int8_t s = sin8(ang)-128;
+            int8_t c = cos8(ang)-128;
+            rotate_y(p, s, c);
+        }
+
+        void rotate_z(long p[3], int8_t s, int8_t c) {
+            long temp = ( p[0]*c - p[1]*s ) / 128;
+            p[1] = ( p[0]*s + p[1]*c ) / 128;
             p[0] = temp;
         }
 
         void rotate_z(long p[3], uint8_t ang) {
-            long temp = ( p[0]*(cos8(ang)-128) - p[1]*(sin8(ang)-128) ) / 128;
-            p[1] = ( p[0]*(sin8(ang)-128) + p[1]*(cos8(ang)-128) ) / 128;
-            p[0] = temp;
+            int8_t s = sin8(ang)-128;
+            int8_t c = cos8(ang)-128;
+            rotate_z(p, s, c);
         }
 
 
-        void scale_z(long p0[3]) {
-            scale_z(p0[2]);
+        void scale_z(long p[3]) {
+            scale_z(p[2]);
         }
 
         void scale_z(long& z) {
