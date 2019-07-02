@@ -12,7 +12,7 @@ class TEST2D: public LIGHT_SKETCH {
     int ballpos = 0;
     int amp = 255;
     int amp_rising = 0;
-#define NUM_EFFECTS 5
+#define TEST2D_NUM_EFFECTS 5
     uint8_t current_effect = 0;
     int spiral_speed = 0;
     uint8_t fade_rate = 255;
@@ -167,7 +167,7 @@ class TEST2D: public LIGHT_SKETCH {
 
     void next_effect() {
       current_effect += 1;
-      current_effect %= NUM_EFFECTS;
+      current_effect %= TEST2D_NUM_EFFECTS;
     }
 
     void setup() {

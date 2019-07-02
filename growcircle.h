@@ -249,6 +249,7 @@ class GROWCIRCLE: public LIGHT_SKETCH {
         counter++;
 
         for (int i = 0; i < NUM_LEDS; i++) {
+          CRGB rgb;
           uint8_t bri = (255 - sats[i]) / 2;
           hsv2rgb_rainbow(CHSV(hues[i], sats[i], _min(levels[i] + bri, 255)), rgb);
           leds[adjust(i)] = rgb;
@@ -262,6 +263,7 @@ class GROWCIRCLE: public LIGHT_SKETCH {
         //draw flashers
         for (int i = 0; i < NUM_LEDS; i++) {
           if (flashers[i] > 0) {
+            CRGB rgb;
             hsv2rgb_rainbow(CHSV(0, 0, flashers[i]), rgb);
             leds[adjust(i)] += rgb;
             flashers[i] = (flashers[i] * 9) / 10;

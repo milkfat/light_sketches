@@ -583,8 +583,6 @@ class TEST3D: public LIGHT_SKETCH {
           fvy *= ratio;
           fvz *= ratio;
 
-          //std::cout << "vy2 " << p.vy << "\n";
-
           //move our particles
           p.x += fvx;
           p.y += fvy;
@@ -687,7 +685,6 @@ class TEST3D: public LIGHT_SKETCH {
       }
     }
 
-
     PHOS phos;
 
     void setup() {
@@ -723,6 +720,9 @@ class TEST3D: public LIGHT_SKETCH {
         update_time = millis();
 
 
+        static uint8_t cube_step = 0;
+        uint16_t cube_size = 80*sin8(cube_step)+30*256;
+
         switch (current_variation)
         {
           case TEST_OBJECT:
@@ -738,7 +738,17 @@ class TEST3D: public LIGHT_SKETCH {
             handle_spiral();
             break;
           case BOX:
-            handle_cube();
+            draw_cube(POINT(0,cube_size,0),15*256,15*256,15*256);
+            draw_cube(POINT(0,-cube_size,0),15*256,15*256,15*256);
+            draw_cube(POINT(cube_size,0,0),15*256,15*256,15*256);
+            draw_cube(POINT(-cube_size,0,0),15*256,15*256,15*256);
+            draw_cube(POINT(0,0,cube_size),15*256,15*256,15*256);
+            draw_cube(POINT(0,0,-cube_size),15*256,15*256,15*256);
+            cube_step +=4;
+            rotation_alpha += 1;
+            rotation_beta += .77;
+            rotation_gamma += .68;
+            //handle_cube();
             break;
           case TUNNEL:
             handle_tunnel();
@@ -792,9 +802,9 @@ void handle_test_object() {
 
           draw_line_fine(leds, r0[0] + 3 * 256, r0[1] + 50 * 256, r1[0] + 3 * 256, r1[1] + 50 * 256, 96);
 
-          rotation_alpha += 1;
-          rotation_beta += .77;
-          rotation_gamma += .68;
+          rotation_alpha += 2;
+          rotation_beta += .154;
+          rotation_gamma += .136;
 
 } //handle_test_object()
 
@@ -1028,6 +1038,7 @@ void handle_grid() {
 
 
 
+              //draw_line_fine2(leds, p0[0], p0[1], p1[0], p1[1], hue, sat, val);
               draw_line_fine(leds, p0[0], p0[1], p1[0], p1[1], hue, sat, val, -10000, val, true);
 
             }
@@ -1219,96 +1230,209 @@ void handle_spiral() {
 
 } //handle_spiral();
 
+void draw_quad(POINT& a, POINT& b, POINT& c, POINT& d, POINT& orig, POINT& norm, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255) {
+  
+  //optimization:
+  //identify clockwise/counterclockwise orientation
+  //draw in only one orientation (facing toward the camera)
+  int orientation = (b.y-a.y)*(c.x-b.x) - (c.y-b.y)*(b.x-a.x);
+  
+  if ( orientation < 0 ) {
+    draw_line_ybuffer(a, b);
+    draw_line_ybuffer(b, c);
+    draw_line_ybuffer(c, d);
+    draw_line_ybuffer(d, a);
+
+    long z_depth = orig.z+norm.z; 
+
+    matrix.rotate_x(norm,32);
+    matrix.rotate_y(norm,32);
+
+    int bri = 100 - orig.z/256;
+    bri = (bri*bri)/256;
+
+    bri = 255-bri;
+
+    bri = _min(_max((norm.z*bri)/256,0),220)+10;
+
+    CRGB rgb = CHSV(hue,sat,_min(_max((bri*val)/256,0),255));
+    //CRGB rgb(0,0,0);
+    //CRGB rgb2 = CHSV(hue,sat,val);
+    //nblend(rgb, rgb2, bri);
+
+    //fill between the pixels of our lines
+    for (int y = y_buffer_min; y <= y_buffer_max; y++) {
+        if (y_buffer[y][0] <= y_buffer[y][1]) {
+
+        for (int x = y_buffer[y][0]; x <= y_buffer[y][1]; x++) {
+          drawXYZ(leds, x, y, z_depth, rgb);
+        }
+
+      }
+      //clear the buffer to be used for filling the triangle
+      y_buffer[y][0] = MATRIX_WIDTH + 1;
+      y_buffer[y][1] = -1;
+    
+    }
+
+    y_buffer_max = 0;
+    y_buffer_min = MATRIX_HEIGHT-1;
+
+  }
+}
+
+void draw_cube(POINT p, long width, long height, long depth) {
+  POINT norm_right(255,0,0);
+  POINT norm_left(-255,0,0);
+  POINT norm_top(0,255,0);
+  POINT norm_bottom(0,-255,0);
+  POINT norm_front(0,0,255);
+  POINT norm_back(0,0,-255);
+
+  matrix.rotate(norm_right);
+  matrix.rotate(norm_left);
+  matrix.rotate(norm_top);
+  matrix.rotate(norm_bottom);
+  matrix.rotate(norm_front);
+  matrix.rotate(norm_back);
+
+  POINT points[] = {
+    
+    POINT(p.x+width,p.y+height,p.z+depth), //top right front
+    POINT(p.x+width,p.y+height,p.z-depth), //top right back
+    POINT(p.x-width,p.y+height,p.z-depth), //top left  back
+    POINT(p.x-width,p.y+height,p.z+depth), //top left  front
+    
+    POINT(p.x+width,p.y-height,p.z+depth), //bottom right front
+    POINT(p.x+width,p.y-height,p.z-depth), //bottom right back
+    POINT(p.x-width,p.y-height,p.z-depth), //bottom left  back
+    POINT(p.x-width,p.y-height,p.z+depth)  //bottom left  back
+
+  };
+
+  for (int i = 0; i < 8; i++) {
+    matrix.rotate(points[i]);
+    
+    //translate vectors to coordinates
+    matrix.scale_z(points[i]);
+
+    //correct 3d perspective
+    matrix.perspective(points[i]);
+
+  }
+
+  matrix.rotate(p);
+
+  draw_quad(points[0],points[4],points[5],points[1],p,norm_right,212,0,255);  //right
+  draw_quad(points[2],points[6],points[7],points[3],p,norm_left,0,0,255); //left
+
+
+  draw_quad(points[0],points[1],points[2],points[3],p,norm_top,0,0,255);  //top
+  draw_quad(points[7],points[6],points[5],points[4],p,norm_bottom,48,0,255); //bottom
+
+
+  draw_quad(points[0],points[3],points[7],points[4],p,norm_front,96,255,255);  //front
+  draw_quad(points[1],points[5],points[6],points[2],p,norm_back,160,255,255); //back
+  
+
+}
+
 
 
 void handle_cube() {
 
-          //3D SHADING
+  //3D SHADING
 
-          uint8_t hue;
-
-
-          //draw some triangles
-
-          for (int i = 0; i < 12; i++) {
-
-            uint8_t a = i * 3;
-            uint8_t b = a + 1;
-            uint8_t c = b + 1;
-
-            hue = ( 256 * (i/2) ) /12; //one color for each side of the cube
+  uint8_t hue;
 
 
-            //clear the buffer to be used for filling the triangle
-            for (int i = 0; i < MATRIX_HEIGHT; i++) {
-              y_buffer[i][0] = MATRIX_WIDTH + 1;
-              y_buffer[i][1] = -1;
-            }
+  //draw some triangles
 
-            //find the surface normal of our side
-            long normal[3] = {0, 0, 0};
-            long n[3];
-            if (cube[a][0] == cube[b][0] && cube[b][0] == cube[c][0]) {
-              normal[0] = 128 * (cube[a][0] / abs(cube[a][0]));
-            } else if (cube[a][1] == cube[b][1] && cube[b][1] == cube[c][1]) {
-              normal[1] = 128 * (cube[a][1] / abs(cube[a][1]));
-            } else if (cube[a][2] == cube[b][2] && cube[b][2] == cube[c][2]) {
-              normal[2] = 128 * (cube[a][2] / abs(cube[a][2]));
-            }
-            rotate(normal, n);
-            uint8_t bri = _min(_max(0, n[2]), 128) + 10;
+  for (int i = 0; i < 12; i++) {
+
+    uint8_t a = i * 3; //triangle line 1
+    uint8_t b = a + 1; //triangle line 2
+    uint8_t c = b + 1; //triangle line 3
+
+    hue = ( 256 * (i/2) ) /12; //one color for each side of the cube
 
 
-            //a place to store the rotated vectors
-            long v0[3];
-            long v1[3];
-            long v2[3];
 
-            //rotate them vectors
-            rotate(cube[a], v0);
-            rotate(cube[b], v1);
-            rotate(cube[c], v2);
+    //find the surface normal of our side
+    long normal[3] = {0, 0, 0};
+    long n[3];
+    if (cube[a][0] == cube[b][0] && cube[b][0] == cube[c][0]) {
+      normal[0] = 128 * (cube[a][0] / abs(cube[a][0]));
+    } else if (cube[a][1] == cube[b][1] && cube[b][1] == cube[c][1]) {
+      normal[1] = 128 * (cube[a][1] / abs(cube[a][1]));
+    } else if (cube[a][2] == cube[b][2] && cube[b][2] == cube[c][2]) {
+      normal[2] = 128 * (cube[a][2] / abs(cube[a][2]));
+    }
+    rotate(normal, n);
 
-            //translate vectors to coordinates
-            matrix.scale_z(v0[2]);
-            matrix.scale_z(v1[2]);
-            matrix.scale_z(v2[2]);
+    if (n[2] > 0) {
+      uint8_t bri = _min(_max(0, n[2]), 128) + 10;
 
-            //correct 3d perspective
-            matrix.perspective(v0);
-            matrix.perspective(v1);
-            matrix.perspective(v2);
+      
+      //a place to store the rotated vectors
+      long v0[3];
+      long v1[3];
+      long v2[3];
 
-            //"draw the line" to our y buffer
-            draw_line_ybuffer(v0[0], v0[1], v1[0], v1[1]);
-            draw_line_ybuffer(v1[0], v1[1], v2[0], v2[1]);
-            draw_line_ybuffer(v2[0], v2[1], v0[0], v0[1]);
+      //rotate them vectors
+      rotate(cube[a], v0);
+      rotate(cube[b], v1);
+      rotate(cube[c], v2);
 
-            //fill between the pixels of our lines
-            for (int y = 0; y < MATRIX_HEIGHT; y++) {
-              if (y_buffer[y][0] + 1 < y_buffer[y][1]) {
+      //translate vectors to coordinates
+      matrix.scale_z(v0[2]);
+      matrix.scale_z(v1[2]);
+      matrix.scale_z(v2[2]);
 
-                for (int x = y_buffer[y][0]; x <= y_buffer[y][1]; x++) {
-                  drawXYZ(leds, x, y, n[2], hue, 255, bri );
-                }
+      //correct 3d perspective
+      matrix.perspective(v0);
+      matrix.perspective(v1);
+      matrix.perspective(v2);
 
-              }
-            }
+      //"draw the line" to our y buffer
+      draw_line_ybuffer( v0[0], v0[1], v1[0], v1[1]);
+      //draw_line_fine(leds,v0[0], v0[1], v1[0], v1[1],0,0,64);
+      draw_line_ybuffer( v1[0], v1[1], v2[0], v2[1]);
+      //draw_line_fine(leds,v1[0], v1[1], v2[0], v2[1],0,0,64);
+      draw_line_ybuffer( v2[0], v2[1], v0[0], v0[1]);
+      //draw_line_fine(leds,v2[0], v2[1], v0[0], v0[1],0,0,64);
 
-            
+      //fill between the pixels of our lines
+      for (int y = 0; y < MATRIX_HEIGHT; y++) {
+        //if (y_buffer[y][0] + 1 < y_buffer[y][1]) { //old?
+          if (y_buffer[y][0] <= y_buffer[y][1]) {
+
+          for (int x = y_buffer[y][0]; x <= y_buffer[y][1]; x++) {
+            drawXYZ(leds, x, y, n[2], hue, 255, bri );
           }
 
-          
-          rotation_alpha += 1;
-          rotation_beta += .77;
-          rotation_gamma += .68;
+        }
+        //clear the buffer to be used for filling the triangle
+        y_buffer[y][0] = MATRIX_WIDTH + 1;
+        y_buffer[y][1] = -1;
+      }
+
+    }
+  }
+
+  
+  //rotation_alpha += .1;
+  //rotation_beta += .077;
+  //rotation_gamma += .068;
+  rotation_alpha += 1;
+  rotation_beta += .77;
+  rotation_gamma += .68;
 
 
 } //handle_cube()
 
 
 void handle_tunnel() {
-
   static uint16_t stp = 0; //rotation
   static uint8_t cnt = 0;
   static uint8_t stp2 = 0; //bright light
@@ -1322,8 +1446,10 @@ void handle_tunnel() {
     static long old_v1[3];
     //tunnel thing
     //float val = (36.f * sin8(stp3)) / 256.f;
-    long v0[3] = {static_cast<long>(cos16(stp + i * (65536L/TUNNEL_DETAIL)))/7, static_cast<long>(sin16(stp + i * (65536L/TUNNEL_DETAIL)))/7, -10000 * 256L};
-    long v1[3] = {static_cast<long>(cos16(stp + i * (65536L/TUNNEL_DETAIL)))/7, static_cast<long>(sin16(stp + i * (65536L/TUNNEL_DETAIL)))/7, 210 * 256L};
+    long c = static_cast<long>(cos16(stp + i * (65536L/TUNNEL_DETAIL)));
+    long s = static_cast<long>(sin16(stp + i * (65536L/TUNNEL_DETAIL)));
+    long v0[3] = {c/4, s/4, -10000 * 256L};
+    long v1[3] = {c, s, 120 * 256L};
     long p0[3];
     long p1[3];
 
@@ -1331,19 +1457,19 @@ void handle_tunnel() {
     rotate(v1, p1);
 
     //translate vectors to coordinates
-    //p0[2] += -100*256 + (200*256*debug_scaler)/256;
-    //p1[2] += -100*256 + (200*256*debug_scaler)/256;
+    matrix.scale_z(p0);
+    matrix.scale_z(p1);
 
     //correct 3d perspective
     
     matrix.perspective(p0);
     matrix.perspective(p1);
-
+    uint8_t hue = i * (256/TUNNEL_DETAIL);
 
     if (i!=TUNNEL_DETAIL) {
-      draw_line_fine(leds, p0[0], p0[1], p1[0], p1[1], i * (256/TUNNEL_DETAIL), 255, 4, -10000, 255, true);
+      draw_line_fine(leds, p0[0], p0[1], p1[0], p1[1], hue, 255, 0, -10000, 128, true);
       if ((i+stp2)%8 == 0 ) {
-        draw_line_fine(leds, p0[0], p0[1], p1[0], p1[1], i * (256/TUNNEL_DETAIL), 255, 128, -10000, 255, true);
+        draw_line_fine(leds, p0[0], p0[1], p1[0], p1[1], hue, 255, 16, -10000, 255, true);
       }
     }
     //draw_line_fine(CRGB crgb_object[], long x1, long y1, long x2, long y2, uint8_t hue = 0, uint8_t sat = 255, uint8_t val = 255, int z_depth = -10000, uint8_t val2 = 255)
@@ -1351,15 +1477,32 @@ void handle_tunnel() {
     #define NUM_CIRCLES_TEST3D 4
     if ( i > 0 ) {
       for (int j = 0; j < NUM_CIRCLES_TEST3D; j++) {
-        v1[2] = stp4 - j * 65536 - 40*256;
-        old_v1[2] = stp4 - j * 65536 - 40*256;
+        v1[2] = (stp4 - j * 65536)*5 - 130*256*9;
+        old_v1[2] = (stp4 - j * 65536)*5 - 130*256*9;
         rotate(old_v1, p0);
         rotate(v1, p1);
+        
+        matrix.scale_z(p0);
+        matrix.scale_z(p1);
         
         matrix.perspective(p0);
         matrix.perspective(p1);
 
-        draw_line_fine(leds, p0[0], p0[1], p1[0], p1[1], i * (256/TUNNEL_DETAIL), 255, sq((255 - (255 / NUM_CIRCLES_TEST3D)) + stp4/256 / NUM_CIRCLES_TEST3D - j * (255 / NUM_CIRCLES_TEST3D)) / 256L, -10000, sq((255 - (255 / NUM_CIRCLES_TEST3D)) + stp4/256 / NUM_CIRCLES_TEST3D - j * (255 / NUM_CIRCLES_TEST3D)) / 256L , true);
+        int thing = (255 - (255 / NUM_CIRCLES_TEST3D)) + (stp4/256) / NUM_CIRCLES_TEST3D - j * (255 / NUM_CIRCLES_TEST3D);
+        thing = (thing*thing)/256L;
+
+        draw_line_fine(
+            leds, 
+            p0[0], 
+            p0[1], 
+            p1[0], 
+            p1[1], 
+            i * (256/TUNNEL_DETAIL), 
+            255, 
+            thing,
+            -10000, 
+            thing , 
+            true);
       }
     }
 

@@ -79,6 +79,8 @@ class LIGHT_SKETCHES {
         led_mask2 = new uint8_t[NUM_LEDS];
         for (int i = 0; i < MATRIX_HEIGHT; i++) {
           y_buffer[i] = new int[2]; //stores the min/max X values per Y so that we can fill between them
+          y_buffer[i][0] = MATRIX_WIDTH + 1;
+          y_buffer[i][1] = -1;
         }
         for (int i = 0; i < MATRIX_WIDTH; i++) {
           z_buffer[i] = new int[MATRIX_HEIGHT];
@@ -169,18 +171,18 @@ bool LIGHT_SKETCHES::need_to_allocate = true;
 
 LIGHT_SKETCHES light_sketches;
 
-//#include "balls_squishy.h"
-//#include "balls2d.h"
-//#include "cinco_de_mayo.h"
+#include "balls_squishy.h"
+#include "balls2d.h"
+#include "cinco_de_mayo.h"
 #include "curvy.h"
-//#include "fire.h"
-//#include "growcircle.h"
-//#include "mattclock.h"
-//#include "metaballs.h"
-//#include "neon.h"
-//#include "shapes.h"
-//#include "simplex.h"
-//#include "test2d.h"
+#include "fire.h"
+#include "growcircle.h"
+#include "mattclock.h"
+#include "metaballs.h"
+#include "neon.h"
+#include "shapes.h"
+#include "simplex.h"
+#include "test2d.h"
 #include "test3d.h"
-//#include "phosphene.h"
-//#include "waves.h"
+#include "phosphene.h"
+#include "waves.h"

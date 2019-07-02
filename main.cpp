@@ -3,7 +3,7 @@
 // #define MATRIX_WIDTH 360
 // #define MATRIX_HEIGHT 250
 
-#define WINDOW_WIDTH 300
+#define WINDOW_WIDTH 300  
 #define WINDOW_HEIGHT 980
 #define MATRIX_WIDTH 32
 #define MATRIX_HEIGHT 192
@@ -191,10 +191,11 @@ int main(int argc, char **argv){
             while (!done) {
 				
 				if (millis()-1000 > debug_time && debug_micros0 > 0) {
+						debug_count++;
+						uint32_t debug_micros0_avg = debug_micros0/debug_count;
+						uint32_t debug_micros1_avg = debug_micros1/debug_count;
+						std::cout << (debug_micros1_avg/(debug_micros0_avg+1.f)) << " " << debug_micros1_avg << " " << debug_micros0_avg << "\n";
 						debug_time = millis();
-						std::cout << (debug_micros1/(debug_micros0*1.f)) << " " << debug_micros1 << " " << debug_micros0 << "\n";
-						debug_micros0 = 0;
-						debug_micros1 = 0;
 					}
 
 				next_frame = next_frame + frames{1};

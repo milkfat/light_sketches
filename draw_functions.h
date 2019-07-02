@@ -259,14 +259,40 @@ void drawXY_RGB(CRGB crgb_object[], int x, int y, uint8_t r, uint8_t g, uint8_t 
 
 //int y_buffer[MATRIX_HEIGHT][2]; //stores the min/max X values per Y so that we can fill between them
 int * y_buffer[MATRIX_HEIGHT]; //stores the min/max X values per Y so that we can fill between them
+int y_buffer_max = 0;
+int y_buffer_min = MATRIX_HEIGHT-1;
 //int z_buffer[MATRIX_WIDTH][MATRIX_HEIGHT];
-int * z_buffer[MATRIX_WIDTH];
+int32_t * z_buffer[MATRIX_WIDTH];
+
+void drawXY_blend(CRGB crgb_object[], int x, int y, CRGB& rgb, uint8_t brightness = 255) {
+  
+  nblend(crgb_object[XY(x,y)], rgb, brightness);
+
+}
 
 void drawXY_blend(CRGB crgb_object[], int x, int y, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255, uint8_t brightness = 255) {
   
   CRGB rgb;
   rgb = CHSV(hue,sat,val);
-  nblend(crgb_object[XY(x,y)], rgb, brightness);
+  drawXY_blend(crgb_object, x, y, rgb, brightness);
+
+}
+
+void drawXYZ(CRGB crgb_object[], int32_t x, int32_t y, int32_t z, CRGB& rgb) {
+  
+  if (y >= 0 && y < MATRIX_HEIGHT) {
+
+    if (x >= 0 && x < MATRIX_WIDTH) {
+
+      if (z > z_buffer[x][y]) {
+
+        z_buffer[x][y] = z; 
+        crgb_object[XY(x,y)] = rgb;
+      }
+
+    }
+
+  }
 
 }
 
@@ -291,11 +317,20 @@ void drawXYZ(CRGB crgb_object[], int x, int y, int z, uint8_t hue = default_colo
 
 }
 
+
 void drawXYZ2(CRGB crgb_object[], int x, int y, int z, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255, uint8_t brightness = 255) {
   
   drawXY_blend(crgb_object, x, y, hue, sat, val, brightness);
 
 }
+
+void drawXYZ2(CRGB crgb_object[], int x, int y, int z, CRGB& rgb, uint8_t brightness = 255) {
+  
+  drawXY_blend(crgb_object, x, y, rgb, brightness);
+
+}
+
+
 void blendXY_RGB(CRGB crgb_object[], long xpos, long ypos, uint8_t r, uint8_t g, uint8_t b) {
   
   //find the base x and y positions
@@ -345,11 +380,38 @@ void blendXY_RGB(CRGB crgb_object[], long xpos, long ypos, uint8_t r, uint8_t g,
 //  leds[XY(x+1,y+1)] += CHSV(hue,sat,(xval*yval*1L*val)/(255L*255L));
 }
 
+
+
 void blendXY(CRGB crgb_object[], long xpos, long ypos, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255) {
   CRGB rgb;
   hsv2rgb_rainbow(CHSV(hue,sat,val),rgb);
   blendXY_RGB(crgb_object, xpos, ypos, rgb.r, rgb.g, rgb.b);
 }
+
+struct POINT {
+  long x;
+  long y;
+  long z;
+
+  POINT () {}
+
+  POINT (int x_in, int y_in, int z_in): x(x_in), y(y_in), z(z_in) {}
+  
+  //overload -=
+  POINT& operator-= (const POINT& rhs) {
+    this->x -= rhs.x;
+    this->y -= rhs.y;
+    this->z -= rhs.z;
+    return *this;
+  }
+};
+
+void blendXY(CRGB crgb_object[], POINT point, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255) {
+  CRGB rgb;
+  hsv2rgb_rainbow(CHSV(hue,sat,val),rgb);
+  blendXY_RGB(crgb_object, point.x, point.y, rgb.r, rgb.g, rgb.b);
+}
+
 
 struct alpha_pixel {
     uint16_t r = 0;
@@ -421,10 +483,84 @@ void blendXY_RGBA(alpha_pixel ap[], long xpos, long ypos, uint8_t r, uint8_t g, 
 //  leds[XY(x+1,y+1)] += CHSV(hue,sat,(xval*yval*1L*val)/(255L*255L));
 }
 
+//https://stackoverflow.com/questions/1903954/is-there-a-standard-sign-function-signum-sgn-in-c-c
+template <typename T> int sgn(T val) {
+    return (T(0) < val) - (val < T(0));
+}
+
+void swap_coords(long& x1, long& y1, long& x2, long& y2, long& dist) {
+  long tempx = x1;
+  long tempy = y1;
+  x1 = x2;
+  y1 = y2;
+  x2 = tempx;
+  y2 = tempy;
+  dist = -dist;
+}
+
+void draw_line_ybuffer(long& x1i, long& y1i, long& x2i, long& y2i) {
+  long x1 = (x1i+128)/256;
+  long y1 = (y1i+128)/256;
+  long x2 = (x2i+128)/256;
+  long y2 = (y2i+128)/256;
+  long x_dist = x2-x1;
+  long y_dist = y2-y1;
+  long ax_dist = abs(x_dist);
+  long ay_dist = abs(y_dist);
+  uint32_t err = 0;
+
+  if (ax_dist > ay_dist) {
+    //draw horizontally
+    if (x1 > x2) {
+      swap_coords(x1,y1,x2,y2,y_dist);
+    }
+    long step = sgn(y_dist);
+    while (x1 <= x2) {
+      if (y1 >= 0 && y1 < MATRIX_HEIGHT) {
+        y_buffer_min = _min(y1,y_buffer_min);
+        y_buffer_max = _max(y1,y_buffer_max);
+        y_buffer[y1][0] = _min(y_buffer[y1][0], x1);
+        y_buffer[y1][1] = _max(y_buffer[y1][1], x1);
+      }
+      //drawXY(leds,x1,y1,0,0,255);
+      x1++;;
+      err += ay_dist;
+      if (err >= ax_dist) {
+        y1 += step;
+        err -= ax_dist;
+      }
+    }
+  } else {
+    //draw vertically
+    if (y1 > y2) {
+      swap_coords(x1,y1,x2,y2,x_dist);
+    }
+    long step = sgn(x_dist);
+    while (y1 <= y2) {
+      if (y1 >= 0 && y1 < MATRIX_HEIGHT) {
+        y_buffer_min = _min(y1,y_buffer_min);
+        y_buffer_max = _max(y1,y_buffer_max);
+        y_buffer[y1][0] = _min(y_buffer[y1][0], x1);
+        y_buffer[y1][1] = _max(y_buffer[y1][1], x1);
+      }
+      //drawXY(leds,x1,y1,0,0,255);
+      y1++;
+      err += ax_dist;
+      if (err >= ay_dist) {
+        x1 += step;
+        err -= ay_dist;
+      }
+    }
+  }
 
 
+}
 
-void draw_line_ybuffer(long x1, long y1, long x2, long y2) {
+void draw_line_ybuffer(POINT& a, POINT& b) {
+  draw_line_ybuffer(a.x, a.y, b.x, b.y);
+}
+
+void draw_line_ybuffer2(long x1, long y1, long x2, long y2) {
   long x_dist = x2-x1;
   long y_dist = y2-y1;
   long ax_dist = abs(x_dist);
@@ -480,7 +616,7 @@ void draw_line_ybuffer(long x1, long y1, long x2, long y2) {
 
 }
 
-void draw_line_fine2(CRGB crgb_object[], long x1, long y1, long x2, long y2, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255) {
+void draw_line_fine2(CRGB crgb_object[], long x1, long y1, long x2, long y2, CRGB& rgb, uint8_t val = 255) {
   x1+=65536;
   y1+=65536;
   x2+=65536;
@@ -529,13 +665,18 @@ void draw_line_fine2(CRGB crgb_object[], long x1, long y1, long x2, long y2, uin
     }
     x+=x_add;
     y+=y_add;
-    drawXYZ2(crgb_object, x-256, y-256, -10000,hue,sat,val,255-level2);
-    drawXYZ2(crgb_object, x-256+x_add, y-256+y_add, -10000,hue,sat,val,level2);
+    drawXYZ2(crgb_object, x-256, y-256, -10000,rgb,255-level2);
+    drawXYZ2(crgb_object, x-256+x_add, y-256+y_add, -10000,rgb,level2);
     x1+=x_step;
     y1+=y_step;
     steps--;
   }
 
+}
+
+void draw_line_fine2(CRGB crgb_object[], long x1, long y1, long x2, long y2, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255) {
+  CRGB rgb = CHSV(hue,sat,255);
+  draw_line_fine2(crgb_object, x1, y1, x2, y2, rgb, val);
 }
 
 
@@ -544,7 +685,7 @@ void draw_line_fine2(CRGB crgb_object[], long x1, long y1, long x2, long y2, uin
 //DRAW LINE FINE
 
 
-void draw_line_fine(CRGB crgb_object[], long x1, long y1, long x2, long y2, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255, int z_depth = -10000, uint8_t val2 = 255, bool trim = false) {
+void draw_line_fine(CRGB crgb_object[], long x1, long y1, long x2, long y2, CRGB& rgb, int z_depth = -10000, uint8_t val = 255, uint8_t val2 = 255, bool trim = false) {
   
   //avoid vertical and horizontal lines by fudging a bit
   if (x1 == x2 ) {
@@ -645,7 +786,8 @@ void draw_line_fine(CRGB crgb_object[], long x1, long y1, long x2, long y2, uint
         float y = y_start;
         int Hy = ceil(y/256.f);
         int Ly = floor(y/256.f);
-        int b = _min( _max(abs(y - Hy*256), 0), 255);
+        int progress = abs(y - Hy*256);
+        int b = _min( _max(progress, 0), 255);
         int b2 = 255-b;
         if (i == x1_led) {
           b = (b*x1_r)/256;
@@ -655,8 +797,8 @@ void draw_line_fine(CRGB crgb_object[], long x1, long y1, long x2, long y2, uint
           b = (b*x2_r)/256;
           b2 = (b2*x2_r)/256;
         }
-        drawXYZ2(crgb_object,i, Hy, z_depth, hue, sat, val, (b2*v1)/256 + (b2*v2)/256 );
-        drawXYZ2(crgb_object,i, Ly, z_depth, hue, sat, val, (b *v1)/256 + (b *v2)/256 );
+        drawXYZ2(crgb_object,i, Hy, z_depth, rgb, (b2*v1)/256 + (b2*v2)/256 );
+        drawXYZ2(crgb_object,i, Ly, z_depth, rgb, (b *v1)/256 + (b *v2)/256 );
         //drawXYZ(crgb_object,i, Hy, z_depth, hue, sat, (b2*v1)/256 + (b2*v2)/256 );
         //drawXYZ(crgb_object,i, Ly, z_depth, hue, sat, (b *v1)/256 + (b *v2)/256 );
       }
@@ -670,8 +812,6 @@ void draw_line_fine(CRGB crgb_object[], long x1, long y1, long x2, long y2, uint
     float x_start = x1 + (y1_led*256.f - y1)*x_step;
     x_step *= 256.f;
     for (int i = (y1_led); i <= (y2_led); i++) {
-      uint8_t h = hue;
-      uint8_t s = sat;
       //if ((i != y1_led && i != y2_led) || !trim) {
       if (true) {
         uint8_t v1 = val;
@@ -688,7 +828,8 @@ void draw_line_fine(CRGB crgb_object[], long x1, long y1, long x2, long y2, uint
         float x = x_start;
         int Hx = ceil(x/256.f);
         int Lx = floor(x/256.f);
-        int b = _min( _max(abs(x - Hx*256), 0), 255);
+        int progress = abs(x - Hx*256);
+        int b = _min( _max(progress, 0), 255);
         int b2 = 255-b;
         if (i == y1_led) {
           b  = (b*y1_r)/256;
@@ -698,8 +839,8 @@ void draw_line_fine(CRGB crgb_object[], long x1, long y1, long x2, long y2, uint
           b  = (b*y2_r)/256;
           b2 = (b2*y2_r)/256;
         }
-        drawXYZ2(crgb_object,  ceil(x_start/256L), i, z_depth, h, s, val, (b2*v1)/256 + (b2*v2)/256 );
-        drawXYZ2(crgb_object, floor(x_start/256L), i, z_depth, h, s, val, (b *v1)/256 + (b *v2)/256 );
+        drawXYZ2(crgb_object,  ceil(x_start/256L), i, z_depth, rgb, (b2*v1)/256 + (b2*v2)/256 );
+        drawXYZ2(crgb_object, floor(x_start/256L), i, z_depth, rgb, (b *v1)/256 + (b *v2)/256 );
         //drawXYZ(crgb_object,  ceil(x_start/256L), i, z_depth, h, s, (b2*v1)/256 + (b2*v2)/256 );
         //drawXYZ(crgb_object, floor(x_start/256L), i, z_depth, h, s, (b *v1)/256 + (b *v2)/256 );
       }
@@ -710,7 +851,10 @@ void draw_line_fine(CRGB crgb_object[], long x1, long y1, long x2, long y2, uint
 
 } //draw_line_fine()
 
-
+void draw_line_fine(CRGB crgb_object[], long x1, long y1, long x2, long y2, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255, int z_depth = -10000, uint8_t val2 = 255, bool trim = false) {
+  CRGB rgb = CHSV(hue,sat,255);
+  draw_line_fine(crgb_object, x1, y1, x2, y2, rgb, z_depth, val, val2, trim);
+}
 
 
 //DRAW CURVE
@@ -761,9 +905,9 @@ void matt_curve(long coordinate_array[][2], size_t len, uint8_t hue = default_co
     
     //normalize angle to the range: -PI to PI
     if (a0 > PI) {
-      a0 -= 2.0*PI;
+      a0 -= 2.f*PI;
     } else if (a0 < -PI) {
-      a0 += 2.0*PI;
+      a0 += 2.f*PI;
     }
 
     //angle of second segment
@@ -771,9 +915,9 @@ void matt_curve(long coordinate_array[][2], size_t len, uint8_t hue = default_co
     
     //normalize angle
     if (a0b > PI) { 
-      a0b -= 2.0*PI;
+      a0b -= 2.f*PI;
     } else if (a0b < -PI) {
-      a0b += 2.0*PI;
+      a0b += 2.f*PI;
     }
 
     //figure out our orientation so that we can accurately add or subtract PI/2 (90 degrees)
@@ -790,12 +934,12 @@ void matt_curve(long coordinate_array[][2], size_t len, uint8_t hue = default_co
     }
     
     //calculate the angle of the "normal line" for the two segments (perpendicular to the angle halfway between the two segments)
-    float a4 = (a0+a0b)/2.0+dir*PI/2.0;
+    float a4 = (a0+a0b)/2.f+dir*PI/2.f;
     
     if (a4 > PI) { //normalize angle
-      a4 -= 2.0*PI;
+      a4 -= 2.f*PI;
     } else if (a4 < -PI) {
-      a4 += 2.0*PI;
+      a4 += 2.f*PI;
     }
     
     //the angular difference between line 1 and the "normal line"
@@ -804,9 +948,9 @@ void matt_curve(long coordinate_array[][2], size_t len, uint8_t hue = default_co
     
     //normalize angle
     if (a2 > PI) { 
-      a2 -= 2.0*PI;
+      a2 -= 2.f*PI;
     } else if (a2 < -PI) {
-      a2 += 2.0*PI;
+      a2 += 2.f*PI;
     }
 
     //the angular difference between segment 2 and the "normal line"
@@ -815,9 +959,9 @@ void matt_curve(long coordinate_array[][2], size_t len, uint8_t hue = default_co
 
     //normalize angle
     if (a2b > PI) {
-      a2b -= 2.0*PI;
+      a2b -= 2.f*PI;
     } else if (a2b < -PI) {
-      a2b += 2.0*PI;
+      a2b += 2.f*PI;
     }
 
     //time from 0-256 (8-bit equivalent of 0.0-1.0)
@@ -871,15 +1015,15 @@ void matt_curve(long coordinate_array[][2], size_t len, uint8_t hue = default_co
       }
 
       //our current offset angle for segment 1
-      float angle = (a2*stp_b)/256.0;
+      float angle = (a2*stp_b)/256.f;
 
       //calculate the angle for segment 1
       float x = ( cos(angle)*(x0-x1) - sin(angle)*(y0-y1) );
       float y = ( sin(angle)*(x0-x1) + cos(angle)*(y0-y1) );
 
       //calculate the length for segment 1
-      x *= (256-stp)/256.0;
-      y *= (256-stp)/256.0;
+      x *= (256-stp)/256.f;
+      y *= (256-stp)/256.f;
 
       //translate the vector to its original x,y coordinates
       x += x1;
@@ -901,7 +1045,7 @@ void matt_curve(long coordinate_array[][2], size_t len, uint8_t hue = default_co
         }
         
         //our angle offset for segment 2 from the previous pass (which is segment 1 of the current pass)
-        float angle2 = (last_a2b*stp2_b)/256.0; 
+        float angle2 = (last_a2b*stp2_b)/256.f; 
 
         //calculate the angle
         float xl = ( cos(angle2)*(x1-x0) - sin(angle2)*(y1-y0) );
@@ -921,8 +1065,8 @@ void matt_curve(long coordinate_array[][2], size_t len, uint8_t hue = default_co
 
         //blend our two passes together, slowly fading from one to the other
 
-        x = (x*(stp))/256.0 + (xl*stp2)/256.0;
-        y = (y*(stp))/256.0 + (yl*stp2)/256.0;
+        x = (x*(stp))/256.f + (xl*stp2)/256.f;
+        y = (y*(stp))/256.f + (yl*stp2)/256.f;
 
 
         
@@ -957,15 +1101,15 @@ void matt_curve(long coordinate_array[][2], size_t len, uint8_t hue = default_co
         //blendXY(leds,x2,y2,48);
         
         //our current offset angle for segment 2
-        float angle2 = (a2b*stp)/256.0;
+        float angle2 = (a2b*stp)/256.f;
 
         //calculate the current angle
         float xb = ( cos(angle2)*(x2-x1) - sin(angle2)*(y2-y1) );
         float yb = ( sin(angle2)*(x2-x1) + cos(angle2)*(y2-y1) );
 
         //calculate the current length
-        xb *= (256-stp)/256.0;
-        yb *= (256-stp)/256.0;
+        xb *= (256-stp)/256.f;
+        yb *= (256-stp)/256.f;
 
         //move the new vector back to its original coordinates
         xb += x1;
@@ -1020,13 +1164,13 @@ void matt_curve(long coordinate_array[][2], size_t len, uint8_t hue = default_co
 
 //draw a curve by simultaneously shortening and rotating the line segment vectors
 
-void matt_curve8_base(CRGB crgb_object[], long coordinate_array[][2], size_t len, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255, bool flipXY = false, bool closedShape = false, bool extraSmooth = false, uint8_t percentage = 255, uint8_t step_size = 32) {
-  
+void matt_curve8(CRGB crgb_object[], long coordinate_array[][2], size_t len, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255, bool flipXY = false, bool closedShape = false, bool extraSmooth = false, uint8_t percentage = 255, uint8_t step_size = 32) {
+  CRGB rgb = CHSV(hue, sat, val);
   //draw simple lines for step size of 255
   if (step_size == 255) {
     for (int i = 1; i < len; i++) {
       //draw_line_fine2(crgb_object, coordinate_array[i-1][0],coordinate_array[i-1][1],coordinate_array[i][0],coordinate_array[i][1],hue,sat,val);
-      draw_line_fine(crgb_object,coordinate_array[i-1][0],coordinate_array[i-1][1],coordinate_array[i][0],coordinate_array[i][1],hue, sat, val, -10000, val, true);
+      draw_line_fine(crgb_object,coordinate_array[i-1][0],coordinate_array[i-1][1],coordinate_array[i][0],coordinate_array[i][1], rgb, -10000, val, val, true);
     } 
     return;
   }
@@ -1235,12 +1379,12 @@ void matt_curve8_base(CRGB crgb_object[], long coordinate_array[][2], size_t len
         //draw line between points
         if (flipXY) {
           //draw_line_fine2(crgb_object, last_y, last_x, y, x, hue, sat, val);
-          draw_line_fine(crgb_object, last_y, last_x, y, x, hue, sat, val, -10000, val, true);
+          draw_line_fine(crgb_object, last_y, last_x, y, x, rgb, -10000, val, val, true);
             //blendXY(leds, y, x, 0, 0, 255);
         } else {
 
           //draw_line_fine2(crgb_object, last_x, last_y, x, y, hue, sat, val);
-          draw_line_fine(crgb_object, last_x, last_y, x, y, hue, sat, val, -10000, val, true);
+          draw_line_fine(crgb_object, last_x, last_y, x, y, rgb, -10000, val, val, true);
             //blendXY(leds, x, y, 0, 0, 255);
         }
       }
@@ -1281,10 +1425,10 @@ void matt_curve8_base(CRGB crgb_object[], long coordinate_array[][2], size_t len
         if (stp > 0) {
           //draw line between points
           if (flipXY) {
-            draw_line_fine(crgb_object, last_yb, last_xb, yb, xb, 48, sat, val, -10000, val, true);
+            draw_line_fine(crgb_object, last_yb, last_xb, yb, xb, rgb, -10000, val, val, true);
             //blendXY(leds, yb, xb, 0, 0, 255);
           } else {
-            draw_line_fine(crgb_object, last_xb, last_yb, xb, yb, 48, sat, val, -10000, val, true);
+            draw_line_fine(crgb_object, last_xb, last_yb, xb, yb, rgb, -10000, val, val, true);
             //blendXY(leds, xb, yb, 0, 0, 255);
           }
         }
@@ -1307,16 +1451,9 @@ void matt_curve8_base(CRGB crgb_object[], long coordinate_array[][2], size_t len
 
 void matt_curve8(long coordinate_array[][2], size_t len, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255, bool flipXY = false, bool closedShape = false, bool extraSmooth = false, uint8_t percentage = 255, uint8_t step_size = 32) {
 
-  matt_curve8_base(leds, coordinate_array, len, hue, sat, val, flipXY, closedShape, extraSmooth, percentage, step_size);
+  matt_curve8(leds, coordinate_array, len, hue, sat, val, flipXY, closedShape, extraSmooth, percentage, step_size);
 
 }
-
-void matt_curve8(CRGB crgb_object[], long coordinate_array[][2], size_t len, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255, bool flipXY = false, bool closedShape = false, bool extraSmooth = false, uint8_t percentage = 255, uint8_t step_size = 32) {
-
-  matt_curve8_base(crgb_object, coordinate_array, len, hue, sat, val, flipXY, closedShape, extraSmooth, percentage, step_size);
-
-}
-
 
 
 
@@ -1474,7 +1611,7 @@ void LED_black() {
   //clear the Z buffer
   for (int x = 0; x < MATRIX_WIDTH; x++) {
     for (int y = 0; y < MATRIX_HEIGHT; y++) {
-      z_buffer[x][y] = -10000;
+      z_buffer[x][y] = INT32_MIN;
       height_map[x][y] = 0;
     }
   }

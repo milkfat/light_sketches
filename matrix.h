@@ -77,14 +77,37 @@ class MATRIX {
     public:
 
         //rotate X,Y,Z coordinate based on our current matrix
-        void rotate (long in[3], long out[3]) {
+        // void rotate (long in[3], long out[3]) {
         
-            //update the matrix if necessary
-            update();
-            out[0] = in[0] * matrix[0][0] + in[1] * matrix[0][1] + in[2] * matrix[0][2];
-            out[2] = -(in[0] * matrix[1][0] + in[1] * matrix[1][1] + in[2] * matrix[1][2]);
-            out[1] = in[0] * matrix[2][0] + in[1] * matrix[2][1] + in[2] * matrix[2][2];
+        //     //update the matrix if necessary
+        //     update();
+        //     out[0] = in[0] * matrix[0][0] + in[1] * matrix[0][1] + in[2] * matrix[0][2];
+        //     out[2] = -(in[0] * matrix[1][0] + in[1] * matrix[1][1] + in[2] * matrix[1][2]);
+        //     out[1] = in[0] * matrix[2][0] + in[1] * matrix[2][1] + in[2] * matrix[2][2];
 
+        // }
+        void rotate (long& in_x, long& in_y, long& in_z, long& out_x, long& out_y, long& out_z) {
+        
+        //update the matrix if necessary
+        update();
+        out_x = in_x * matrix[0][0] + in_y * matrix[0][1] + in_z * matrix[0][2];
+        out_z = -(in_x * matrix[1][0] + in_y * matrix[1][1] + in_z * matrix[1][2]);
+        out_y = in_x * matrix[2][0] + in_y * matrix[2][1] + in_z * matrix[2][2];
+
+        }
+
+        void rotate (POINT& in) {
+            POINT temp;
+            temp.x = in.x;
+            temp.y = in.y;
+            temp.z = in.z;
+            rotate(temp.x, temp.y, temp.z, in.x, in.y, in.z);
+        }
+            
+
+
+        void rotate (long in[3], long out[3]) {
+            rotate(in[0],in[1],in[2],out[0],out[1],out[2]);
         }
 
         void rotate (long in[3]) {
@@ -101,19 +124,27 @@ class MATRIX {
 
         //take X,Y,Z coordinate
         //modifies X,Y to screen coordinates
-        bool perspective(long p[3]) {
-            if (p[2] < Cz) {
-                p[0]/=2;//half precision to double each axis of our available coordinate space
-                p[1]/=2;
-                p[2]/=2;
-                p[0] = ( p[0] * (Sz - Cz) ) / ( p[2] - Cz ) + (MATRIX_WIDTH * 256L/2) / 2;
-                p[1] = ( p[1] * (Sz - Cz) ) / ( p[2] - Cz ) + (MATRIX_HEIGHT * 256L/2) / 2;
-                p[0]*=2;
-                p[1]*=2;
-                p[2]*=2;
+        bool perspective(long& x, long& y, long& z) {
+            if (z < Cz) {
+                x/=2;//half precision to double each axis of our available coordinate space
+                y/=2;
+                z/=2;
+                x = ( x * (Sz - Cz) ) / ( z - Cz ) + (MATRIX_WIDTH * 256L/2) / 2;
+                y = ( y * (Sz - Cz) ) / ( z - Cz ) + (MATRIX_HEIGHT * 256L/2) / 2;
+                x*=2;
+                y*=2;
+                z*=2;
                 return true;
             }
             return false;
+        }
+
+        bool perspective(long p[3]) {
+            return perspective(p[0], p[1], p[2]);
+        }
+
+        bool perspective(POINT& p) {
+            return perspective(p.x, p.y, p.z);
         }
 
         //find the 3D coordinate of a pixel on the screen
@@ -131,50 +162,72 @@ class MATRIX {
             return true;
         }
 
-        void rotate_x(long p[3], int8_t s, int8_t c) {
-            long temp = ( p[1]*c - p[2]*s ) / 128;
-            p[2] = ( p[1]*s + p[2]*c ) / 128;
-            p[1] = temp;
+        void rotate_x(long& x, long& y, long& z, int8_t s, int8_t c) {
+            long temp = ( y*c - z*s ) / 128;
+            z = ( y*s + z*c ) / 128;
+            y = temp;
         }
 
         void rotate_x(long p[3], uint8_t ang) {
             int8_t s = sin8(ang)-128;
             int8_t c = cos8(ang)-128;
-            rotate_x(p, s, c);
+            rotate_x(p[0], p[1], p[2], s, c);
+        }
+
+        void rotate_x(POINT& p, uint8_t ang) {
+            int8_t s = sin8(ang)-128;
+            int8_t c = cos8(ang)-128;
+            rotate_x(p.x, p.y, p.z, s, c);
         }
 
 
-        void rotate_y(long p[3], int8_t s, int8_t c) {
-            long temp = ( p[0]*c - p[2]*s ) / 128;
-            p[2] = ( p[0]*s + p[2]*c ) / 128;
-            p[0] = temp;
+        void rotate_y(long& x, long& y, long& z, int8_t s, int8_t c) {
+            long temp = ( x*c - z*s ) / 128;
+            z = ( x*s + z*c ) / 128;
+            x = temp;
         }
 
         void rotate_y(long p[3], uint8_t ang) {
             int8_t s = sin8(ang)-128;
             int8_t c = cos8(ang)-128;
-            rotate_y(p, s, c);
+            rotate_y(p[0], p[1], p[2], s, c);
         }
 
-        void rotate_z(long p[3], int8_t s, int8_t c) {
-            long temp = ( p[0]*c - p[1]*s ) / 128;
-            p[1] = ( p[0]*s + p[1]*c ) / 128;
-            p[0] = temp;
+        void rotate_y(POINT& p, uint8_t ang) {
+            int8_t s = sin8(ang)-128;
+            int8_t c = cos8(ang)-128;
+            rotate_y(p.x, p.y, p.z, s, c);
+        }
+
+        void rotate_z(long& x, long& y, long& z, int8_t s, int8_t c) {
+            long temp = ( x*c - y*s ) / 128;
+            y = ( x*s + y*c ) / 128;
+            x = temp;
         }
 
         void rotate_z(long p[3], uint8_t ang) {
             int8_t s = sin8(ang)-128;
             int8_t c = cos8(ang)-128;
-            rotate_z(p, s, c);
+            rotate_z(p[0], p[1], p[2], s, c);
+        }
+
+        void rotate_z(POINT& p, uint8_t ang) {
+            int8_t s = sin8(ang)-128;
+            int8_t c = cos8(ang)-128;
+            rotate_z(p.x, p.y, p.z, s, c);
         }
 
 
+        void scale_z(long& z) {
+            z += z_scaler;
+        }
+        
         void scale_z(long p[3]) {
             scale_z(p[2]);
         }
 
-        void scale_z(long& z) {
-            z += z_scaler;
+        void scale_z(POINT& p) {
+            scale_z(p.z);
         }
         
 
