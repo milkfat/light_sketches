@@ -331,7 +331,7 @@ void drawXYZ2(CRGB crgb_object[], int x, int y, int z, CRGB& rgb, uint8_t bright
 }
 
 
-void blendXY_RGB(CRGB crgb_object[], long xpos, long ypos, uint8_t r, uint8_t g, uint8_t b) {
+void blendXY(CRGB crgb_object[], long xpos, long ypos, CRGB& rgb) {
   
   //find the base x and y positions
   //add 2 pixels before division to avoid rounding errors at 0 (between -1 and 0)
@@ -354,24 +354,29 @@ void blendXY_RGB(CRGB crgb_object[], long xpos, long ypos, uint8_t r, uint8_t g,
   uint8_t l3 = (xval*yval*1L)/(255L); //bottom right
   uint8_t l4 = (x2val*yval*1L)/(255L); //bottom left
   
-  crgb_object[XY(x,y)].r = qadd8(crgb_object[XY(x,y)].r, (r*l1)/255);
-  crgb_object[XY(x,y)].g = qadd8(crgb_object[XY(x,y)].g, (g*l1)/255);
-  crgb_object[XY(x,y)].b = qadd8(crgb_object[XY(x,y)].b, (b*l1)/255);
+  uint16_t led1 = XY(x,y);
+  uint16_t led2 = XY(x+1,y);
+  uint16_t led3 = XY(x+1,y+1);
+  uint16_t led4 = XY(x,y+1);
+
+  crgb_object[led1].r = qadd8(crgb_object[led1].r, (rgb.r*l1)/255);
+  crgb_object[led1].g = qadd8(crgb_object[led1].g, (rgb.g*l1)/255);
+  crgb_object[led1].b = qadd8(crgb_object[led1].b, (rgb.b*l1)/255);
   if (x < MATRIX_WIDTH-1) {
-    crgb_object[XY(x+1,y)].r = qadd8(crgb_object[XY(x+1,y)].r, (r*l2)/255);
-    crgb_object[XY(x+1,y)].g = qadd8(crgb_object[XY(x+1,y)].g, (g*l2)/255);
-    crgb_object[XY(x+1,y)].b = qadd8(crgb_object[XY(x+1,y)].b, (b*l2)/255);
+    crgb_object[led2].r = qadd8(crgb_object[led2].r, (rgb.r*l2)/255);
+    crgb_object[led2].g = qadd8(crgb_object[led2].g, (rgb.g*l2)/255);
+    crgb_object[led2].b = qadd8(crgb_object[led2].b, (rgb.b*l2)/255);
   }
   
   if (x < MATRIX_WIDTH-1 && y < MATRIX_HEIGHT-1) {
-    crgb_object[XY(x+1,y+1)].r = qadd8(crgb_object[XY(x+1,y+1)].r, (r*l3)/255);
-    crgb_object[XY(x+1,y+1)].g = qadd8(crgb_object[XY(x+1,y+1)].g, (g*l3)/255);
-    crgb_object[XY(x+1,y+1)].b = qadd8(crgb_object[XY(x+1,y+1)].b, (b*l3)/255);
+    crgb_object[led3].r = qadd8(crgb_object[led3].r, (rgb.r*l3)/255);
+    crgb_object[led3].g = qadd8(crgb_object[led3].g, (rgb.g*l3)/255);
+    crgb_object[led3].b = qadd8(crgb_object[led3].b, (rgb.b*l3)/255);
   }
   if (y < MATRIX_HEIGHT-1) {
-    crgb_object[XY(x,y+1)].r = qadd8(crgb_object[XY(x,y+1)].r, (r*l4)/255);
-    crgb_object[XY(x,y+1)].g = qadd8(crgb_object[XY(x,y+1)].g, (g*l4)/255);
-    crgb_object[XY(x,y+1)].b = qadd8(crgb_object[XY(x,y+1)].b, (b*l4)/255);
+    crgb_object[led4].r = qadd8(crgb_object[led4].r, (rgb.r*l4)/255);
+    crgb_object[led4].g = qadd8(crgb_object[led4].g, (rgb.g*l4)/255);
+    crgb_object[led4].b = qadd8(crgb_object[led4].b, (rgb.b*l4)/255);
   }
 
 //  leds[XY(x,y)] += CHSV(hue,sat,(x2val*y2val*1L*val)/(255L*255L));
@@ -385,7 +390,7 @@ void blendXY_RGB(CRGB crgb_object[], long xpos, long ypos, uint8_t r, uint8_t g,
 void blendXY(CRGB crgb_object[], long xpos, long ypos, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255) {
   CRGB rgb;
   hsv2rgb_rainbow(CHSV(hue,sat,val),rgb);
-  blendXY_RGB(crgb_object, xpos, ypos, rgb.r, rgb.g, rgb.b);
+  blendXY(crgb_object, xpos, ypos, rgb);
 }
 
 struct POINT {
@@ -409,7 +414,7 @@ struct POINT {
 void blendXY(CRGB crgb_object[], POINT point, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255) {
   CRGB rgb;
   hsv2rgb_rainbow(CHSV(hue,sat,val),rgb);
-  blendXY_RGB(crgb_object, point.x, point.y, rgb.r, rgb.g, rgb.b);
+  blendXY(crgb_object, point.x, point.y, rgb);
 }
 
 
