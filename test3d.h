@@ -34,6 +34,16 @@ class TEST3D: public LIGHT_SKETCH {
       NUM_GRID_TYPES
     };
 
+    float compress(float value) {
+      //return FC.compress(value);
+      return value;
+    }
+
+    float decompress(float value) {
+      //return FC.decompress(value);
+      return value;
+    }
+
     uint8_t grid_type = GRID_RED;
 
     uint8_t current_variation = BOX;
@@ -154,16 +164,132 @@ class TEST3D: public LIGHT_SKETCH {
       matrix.rotate(in, out);
     }
 
+    static const unsigned char low_vx =  1 << 0;
+    static const unsigned char high_vx = 1 << 1;
+    static const unsigned char low_vy =  1 << 2;
+    static const unsigned char high_vy = 1 << 3;
+    static const unsigned char low_vz =  1 << 4;
+    static const unsigned char high_vz = 1 << 5;
+
     struct PARTICLE {
+        //const unsigned char resistsCold      = 1 << 3;
+        //const unsigned char resistsTheft     = 1 << 4;
+        //const unsigned char resistsAcid      = 1 << 5;
+        //const unsigned char resistsParalysis = 1 << 6;
+        //const unsigned char resistsBlindness = 1 << 7;
+        //myflags |= option4;              // turn option 4 on
+        //myflags |= (option4 | option5);  //turn option 4 and 5 on at the same time
+        //myflags &= ~option4;             // turn option 4 off
+        //myflags &= ~(option4 | option5); //turn option 4 and 5 off at the same time
+        //myflags ^= option4;              // flip option4 from on to off, or vice versa
+        //myflags ^= (option4 | option5);  // flip options 4 and 5 at the same time
+        //if (myflags & option4)           //myflags has option 4 set
+        //if (!(myflags & option5))        //myflags does not have option 5 set
+
         int16_t x;  //positional coordinates
         int16_t y;
         int16_t z;
         int16_t vx; //velocities
-        int16_t vy;
-        int16_t vz;
+        int32_t vy;
+        int32_t vz;
         uint8_t attributes = 0; //index of shared attributes (shared by other particles) such as hue, saturation, value, mass, radius... etc.
         uint8_t function = 0;   //index of the function that will update this particle
         int16_t age = 256*8;    //age of the particle
+        uint8_t options = 0;
+
+        void set_vx(int32_t val) {
+
+          if (abs(val) < 64) {
+            vx = val*512;
+            options |= low_vx;
+            options &= ~high_vx;
+            return;
+          }
+          
+          if (abs(val) > INT16_MAX) { 
+            val/=256;
+            options |= high_vx;
+            options &= ~low_vx;
+            if(abs(val) > INT16_MAX) {
+              val = sgn(val) * INT16_MAX;
+            }
+            vx = val;
+            return;
+          }
+
+          vx = val;
+          options &= ~(low_vx | high_vx);
+            
+
+          
+        }
+
+
+        void update_vx(int32_t& val) {
+
+          //low overflow
+          if ( (options & low_vx) && (abs(val) > INT16_MAX) ) {
+            val/=512;
+            options &= ~low_vx;
+            if (abs(val) < INT16_MAX) {
+              vx = val;
+              return;
+            }
+          }
+          
+          //mid overflow
+          if ( !(options & high_vx) && abs(val) > INT16_MAX ) {
+            val/=256;
+            options |= high_vx;
+            if (abs(val) < INT16_MAX) {
+              vx = val;
+              return;
+            } else {
+              vx = sgn(val) * INT16_MAX;
+              return;
+            }
+          }
+
+          //high overflow
+          if ( (options & high_vx) && abs(val) >= INT16_MAX ) {
+            vx = sgn(val) * INT16_MAX;
+            return;
+          }
+
+          //high underflow
+          if ( (options & high_vx) && (abs(val) < INT16_MAX/256) ) {
+            val *= 256;
+            options &= ~high_vx;
+            if (abs(val) >= 64) {
+              vx = val;
+              return;
+            }
+          }
+
+          //mid underflow
+          if ( !(options & low_vx) && abs(val) < 64 ) {
+            val *= 512;
+            options |= low_vx;
+            vx = val;
+            return;
+          }
+
+          vx = val;
+
+        }
+
+
+        int32_t get_vx() {
+          if (options & low_vx) {
+            return vx/512;
+          }
+          if (options & high_vx) {
+            return vx*256;
+          }
+          return vx;
+        }
+
+
     };
 
     struct PARTICLE_ATTRIBUTES {
@@ -368,26 +494,26 @@ class TEST3D: public LIGHT_SKETCH {
             
             //calculate the final X and Y velocities (positions)
             //at this point we have the particles evenly distributed around a sphere
-            float fvx = (vx*vxy)/32768;
-            float fvy = (vy*vxy)/32768;
-            float fvz = vz;
+            int32_t temp_vx = (vx*vxy)/32768;
+            int32_t temp_vy = (vy*vxy)/32768;
+            int32_t temp_vz = vz;
 
             //rotate the sphere around x-axis
-            int16_t rz = (fvz*cos16(r0))/32768 - (fvy*sin16(r0))/32768;
-            int16_t ry = (fvy*cos16(r0))/32768 + (fvz*sin16(r0))/32768;
-            fvz = rz;
-            fvy = ry;
+            int16_t rz = (temp_vz*cos16(r0))/32768 - (temp_vy*sin16(r0))/32768;
+            int16_t ry = (temp_vy*cos16(r0))/32768 + (temp_vz*sin16(r0))/32768;
+            temp_vz = rz;
+            temp_vy = ry;
 
             //rotate the sphere around z-axis
-            int16_t rx = (fvx*cos16(r1))/32768 - (fvy*sin16(r1))/32768;
-                    ry = (fvy*cos16(r1))/32768 + (fvx*sin16(r1))/32768;
-            fvx = rx;
-            fvy = ry;
+            int16_t rx = (temp_vx*cos16(r1))/32768 - (temp_vy*sin16(r1))/32768;
+                    ry = (temp_vy*cos16(r1))/32768 + (temp_vx*sin16(r1))/32768;
+            temp_vx = rx;
+            temp_vy = ry;
 
             //apply speed divisor to change the overall burst size
-            fvx /= 15;
-            fvy /= 15;
-            fvz /= 15;
+            temp_vx /= 15;
+            temp_vy /= 15;
+            temp_vz /= 15;
 
             //default color
             cp->age = 0;
@@ -416,13 +542,17 @@ class TEST3D: public LIGHT_SKETCH {
             */
 
             //finally, add the velocity of the shell that produced this burst
-            fvx += start_vx;
-            fvy += start_vy;
-            fvz += start_vz;
+            temp_vx += start_vx;
+            temp_vy += start_vy;
+            temp_vz += start_vz;
 
-            cp->vx = FC.compress(fvx);
-            cp->vy = FC.compress(fvy);
-            cp->vz = FC.compress(fvz);
+            cp->set_vx(temp_vx);
+            cp->vy = temp_vy;
+            cp->vz = temp_vz;
+
+            cp->vy *= 256;
+            cp->vz *= 256;
+
 
           }
         }
@@ -510,9 +640,9 @@ class TEST3D: public LIGHT_SKETCH {
               cp->x = firework_shells[i].x;
               cp->y = firework_shells[i].y;
               cp->z = firework_shells[i].z;
-              cp->vx = FC.compress(firework_shells[i].vx);
-              cp->vy = FC.compress(firework_shells[i].vy);
-              cp->vz = FC.compress(firework_shells[i].vz);
+              cp->vx = firework_shells[i].vx*256;
+              cp->vy = firework_shells[i].vy*256;
+              cp->vz = firework_shells[i].vz*256;
               cp->age = 32*8;
               cp->function = 1;
               cp->attributes = firework_shells[i].trail;
@@ -555,45 +685,55 @@ class TEST3D: public LIGHT_SKETCH {
         ) {
           PARTICLE_ATTRIBUTES * pa = &particle_attributes[p.attributes];
           uint16_t age = p.age/8;
-          float fvx = FC.decompress(p.vx);
-          float fvy = FC.decompress(p.vy);
-          float fvz = FC.decompress(p.vz);
                     
           //air resistance is something like F = (bunch of constants)(r^2)(v^2)
-          float velocity_squared = fvx * fvx + fvy * fvy + fvz * fvz;
+          int32_t avx = p.get_vx();
+          int32_t vx = p.vx;
+          int32_t avy = p.vy / 256;
+          int32_t avz = p.vz / 256;
+          int32_t velocity_squared = avx*avx + avy*avy + avz*avz;
 
           //F = ma
           //a = F/m
           //a = ((r^2)(v^2))/(r^3)
           //I cancelled r^2 from force and mass
           //a = v^2/r 
-          float acceleration = velocity_squared/(pa->r*pa->m);
+          int32_t acceleration = velocity_squared/(pa->r*pa->m);
           //acceleration /= 6400;
 
           //vector magnitude
-          float magnitude = sqrt(velocity_squared);
+          int32_t magnitude = sqrt(velocity_squared);
 
           //apply force to find our new magnitude
-          float new_magnitude = magnitude - acceleration;
+          int32_t new_magnitude = magnitude - acceleration;
+          //std::cout << new_magnitude << "\n";
 
           //find the ratio between old and new magnitudes to apply to our x,y,z velocity components
-          float ratio = _max(new_magnitude/magnitude, .01);
 
-          fvx *= ratio;
-          fvy *= ratio;
-          fvz *= ratio;
+          if (magnitude != 0) {
+            if (new_magnitude > 0) {
+              vx = (vx*new_magnitude)/magnitude;
+              p.vy = (p.vy*new_magnitude)/magnitude;
+              p.vz = (p.vz*new_magnitude)/magnitude;
+              vx = (vx*990)/1000;
+              p.vy = (p.vy*990)/1000;
+              p.vz = (p.vz*990)/1000;
+            } else if (new_magnitude <= 0) {
+              vx /= 20;
+              p.vy /= 20;
+              p.vz /= 20;
+            }
+          }
+          
+          p.update_vx(vx);
 
           //move our particles
-          p.x += fvx;
-          p.y += fvy;
-          p.z += fvz;
+          p.x += p.get_vx();
+          p.y += p.vy/256;
+          p.z += p.vz/256;
 
           //apply gravity
-          fvy -= .167f;
-
-          p.vx = FC.compress(fvx);
-          p.vy = FC.compress(fvy); 
-          p.vz = FC.compress(fvz);
+          p.vy -= 45;
 
           //increment the particle's age
           p.age+=8;
@@ -711,6 +851,25 @@ class TEST3D: public LIGHT_SKETCH {
     }
 
     void loop() {
+
+      // debug
+      // static int asdf = 0;
+      // if (asdf == 0) {
+      //   asdf++;
+      //   int32_t boo = -1073741824;
+
+      //   for (int i = 0; i < 32; i++ ) {
+      //     PARTICLE p;
+      //     p.set_vx(boo);
+      //     int32_t raw_vx = p.vx;
+      //     std::cout << "original boo: " << boo << " vx: " << p.vx << " get_vx(): " << p.get_vx() << " /p\n";
+      //     raw_vx *= 2;
+      //     p.update_vx(raw_vx);
+      //     std::cout << "updated  boo: " << boo << " vx: " << p.vx << " get_vx(): " << p.get_vx() << " /p\n";
+      //     boo/= 2;
+      //   }
+
+      // }
       
       if (effect_beat == 1) {
         effect_beat = 0;
@@ -1539,6 +1698,7 @@ void handle_fireworks() {
           //(This is probably a better solution anyway.)
           //If we fall behind: continue calculating physics until we catch up (do not render, do not update the display)
           do_not_update = 1;
+     uint32_t debug_time2 = micros();
           while ( millis()/8 > total_frame_count ) {
             do_not_update = 0;
 
@@ -1571,6 +1731,7 @@ void handle_fireworks() {
 
           //render particles to the LED buffer
           draw_particles();
+     debug_micros1 += micros() - debug_time2;
           
 } //handle_fireworks()
 
