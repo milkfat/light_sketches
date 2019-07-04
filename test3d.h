@@ -164,19 +164,11 @@ class TEST3D: public LIGHT_SKETCH {
       matrix.rotate(in, out);
     }
 
-    static const unsigned char low_vx =  1 << 0;
-    static const unsigned char high_vx = 1 << 1;
-    static const unsigned char low_vy =  1 << 2;
-    static const unsigned char high_vy = 1 << 3;
-    static const unsigned char low_vz =  1 << 4;
-    static const unsigned char high_vz = 1 << 5;
 
     struct PARTICLE {
-        //const unsigned char resistsCold      = 1 << 3;
-        //const unsigned char resistsTheft     = 1 << 4;
-        //const unsigned char resistsAcid      = 1 << 5;
-        //const unsigned char resistsParalysis = 1 << 6;
-        //const unsigned char resistsBlindness = 1 << 7;
+        //const unsigned char resistsCold      = 1 << 0;
+        //const unsigned char resistsTheft     = 1 << 1;
+        //const unsigned char resistsAcid      = 1 << 2;
         //myflags |= option4;              // turn option 4 on
         //myflags |= (option4 | option5);  //turn option 4 and 5 on at the same time
         //myflags &= ~option4;             // turn option 4 off
@@ -185,116 +177,24 @@ class TEST3D: public LIGHT_SKETCH {
         //myflags ^= (option4 | option5);  // flip options 4 and 5 at the same time
         //if (myflags & option4)           //myflags has option 4 set
         //if (!(myflags & option5))        //myflags does not have option 5 set
-
+      
         int16_t x;  //positional coordinates
         int16_t y;
         int16_t z;
         int16_t vx; //velocities
-        int32_t vy;
-        int32_t vz;
+        int16_t vy;
+        int16_t vz;
         uint8_t attributes = 0; //index of shared attributes (shared by other particles) such as hue, saturation, value, mass, radius... etc.
         uint8_t function = 0;   //index of the function that will update this particle
         int16_t age = 256*8;    //age of the particle
-        uint8_t options = 0;
-
-        void set_vx(int32_t val) {
-
-          if (abs(val) < 64) {
-            vx = val*512;
-            options |= low_vx;
-            options &= ~high_vx;
-            return;
-          }
-          
-          if (abs(val) > INT16_MAX) { 
-            val/=256;
-            options |= high_vx;
-            options &= ~low_vx;
-            if(abs(val) > INT16_MAX) {
-              val = sgn(val) * INT16_MAX;
-            }
-            vx = val;
-            return;
-          }
-
-          vx = val;
-          options &= ~(low_vx | high_vx);
-            
-
-          
-        }
-
-
-        void update_vx(int32_t& val) {
-
-          //low overflow
-          if ( (options & low_vx) && (abs(val) > INT16_MAX) ) {
-            val/=512;
-            options &= ~low_vx;
-            if (abs(val) < INT16_MAX) {
-              vx = val;
-              return;
-            }
-          }
-          
-          //mid overflow
-          if ( !(options & high_vx) && abs(val) > INT16_MAX ) {
-            val/=256;
-            options |= high_vx;
-            if (abs(val) < INT16_MAX) {
-              vx = val;
-              return;
-            } else {
-              vx = sgn(val) * INT16_MAX;
-              return;
-            }
-          }
-
-          //high overflow
-          if ( (options & high_vx) && abs(val) >= INT16_MAX ) {
-            vx = sgn(val) * INT16_MAX;
-            return;
-          }
-
-          //high underflow
-          if ( (options & high_vx) && (abs(val) < INT16_MAX/256) ) {
-            val *= 256;
-            options &= ~high_vx;
-            if (abs(val) >= 64) {
-              vx = val;
-              return;
-            }
-          }
-
-          //mid underflow
-          if ( !(options & low_vx) && abs(val) < 64 ) {
-            val *= 512;
-            options |= low_vx;
-            vx = val;
-            return;
-          }
-
-          vx = val;
-
-        }
-
-
-        int32_t get_vx() {
-          if (options & low_vx) {
-            return vx/512;
-          }
-          if (options & high_vx) {
-            return vx*256;
-          }
-          return vx;
-        }
-
 
     };
 
+
+
     struct PARTICLE_ATTRIBUTES {
-        uint8_t m = 64;        //mass
-        uint8_t r = 3;         //radius
+        uint32_t m = 64;        //mass
+        uint32_t r = 3;         //radius
         uint8_t h = 255;       //hue
         uint8_t s = 255;       //saturation
         uint8_t v = 255;       //value (brightness)
@@ -382,7 +282,7 @@ class TEST3D: public LIGHT_SKETCH {
       //fireworks
       if (current_variation == FIREWORK) {
         for (int i = 0; i < NUM_PARTICLES; i++) {
-        particles[i].function = 0;
+          particles[i].function = 0;
         }
       }
 
@@ -424,7 +324,7 @@ class TEST3D: public LIGHT_SKETCH {
         a[i]->v = 255;
         a[i]->trail = 0;
         a[i]->r = burst_size;
-        a[i]->m = 64;
+        a[i]->m = burst_size*50-500;
       }
       
       //attributes for alternate color
@@ -432,27 +332,27 @@ class TEST3D: public LIGHT_SKETCH {
       
       //attributes for stars that generate trail particles
       a[2]->s = 32;
-      a[2]->m += 2+radius;
+      a[2]->m += (2+radius)*50;
       a[2]->trail = ai[3];
       
       //attributes for the trail particles
       a[3]->s = 32;
-      a[3]->m = 20;
+      a[3]->m = 20*50;
       a[3]->r = 4;
 
 
       //number of particles (stars) is based on size
       //number of particles is higher for larger bursts
-      uint16_t np = (radius*radius)/25; //square the number of particles per radius
+      uint16_t np = (radius*radius)/20; //square the number of particles per radius
       
       //calculate how far to step along the z-axis
       //in other words: this defines the number of slices into which we will split our sphere
       //small sphere, large z_step, lower number of slices
       //big sphere, small z_step, higher number of slices
-      uint16_t z_step = 4500-(np*3000)/25;
+      uint16_t z_step = 4500-(np*3000)/20;
       
       //calculate how many stars each slice will get (number of stars in a circle)
-      uint16_t npxy = 15+(np*15)/25;
+      uint16_t npxy = 15+(np*15)/20;
 
       //random rotation angles for our sphere
       uint16_t r0 = random(0,65535);
@@ -481,7 +381,7 @@ class TEST3D: public LIGHT_SKETCH {
 
             //distribute particles evenly in a ring, X and Y
             int16_t angle = (i*65535)/particles_this_ring;
-            angle = (angle*random(85,116))/100; //randomize the angle a bit
+            angle = (angle*random(90,110))/100; //randomize the angle a bit
             //calculate the X and Y components of the particle for this slice
             int16_t vx = sin16(angle);
             int16_t vy = cos16(angle);
@@ -494,26 +394,27 @@ class TEST3D: public LIGHT_SKETCH {
             
             //calculate the final X and Y velocities (positions)
             //at this point we have the particles evenly distributed around a sphere
-            int32_t temp_vx = (vx*vxy)/32768;
-            int32_t temp_vy = (vy*vxy)/32768;
-            int32_t temp_vz = vz;
+            cp->vx = (vx*vxy)/32768;
+            cp->vy = (vy*vxy)/32768;
+            cp->vz = vz;
 
             //rotate the sphere around x-axis
-            int16_t rz = (temp_vz*cos16(r0))/32768 - (temp_vy*sin16(r0))/32768;
-            int16_t ry = (temp_vy*cos16(r0))/32768 + (temp_vz*sin16(r0))/32768;
-            temp_vz = rz;
-            temp_vy = ry;
+            int16_t rz = (cp->vz*cos16(r0))/32768 - (cp->vy*sin16(r0))/32768;
+            int16_t ry = (cp->vy*cos16(r0))/32768 + (cp->vz*sin16(r0))/32768;
+            cp->vz = rz;
+            cp->vy = ry;
 
             //rotate the sphere around z-axis
-            int16_t rx = (temp_vx*cos16(r1))/32768 - (temp_vy*sin16(r1))/32768;
-                    ry = (temp_vy*cos16(r1))/32768 + (temp_vx*sin16(r1))/32768;
-            temp_vx = rx;
-            temp_vy = ry;
+            int16_t rx = (cp->vx*cos16(r1))/32768 - (cp->vy*sin16(r1))/32768;
+                    ry = (cp->vy*cos16(r1))/32768 + (cp->vx*sin16(r1))/32768;
+            cp->vx = rx;
+            cp->vy = ry;
 
             //apply speed divisor to change the overall burst size
-            temp_vx /= 15;
-            temp_vy /= 15;
-            temp_vz /= 15;
+            // cp->vx /= (15*20);
+            // cp->vy /= (15*20);
+            // cp->vz /= (15*20);
+            //std::cout << " x: " << cp->vx << " y: " << cp->vy << "  z: " << cp->vx << "\n";
 
             //default color
             cp->age = 0;
@@ -542,16 +443,10 @@ class TEST3D: public LIGHT_SKETCH {
             */
 
             //finally, add the velocity of the shell that produced this burst
-            temp_vx += start_vx;
-            temp_vy += start_vy;
-            temp_vz += start_vz;
+            cp->vx += start_vx;
+            cp->vy += start_vy;
+            cp->vz += start_vz;
 
-            cp->set_vx(temp_vx);
-            cp->vy = temp_vy;
-            cp->vz = temp_vz;
-
-            cp->vy *= 256;
-            cp->vz *= 256;
 
 
           }
@@ -613,7 +508,7 @@ class TEST3D: public LIGHT_SKETCH {
         particle_attributes[fs->trail].s = 64;
         particle_attributes[fs->trail].v = random(32,64);
         particle_attributes[fs->trail].r = 4;
-        particle_attributes[fs->trail].m = 20;
+        particle_attributes[fs->trail].m = 20*50;
         particle_attributes[fs->trail].trail = 0;
       }
       
@@ -640,9 +535,9 @@ class TEST3D: public LIGHT_SKETCH {
               cp->x = firework_shells[i].x;
               cp->y = firework_shells[i].y;
               cp->z = firework_shells[i].z;
-              cp->vx = firework_shells[i].vx*256;
-              cp->vy = firework_shells[i].vy*256;
-              cp->vz = firework_shells[i].vz*256;
+              cp->vx = firework_shells[i].vx;
+              cp->vy = firework_shells[i].vy;
+              cp->vz = firework_shells[i].vz;
               cp->age = 32*8;
               cp->function = 1;
               cp->attributes = firework_shells[i].trail;
@@ -686,11 +581,14 @@ class TEST3D: public LIGHT_SKETCH {
           PARTICLE_ATTRIBUTES * pa = &particle_attributes[p.attributes];
           uint16_t age = p.age/8;
                     
-          //air resistance is something like F = (bunch of constants)(r^2)(v^2)
-          int32_t avx = p.get_vx();
-          int32_t vx = p.vx;
-          int32_t avy = p.vy / 256;
-          int32_t avz = p.vz / 256;
+                  //move our particles
+          int32_t avx = p.vx;
+          int32_t avy = p.vy;
+          int32_t avz = p.vz;
+          p.x += p.vx/50;
+          p.y += p.vy/50;
+          p.z += p.vz/50;
+
           int32_t velocity_squared = avx*avx + avy*avy + avz*avz;
 
           //F = ma
@@ -705,38 +603,36 @@ class TEST3D: public LIGHT_SKETCH {
           int32_t magnitude = sqrt(velocity_squared);
 
           //apply force to find our new magnitude
-          int32_t new_magnitude = magnitude - acceleration;
+          int32_t new_magnitude = magnitude - acceleration/2;
           //std::cout << new_magnitude << "\n";
 
           //find the ratio between old and new magnitudes to apply to our x,y,z velocity components
 
+          
           if (magnitude != 0) {
             if (new_magnitude > 0) {
-              vx = (vx*new_magnitude)/magnitude;
+              p.vx = (p.vx*new_magnitude)/magnitude;
               p.vy = (p.vy*new_magnitude)/magnitude;
               p.vz = (p.vz*new_magnitude)/magnitude;
-              vx = (vx*990)/1000;
-              p.vy = (p.vy*990)/1000;
-              p.vz = (p.vz*990)/1000;
+              //p.vx = (p.vx*999)/1000;
+              //p.vy = (p.vy*999)/1000;
+              //p.vz = (p.vz*999)/1000;
             } else if (new_magnitude <= 0) {
-              vx /= 20;
+              p.vx /= 20;
               p.vy /= 20;
               p.vz /= 20;
             }
           }
           
-          p.update_vx(vx);
-
-          //move our particles
-          p.x += p.get_vx();
-          p.y += p.vy/256;
-          p.z += p.vz/256;
-
           //apply gravity
-          p.vy -= 45;
+          p.vy -= 3;
+          //apply wind
+          p.vx -= 3;
+          p.vz -= 3;
+
 
           //increment the particle's age
-          p.age+=8;
+          p.age+=4;
 
           if (pa->trail) {
             //add random star trail particles
@@ -786,8 +682,16 @@ class TEST3D: public LIGHT_SKETCH {
           PARTICLE_ATTRIBUTES * pa = &particle_attributes[particles[i].attributes];
           uint16_t age = particles[i].age/8;
           //darken (v = HSV value)
-          int16_t v_temp = 255-(age*age*age*2)/(255*255);
+          int16_t v_temp = 255;
+          uint8_t r = fmix32(i);
+          r = r/4 + (_max(pa->r-35,0))+32;
+          if (age > r) {
+            v_temp -= (age-r)*4;
+          }
           uint8_t v = _min(_max(v_temp,0), pa->v);
+          if (v == 0) {
+            particles[i].age = 9*256;
+          }
           //colors become more saturated over time
           uint8_t s = _max(_min(particles[i].age,pa->s),0);
           
@@ -807,8 +711,8 @@ class TEST3D: public LIGHT_SKETCH {
 
           //correct 3d perspective
           if (matrix.perspective(p0)) {
-            int16_t v_temp2 = (p0[2] + 148 * 256L) / 256L;
-            blendXY(leds, p0[0], p0[1], pa->h, s, (_max(_min(v_temp2, 255), 0)*v)/256);
+            int16_t v_temp2 = (p0[2] + 200 * 256L) / 256L;
+            blendXY(leds, p0[0], p0[1], pa->h, s, (_max(_min(v_temp2, 255), 0)*v)/255);
           }
         }
       }
@@ -856,17 +760,19 @@ class TEST3D: public LIGHT_SKETCH {
       // static int asdf = 0;
       // if (asdf == 0) {
       //   asdf++;
-      //   int32_t boo = -1073741824;
+      //   int32_t test_num = 1;
 
       //   for (int i = 0; i < 32; i++ ) {
       //     PARTICLE p;
+      //     int32_t boo = test_num;
       //     p.set_vx(boo);
-      //     int32_t raw_vx = p.vx;
-      //     std::cout << "original boo: " << boo << " vx: " << p.vx << " get_vx(): " << p.get_vx() << " /p\n";
-      //     raw_vx *= 2;
-      //     p.update_vx(raw_vx);
+      //     int32_t raw_vx = p.get_vx_raw();
+      //     std::cout << "\n\n\noriginal boo: " << boo << " vx: " << p.vx << " get_vx(): " << p.get_vx() << " /p\n";
+      //     raw_vx /= 2;
+      //     boo /= 2;
+      //     p.set_vx_raw(raw_vx);
       //     std::cout << "updated  boo: " << boo << " vx: " << p.vx << " get_vx(): " << p.get_vx() << " /p\n";
-      //     boo/= 2;
+      //     test_num*= 2;
       //   }
 
       // }
@@ -1698,14 +1604,17 @@ void handle_fireworks() {
           //(This is probably a better solution anyway.)
           //If we fall behind: continue calculating physics until we catch up (do not render, do not update the display)
           do_not_update = 1;
-     uint32_t debug_time2 = micros();
           while ( millis()/8 > total_frame_count ) {
             do_not_update = 0;
+
+            if (millis()/8 - total_frame_count > 10) {
+              total_frame_count = millis()/8;
+            }
 
             //launch shells
             if (frame_count>next_firework_frame) {
               frame_count = 0;
-              next_firework_frame = random(45,200);
+              next_firework_frame = random(100,500);
               spawn_firework_shell();
             }
 
@@ -1720,10 +1629,10 @@ void handle_fireworks() {
             skipped_frames++;
 
             //rotate everything (effectively rotating the camera)
-            rotation_gamma += .10;
-            if (rotation_gamma > 360) {
-              rotation_gamma -= 360;
-            }
+            // rotation_gamma += .05;
+            // if (rotation_gamma > 360) {
+            //   rotation_gamma -= 360;
+            // }
 
           }
 
@@ -1731,7 +1640,6 @@ void handle_fireworks() {
 
           //render particles to the LED buffer
           draw_particles();
-     debug_micros1 += micros() - debug_time2;
           
 } //handle_fireworks()
 
