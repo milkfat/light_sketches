@@ -52,67 +52,6 @@ class TEST3D: public LIGHT_SKETCH {
 
     bool do_not_update = 0;
 
-    //x,y,z
-    int cubesizex = 12 * 256;
-    int cubesizey = 30 * 256;
-    int cubesizez = 30 * 256;
-    long cube[36][3] = {
-      //front
-      { -cubesizex, -cubesizey, -cubesizez},
-      { -cubesizex, cubesizey, -cubesizez},
-      {cubesizex, cubesizey, -cubesizez},
-
-      { -cubesizex, -cubesizey, -cubesizez},
-      {cubesizex, cubesizey, -cubesizez},
-      {cubesizex, -cubesizey, -cubesizez},
-
-      //back
-      { -cubesizex, -cubesizey, cubesizez},
-      { -cubesizex, cubesizey, cubesizez},
-      {cubesizex, cubesizey, cubesizez},
-
-      { -cubesizex, -cubesizey, cubesizez},
-      {cubesizex, cubesizey, cubesizez},
-      {cubesizex, -cubesizey, cubesizez},
-
-      //top
-      {cubesizex, -cubesizey, -cubesizez},
-      {cubesizex, -cubesizey, cubesizez},
-      {cubesizex, cubesizey, cubesizez},
-
-      {cubesizex, -cubesizey, -cubesizez},
-      {cubesizex, cubesizey, cubesizez},
-      {cubesizex, cubesizey, -cubesizez},
-
-      //bottom
-      { -cubesizex, -cubesizey, -cubesizez},
-      { -cubesizex, -cubesizey, cubesizez},
-      { -cubesizex, cubesizey, cubesizez},
-
-      { -cubesizex, -cubesizey, -cubesizez},
-      { -cubesizex, cubesizey, cubesizez},
-      { -cubesizex, cubesizey, -cubesizez},
-
-      //left
-      { -cubesizex, -cubesizey, -cubesizez},
-      { -cubesizex, -cubesizey, cubesizez},
-      {cubesizex, -cubesizey, cubesizez},
-
-      { -cubesizex, -cubesizey, -cubesizez},
-      {cubesizex, -cubesizey, cubesizez},
-      {cubesizex, -cubesizey, -cubesizez},
-
-      //right
-      { -cubesizex, cubesizey, -cubesizez},
-      { -cubesizex, cubesizey, cubesizez},
-      {cubesizex, cubesizey, cubesizez},
-
-      { -cubesizex, cubesizey, -cubesizez},
-      {cubesizex, cubesizey, cubesizez},
-      {cubesizex, cubesizey, -cubesizez}
-    };
-
-
     long square[4][3] = {
       { -3 * 256, -4 * 256, 0},
       { -3 * 256, 4 * 256, 0},
@@ -162,6 +101,10 @@ class TEST3D: public LIGHT_SKETCH {
 
     void rotate(long in[3], long out[3]) {
       matrix.rotate(in, out);
+    }
+
+    void rotate(POINT& p) {
+      matrix.rotate(p);
     }
 
 
@@ -270,12 +213,13 @@ class TEST3D: public LIGHT_SKETCH {
       //snow
       if (current_variation == SNOW) {
         for (int i = 0; i < NUM_PARTICLES; i++) {
-        particles[i].x = random(-30 * 256L, 30 * 256L);
-        particles[i].y = random(-148 * 256L, 148 * 256L);
-        particles[i].z = random(-148 * 256L, 148 * 256L);
-        particles[i].vx = random(-255, 256);
-        particles[i].vy = -255;
-        particles[i].vz = random(-255, 256);
+          PARTICLE * cp = &particles[i];
+          cp->x = random(-30 * 256L, 30 * 256L);
+          cp->y = random(-148 * 256L, 148 * 256L);
+          cp->z = random(-148 * 256L, 148 * 256L);
+          cp->vx = random(-255, 256);
+          cp->vy = -255;
+          cp->vz = random(-255, 256);
         }
       }
 
@@ -305,7 +249,7 @@ class TEST3D: public LIGHT_SKETCH {
       //choose a random size within our minimum/maximum boundaries
       uint16_t radius = random(range_min,range_max);
       uint16_t burst_size = radius+35; //35 is the minimum for the current physics calculations
-
+      //std::cout << "range_min: " << range_min << " range_max: " << range_max << " radius: " << radius << " burst_size: " << burst_size << "\n";
 
 
       //create particle attributes for our burst
@@ -343,14 +287,15 @@ class TEST3D: public LIGHT_SKETCH {
 
       //number of particles (stars) is based on size
       //number of particles is higher for larger bursts
-      uint16_t np = (radius*radius)/20; //square the number of particles per radius
+      uint16_t np = (radius*radius)/28; //square the number of particles per radius
       
       //calculate how far to step along the z-axis
       //in other words: this defines the number of slices into which we will split our sphere
       //small sphere, large z_step, lower number of slices
       //big sphere, small z_step, higher number of slices
-      uint16_t z_step = 4500-(np*3000)/20;
-      
+      uint16_t z_step = 4500-(np*3000)/28;
+      //std::cout << "np: " << np << " z_step: " << z_step << "\n";
+
       //calculate how many stars each slice will get (number of stars in a circle)
       uint16_t npxy = 15+(np*15)/20;
 
@@ -359,7 +304,7 @@ class TEST3D: public LIGHT_SKETCH {
       uint16_t r1 = random(0,65535);
 
       //iterate over the z-axis
-      for (uint16_t iz = 0; iz < 32668; iz+=z_step) {
+      for (uint16_t iz = 0; iz < 32767; iz+=z_step) {
         //calculate our Z-velocity (you could pretend that this is a coordinate)
         int16_t vz = cos16(iz); //distribution from 0 - 32767
         //calculate the radius of this slice
@@ -375,9 +320,9 @@ class TEST3D: public LIGHT_SKETCH {
           if(cp) {
             cp->function = 1;
             //initial starting position
-            cp->x = start_x;
-            cp->y = start_y;
-            cp->z = start_z;
+            cp->x = start_x/2;
+            cp->y = start_y/2;
+            cp->z = start_z/2;
 
             //distribute particles evenly in a ring, X and Y
             int16_t angle = (i*65535)/particles_this_ring;
@@ -446,6 +391,7 @@ class TEST3D: public LIGHT_SKETCH {
             cp->vx += start_vx;
             cp->vy += start_vy;
             cp->vz += start_vz;
+            
 
 
 
@@ -456,14 +402,15 @@ class TEST3D: public LIGHT_SKETCH {
 
     struct FIREWORK_SHELL {
       bool active = 0;
-      int16_t x;
-      int16_t y;
-      int16_t z;
+      int32_t x;
+      int32_t y;
+      int32_t z;
       float vx;
       float vy;
       float vz;
       uint8_t trail;
       uint16_t mass;
+      uint16_t age;
     };
 
     #define NUM_FIREWORK_SHELLS 8
@@ -491,11 +438,14 @@ class TEST3D: public LIGHT_SKETCH {
     void spawn_firework_shell() {
       FIREWORK_SHELL * fs = next_firework_shell();
       if(fs) {
+        fs->age = 0;
         fs->x = 0;
-        fs->y = -127*256; //start "on the ground"
+        long p[3] = {(MATRIX_WIDTH*256)/2,0,0};
+        matrix.reverse_perspective(p);
+        fs->y = p[1]; //start "on the ground"
         fs->z = 0;
         uint8_t r = random(105);
-        fs->vy = (r*r)/105+180; //random launch velocity (burst height), weighted toward lower bursts
+        fs->vy = (r*r)/105+200; //random launch velocity (burst height), weighted toward lower bursts
         uint8_t r2 = (105-r)/6;
         fs->vx = random(-(r2+10),(r2+10)); //random side-to-side velocity
         //fs->vy = 300;
@@ -510,6 +460,37 @@ class TEST3D: public LIGHT_SKETCH {
         particle_attributes[fs->trail].r = 4;
         particle_attributes[fs->trail].m = 20*50;
         particle_attributes[fs->trail].trail = 0;
+
+
+        //LIFT CHARGE PARTICLES
+        uint8_t lift_attribute = current_particle_attributes();
+         //define life particle attributes
+        particle_attributes[lift_attribute].h = 8;
+        particle_attributes[lift_attribute].s = 255;
+        particle_attributes[lift_attribute].v = 255;
+        particle_attributes[lift_attribute].r = 20;
+        particle_attributes[lift_attribute].m = ((r*r)/(2*105)+20)*50;
+        particle_attributes[lift_attribute].trail = 0;
+
+        for (int i = 0; i < (r*r)/(2*105)+20; i++) {
+          //find the next available particle object
+          PARTICLE * cp = current_particle();
+          if (cp) {
+            cp->x = 0;
+            cp->y = p[1]/2;
+            cp->z = 0;
+            cp->vx = random(-20*256,20*256);
+            cp->vy = random(64*256, 127*256);
+            int rv = random(256);
+            cp->vx = (cp->vx*rv)/256;
+            cp->vy = (cp->vy*rv)/256;
+            cp->vz = 0;
+            cp->attributes = lift_attribute;
+            cp->function = 2;
+            cp->age = random(1*256,3*256);
+          }
+        }
+        
       }
       
     }
@@ -518,142 +499,161 @@ class TEST3D: public LIGHT_SKETCH {
     void handle_firework_shells() {
       for (int i = 0; i < NUM_FIREWORK_SHELLS; i++) {
         if (firework_shells[i].active) {
-          
+          FIREWORK_SHELL * fs = &firework_shells[i];
+          fs->age++;
+
           //burst at peak height
-          if (firework_shells[i].vy < 5) {
-            firework_shells[i].active = false;
+          if (firework_shells[i].vy < -5) {
+            fs->active = false;
             //create a burst using this shell's final position and velocity
-            spawn_firework_burst(firework_shells[i].x,firework_shells[i].y,firework_shells[i].z,firework_shells[i].vx,firework_shells[i].vy,firework_shells[i].vz);
+            spawn_firework_burst(fs->x,fs->y,fs->z,fs->vx,fs->vy,fs->vz);
           }
 
           //update active shells
-          if (firework_shells[i].active && firework_shells[i].y < 120*256) {
+          if (fs->active && fs->y < 120*256) {
 
-            //add random spark particles to create a tail for the rising shell
-            PARTICLE * cp = current_particle();
-            if( cp && random(3) == 0) {
-              cp->x = firework_shells[i].x;
-              cp->y = firework_shells[i].y;
-              cp->z = firework_shells[i].z;
-              cp->vx = firework_shells[i].vx;
-              cp->vy = firework_shells[i].vy;
-              cp->vz = firework_shells[i].vz;
-              cp->age = 32*8;
-              cp->function = 1;
-              cp->attributes = firework_shells[i].trail;
+            if(fs->age > 10) {
+              //add random spark particles to create a tail for the rising shell
+              PARTICLE * cp = current_particle();
+              if( cp && random(3) == 0) {
+                cp->x = fs->x/2;
+                cp->y = fs->y/2;
+                cp->z = fs->z/2;
+                cp->vx = fs->vx;
+                cp->vy = fs->vy;
+                cp->vz = fs->vz;
+                cp->age = 32*8;
+                cp->function = 1;
+                cp->attributes = fs->trail;
 
+              }
             }
 
             //update the shell's position
-            firework_shells[i].x += firework_shells[i].vx;
-            firework_shells[i].y += firework_shells[i].vy;
-            firework_shells[i].z += firework_shells[i].vz;
+            fs->x += fs->vx;
+            fs->y += fs->vy;
+            fs->z += fs->vz;
 
             //apply gravity
-            firework_shells[i].vy -= .5;
+            fs->vy -= .5;
             //calculate the velocity of the shell
-            float velocity = sqrt(firework_shells[i].vx*firework_shells[i].vx+firework_shells[i].vy*firework_shells[i].vy+firework_shells[i].vz*firework_shells[i].vz);
+            float velocity = sqrt(fs->vx*fs->vx+fs->vy*fs->vy+fs->vz*fs->vz);
             
             //calculate the amount of force based on velocity (wind resistance)
             //smaller numbers represent higher amounts of force
             float velocity_force = (200000 - velocity)/200000;
             
             //apply the force to our particle
-            //firework_shells[i].vx *= velocity_force;
-            firework_shells[i].vy -= firework_shells[i].vy*(1.f-velocity_force);
+            //fs->vx *= velocity_force;
+            fs->vy -= fs->vy*(1.f-velocity_force);
 
-            //firework_shells[i].vz *= velocity_force;
+            //fs->vz *= velocity_force;
           }
         }
       }
     }
 
-    void handle_particle(PARTICLE &p) {
-      if (
-          p.age < 256*8 &&
-          p.x > -127 * 256L &&
-          p.x < 127 * 256L &&
-          p.y > -127 * 256L &&
-          p.y < 127 * 256L &&
-          p.z > -127 * 256L &&
-          p.z < 127 * 256L
-        ) {
-          PARTICLE_ATTRIBUTES * pa = &particle_attributes[p.attributes];
-          uint16_t age = p.age/8;
-                    
-                  //move our particles
-          int32_t avx = p.vx;
-          int32_t avy = p.vy;
-          int32_t avz = p.vz;
-          p.x += p.vx/50;
-          p.y += p.vy/50;
-          p.z += p.vz/50;
+    void move_particle(PARTICLE &p) {
+      if
+      (
+      abs(p.x) > 127 * 256L ||
+      abs(p.y) > 127 * 256L ||
+      abs(p.z) > 127 * 256L
+      ) {
+        p.function = 0;
+        return;
+      }
+      PARTICLE_ATTRIBUTES * pa = &particle_attributes[p.attributes];
+              //move our particles
+      int32_t avx = p.vx;
+      int32_t avy = p.vy;
+      int32_t avz = p.vz;
+      p.x += p.vx/100;
+      p.y += p.vy/100;
+      p.z += p.vz/100;
 
-          int32_t velocity_squared = avx*avx + avy*avy + avz*avz;
+      int32_t velocity_squared = avx*avx + avy*avy + avz*avz;
 
-          //F = ma
-          //a = F/m
-          //a = ((r^2)(v^2))/(r^3)
-          //I cancelled r^2 from force and mass
-          //a = v^2/r 
-          int32_t acceleration = velocity_squared/(pa->r*pa->m);
-          //acceleration /= 6400;
+      //F = ma
+      //a = F/m
+      //a = ((r^2)(v^2))/(r^3)
+      //I cancelled r^2 from force and mass
+      //a = v^2/r 
+      int32_t acceleration = velocity_squared/(pa->r*pa->m);
+      //acceleration /= 6400;
 
-          //vector magnitude
-          int32_t magnitude = sqrt(velocity_squared);
+      //vector magnitude
+      int32_t magnitude = sqrt(velocity_squared);
 
-          //apply force to find our new magnitude
-          int32_t new_magnitude = magnitude - acceleration/2;
-          //std::cout << new_magnitude << "\n";
+      //apply force to find our new magnitude
+      int32_t new_magnitude = magnitude - acceleration/2;
+      //std::cout << new_magnitude << "\n";
 
-          //find the ratio between old and new magnitudes to apply to our x,y,z velocity components
+      //find the ratio between old and new magnitudes to apply to our x,y,z velocity components
 
-          
-          if (magnitude != 0) {
-            if (new_magnitude > 0) {
-              p.vx = (p.vx*new_magnitude)/magnitude;
-              p.vy = (p.vy*new_magnitude)/magnitude;
-              p.vz = (p.vz*new_magnitude)/magnitude;
-              //p.vx = (p.vx*999)/1000;
-              //p.vy = (p.vy*999)/1000;
-              //p.vz = (p.vz*999)/1000;
-            } else if (new_magnitude <= 0) {
-              p.vx /= 20;
-              p.vy /= 20;
-              p.vz /= 20;
-            }
-          }
-          
-          //apply gravity
-          p.vy -= 3;
-          //apply wind
-          p.vx -= 3;
-          p.vz -= 3;
-
-
-          //increment the particle's age
-          p.age+=4;
-
-          if (pa->trail) {
-            //add random star trail particles
-            PARTICLE * cp = current_particle();
-            if( cp && random(p.age/32+5) == 0) {
-              cp->x = p.x;
-              cp->y = p.y;
-              cp->z = p.z;
-              cp->vx = p.vx;
-              cp->vy = p.vy;
-              cp->vz = p.vz;
-              cp->age = p.age/8;
-              cp->function = 1;
-              cp->attributes = pa->trail;
-            }
-          }
-
-        } else {
-          p.function = 0;
+      
+      if (magnitude != 0) {
+        if (new_magnitude > 0) {
+          p.vx = (p.vx*new_magnitude)/magnitude;
+          p.vy = (p.vy*new_magnitude)/magnitude;
+          p.vz = (p.vz*new_magnitude)/magnitude;
+          //p.vx = (p.vx*999)/1000;
+          //p.vy = (p.vy*999)/1000;
+          //p.vz = (p.vz*999)/1000;
+        } else if (new_magnitude <= 0) {
+          p.vx /= 20;
+          p.vy /= 20;
+          p.vz /= 20;
         }
-    }
+      }
+          
+      //apply gravity
+      p.vy -= 3;
+      //apply wind
+      p.vx -= 3;
+      p.vz -= 3;
+
+    } //move_particle()
+
+    void star_particle(PARTICLE &p) {
+
+      //increment the particle's age
+      p.age+=4;
+
+      if (p.age > 256*8) {p.function = 0; return;}
+      PARTICLE_ATTRIBUTES * pa = &particle_attributes[p.attributes];
+
+      move_particle(p);
+            
+      if (pa->trail) {
+        //add random star trail particles
+        PARTICLE * cp = current_particle();
+        if( cp && random(p.age/32+5) == 0) {
+          cp->x = p.x;
+          cp->y = p.y;
+          cp->z = p.z;
+          cp->vx = p.vx;
+          cp->vy = p.vy;
+          cp->vz = p.vz;
+          cp->age = p.age/16;
+          cp->function = 1;
+          cp->attributes = pa->trail;
+        }
+      }
+ 
+    } //star_particle()
+
+
+
+    void lift_particle(PARTICLE &p) {
+      //increment the particle's age
+      p.age+=8;
+      if (p.age > 256*8) {p.function = 0; return;}
+      PARTICLE_ATTRIBUTES * pa = &particle_attributes[p.attributes];
+      move_particle(p);
+ 
+    } //lift_particle()
+
 
     //here we call the handling function for this particle
     void handle_particles() {
@@ -668,7 +668,7 @@ class TEST3D: public LIGHT_SKETCH {
 
     //an array of function pointers to functions that modify the PARTICLE structure
     //referred to as a jump table?
-    void (TEST3D::*particle_funcs[2])(PARTICLE&) = {nullptr,&TEST3D::handle_particle};
+    void (TEST3D::*particle_funcs[3])(PARTICLE&) = {nullptr,&TEST3D::star_particle,&TEST3D::lift_particle};
 
     //render the particles in 3D to the buffer
     void draw_particles() {
@@ -678,9 +678,10 @@ class TEST3D: public LIGHT_SKETCH {
 
       //draw the particles
       for (int i = 0; i < NUM_PARTICLES; i++) {
-        if ( particles[i].function) {
-          PARTICLE_ATTRIBUTES * pa = &particle_attributes[particles[i].attributes];
-          uint16_t age = particles[i].age/8;
+        PARTICLE * cp = &particles[i];
+        if ( cp->function) {
+          PARTICLE_ATTRIBUTES * pa = &particle_attributes[cp->attributes];
+          uint16_t age = cp->age/8;
           //darken (v = HSV value)
           int16_t v_temp = 255;
           uint8_t r = fmix32(i);
@@ -690,29 +691,25 @@ class TEST3D: public LIGHT_SKETCH {
           }
           uint8_t v = _min(_max(v_temp,0), pa->v);
           if (v == 0) {
-            particles[i].age = 9*256;
+            cp->function = 0;
+            continue;
           }
           //colors become more saturated over time
-          uint8_t s = _max(_min(particles[i].age,pa->s),0);
+          uint8_t s = _max(_min(cp->age,pa->s),0);
           
           //create a three-dimensional structure that will be rotated
-          long p[3] = {
-            particles[i].x,
-            particles[i].y,
-            particles[i].z
-          };
-          long p0[3];
+          POINT p(cp->x*2,cp->y*2,cp->z*2);
 
           //rotate all particles using our orientation matrix
-          rotate(p, p0);
+          rotate(p);
 
           //translate vectors to coordinates
-          matrix.scale_z(p0[2]);
+          matrix.scale_z(p[2]);
 
           //correct 3d perspective
-          if (matrix.perspective(p0)) {
-            int16_t v_temp2 = (p0[2] + 200 * 256L) / 256L;
-            blendXY(leds, p0[0], p0[1], pa->h, s, (_max(_min(v_temp2, 255), 0)*v)/255);
+          if (matrix.perspective(p)) {
+            int16_t v_temp2 = (p[2] + 200 * 256L) / 256L;
+            blendXY(leds, p[0], p[1], pa->h, s, (_max(_min(v_temp2, 255), 0)*v)/255);
           }
         }
       }
@@ -1215,21 +1212,22 @@ void handle_snow() {
 
           //SNOW
           for (int i = 0; i < NUM_PARTICLES; i++) {
-            particles[i].x += particles[i].vx;
-            particles[i].y += particles[i].vy;
-            particles[i].z += particles[i].vz;
-            if (particles[i].y < -127 * 256L) {
-              particles[i].x = random(-100 * 256L, 100 * 256L);
-              particles[i].y = 32767;
-              particles[i].z = random(-148 * 256L, 148 * 256L);
-              particles[i].vx = random(-128, 128);
-              particles[i].vz = random(-255, 256);
+            PARTICLE * cp = &particles[i];
+            cp->x += cp->vx;
+            cp->y += cp->vy;
+            cp->z += cp->vz;
+            if (cp->y < -127 * 256L) {
+              cp->x = random(-100 * 256L, 100 * 256L);
+              cp->y = 32767;
+              cp->z = random(-148 * 256L, 148 * 256L);
+              cp->vx = random(-128, 128);
+              cp->vz = random(-255, 256);
             }
 
             long p[3] = {
-              particles[i].x,
-              particles[i].y,
-              particles[i].z
+              cp->x,
+              cp->y,
+              cp->z
             };
             long p0[3];
 
@@ -1344,9 +1342,11 @@ void draw_quad(POINT& a, POINT& b, POINT& c, POINT& d, POINT& orig, POINT& norm,
     y_buffer_min = MATRIX_HEIGHT-1;
 
   }
-}
+} //draw_quad()
+
 
 void draw_cube(POINT p, long width, long height, long depth) {
+
   POINT norm_right(255,0,0);
   POINT norm_left(-255,0,0);
   POINT norm_top(0,255,0);
@@ -1400,102 +1400,7 @@ void draw_cube(POINT p, long width, long height, long depth) {
   draw_quad(points[1],points[5],points[6],points[2],p,norm_back,160,255,255); //back
   
 
-}
-
-
-
-void handle_cube() {
-
-  //3D SHADING
-
-  uint8_t hue;
-
-
-  //draw some triangles
-
-  for (int i = 0; i < 12; i++) {
-
-    uint8_t a = i * 3; //triangle line 1
-    uint8_t b = a + 1; //triangle line 2
-    uint8_t c = b + 1; //triangle line 3
-
-    hue = ( 256 * (i/2) ) /12; //one color for each side of the cube
-
-
-
-    //find the surface normal of our side
-    long normal[3] = {0, 0, 0};
-    long n[3];
-    if (cube[a][0] == cube[b][0] && cube[b][0] == cube[c][0]) {
-      normal[0] = 128 * (cube[a][0] / abs(cube[a][0]));
-    } else if (cube[a][1] == cube[b][1] && cube[b][1] == cube[c][1]) {
-      normal[1] = 128 * (cube[a][1] / abs(cube[a][1]));
-    } else if (cube[a][2] == cube[b][2] && cube[b][2] == cube[c][2]) {
-      normal[2] = 128 * (cube[a][2] / abs(cube[a][2]));
-    }
-    rotate(normal, n);
-
-    if (n[2] > 0) {
-      uint8_t bri = _min(_max(0, n[2]), 128) + 10;
-
-      
-      //a place to store the rotated vectors
-      long v0[3];
-      long v1[3];
-      long v2[3];
-
-      //rotate them vectors
-      rotate(cube[a], v0);
-      rotate(cube[b], v1);
-      rotate(cube[c], v2);
-
-      //translate vectors to coordinates
-      matrix.scale_z(v0[2]);
-      matrix.scale_z(v1[2]);
-      matrix.scale_z(v2[2]);
-
-      //correct 3d perspective
-      matrix.perspective(v0);
-      matrix.perspective(v1);
-      matrix.perspective(v2);
-
-      //"draw the line" to our y buffer
-      draw_line_ybuffer( v0[0], v0[1], v1[0], v1[1]);
-      //draw_line_fine(leds,v0[0], v0[1], v1[0], v1[1],0,0,64);
-      draw_line_ybuffer( v1[0], v1[1], v2[0], v2[1]);
-      //draw_line_fine(leds,v1[0], v1[1], v2[0], v2[1],0,0,64);
-      draw_line_ybuffer( v2[0], v2[1], v0[0], v0[1]);
-      //draw_line_fine(leds,v2[0], v2[1], v0[0], v0[1],0,0,64);
-
-      //fill between the pixels of our lines
-      for (int y = 0; y < MATRIX_HEIGHT; y++) {
-        //if (y_buffer[y][0] + 1 < y_buffer[y][1]) { //old?
-          if (y_buffer[y][0] <= y_buffer[y][1]) {
-
-          for (int x = y_buffer[y][0]; x <= y_buffer[y][1]; x++) {
-            drawXYZ(leds, x, y, n[2], hue, 255, bri );
-          }
-
-        }
-        //clear the buffer to be used for filling the triangle
-        y_buffer[y][0] = MATRIX_WIDTH + 1;
-        y_buffer[y][1] = -1;
-      }
-
-    }
-  }
-
-  
-  //rotation_alpha += .1;
-  //rotation_beta += .077;
-  //rotation_gamma += .068;
-  rotation_alpha += 1;
-  rotation_beta += .77;
-  rotation_gamma += .68;
-
-
-} //handle_cube()
-
+} //draw_cube()
 
 void handle_tunnel() {
   static uint16_t stp = 0; //rotation
@@ -1604,8 +1509,10 @@ void handle_fireworks() {
           //(This is probably a better solution anyway.)
           //If we fall behind: continue calculating physics until we catch up (do not render, do not update the display)
           do_not_update = 1;
-          while ( millis()/8 > total_frame_count ) {
+          uint8_t physics_count = 0;
+          while ( physics_count < 10 && millis()/8 > total_frame_count ) {
             do_not_update = 0;
+            physics_count++;
 
             if (millis()/8 - total_frame_count > 10) {
               total_frame_count = millis()/8;
