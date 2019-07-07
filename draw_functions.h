@@ -409,6 +409,12 @@ struct POINT {
     this->z -= rhs.z;
     return *this;
   }
+
+  long& operator[] (const int index)
+  {
+      return index == 0 ? x : index == 1 ? y : z;
+  }
+
 };
 
 void blendXY(CRGB crgb_object[], POINT point, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255) {
@@ -1971,9 +1977,13 @@ int32_t matt_decompress8(uint8_t val) {
   typedef class cint18
   {
     private:
-        int16_t val;
+        int16_t val = 0;
 
     public:
+
+        cint18() {
+        }
+
         #define CINT18_MULT 4
         //conversion to int
         operator int() {
