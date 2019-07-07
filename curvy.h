@@ -78,7 +78,7 @@ class CURVY: public LIGHT_SKETCH {
     #define NUM_JELLIES 1
     #define NUM_JELLY_SEGMENTS 10
     #define NUM_TENTACLES NUM_JELLY_SEGMENTS
-    #define NUM_TENTACLE_SEGMENTS 12
+    #define NUM_TENTACLE_SEGMENTS 20
     struct tentacle_segment {
       int32_t x = -20*256;
       int32_t y = -150*256;
@@ -219,7 +219,7 @@ class CURVY: public LIGHT_SKETCH {
       
 
       //jelly velocity is based on a sine wave (same as the animation)
-      int jelly_velocity =  (sin8(jelly.step-32)-64);
+      int jelly_velocity =  (sin8(jelly.step-64)-64);
       //limit velocity to positive numbers (no going backwards)
       jelly_velocity = _max(jelly_velocity,0)/2;
       //adjust velocity for animation speed
@@ -265,7 +265,7 @@ class CURVY: public LIGHT_SKETCH {
         }
 
         //random speed
-        jelly.speed = random(2,6);
+        jelly.speed = random(2,4);
 
         //jelly.x = 0;        //debug
         // jelly.y = -50*256;  //debug
@@ -307,7 +307,7 @@ class CURVY: public LIGHT_SKETCH {
 
       //animate tips
       long jp2x = jelly_points[2][0] + sin8(jelly.step)*18;
-      long jp2y = jelly_points[2][1] + cos8(jelly.step)*12;
+      long jp2y = jelly_points[2][1] + cos8(jelly.step)*18;
 
       //process each segment of the jellyfish, like slices of pizza
       for (int i = 0; i < NUM_JELLY_SEGMENTS; i++) {
@@ -429,7 +429,7 @@ class CURVY: public LIGHT_SKETCH {
         
       }
 
-        int bri = jelly.z/700+150;
+        int bri = jelly.z/1000+200;
         bri = _max(_min(bri,255),0);
      for (int i = 0; i < NUM_JELLY_SEGMENTS/2; i++) {
         //draw each segment
@@ -468,8 +468,8 @@ class CURVY: public LIGHT_SKETCH {
     1) Start with points a,b,c
     2) Calculate d   [midpoint of a,c]
     3) Calculate e   [midpoint of b,d]
-    4) b change = d - e
-    5) a and c change = e - d
+    4) change in b = d - e
+    5) change in a and c = e - d
                          a (tentacles[i][j-1])
                         /|
                        / |
@@ -499,8 +499,8 @@ class CURVY: public LIGHT_SKETCH {
             tentacle_segment* a = &tentacles[i][j-1]; //previous point
             tentacle_segment* b = &tentacles[i][j];   //this point
 
-            // BENDING FORCE
-            if (false && j < NUM_TENTACLE_SEGMENTS-1) {
+            // BENDING FORCE -- not used at the moment
+            if (j < NUM_TENTACLE_SEGMENTS-1) {
 
               tentacle_segment temp0;
               tentacle_segment temp1;
@@ -524,8 +524,8 @@ class CURVY: public LIGHT_SKETCH {
               int32_t dz = (d->z - e->z);
 
               int32_t acx = a->x - c->x;
-              int32_t acy = a->x - c->x;
-              int32_t acz = a->x - c->x;
+              int32_t acy = a->y - c->y;
+              int32_t acz = a->z - c->z;
 
               int32_t ac = sqrt( acx*acx + acy*acy + acz*acz);
 
@@ -583,14 +583,14 @@ class CURVY: public LIGHT_SKETCH {
             int32_t d2 = dx*dx + dy*dy + dz*dz;
 
             //segments are fixed in length, any longer/shorter causes push/pull action
-            if ( j > 1 && d2 != ((4*256) * (4*256)) ) {
+            if ( j > 1 && d2 != ((2*300) * (2*300)) ) {
               //distance between points
               int32_t d = sqrt(d2);
               if (d == 0) {
                 d = 1;
               }
               //overage distance
-              int32_t od = (d - 4*256);
+              int32_t od = (d - 2*300);
               od/=16;
               //points pull equally on one-another, except for the first point
               
@@ -634,9 +634,9 @@ class CURVY: public LIGHT_SKETCH {
               //b->vy -= 4;
 
               //drag
-              b->vx *= .95;
-              b->vy *= .95;
-              b->vz *= .95;
+              b->vx *= .98;
+              b->vy *= .98;
+              b->vz *= .98;
 
 
             }
@@ -677,7 +677,7 @@ class CURVY: public LIGHT_SKETCH {
         }
 
         
-        int bri = jelly.z/700+150;
+        int bri = jelly.z/1000+200;
         bri = _max(_min(bri,255),0);
         matt_curve8(tentacle_points,NUM_TENTACLE_SEGMENTS-1,212,48,bri,false,false,true,255,255);
         //matt_curve8(tentacle_points,NUM_TENTACLE_SEGMENTS-1,96,80,160,false,false,true,255,255);
@@ -797,6 +797,55 @@ class CURVY: public LIGHT_SKETCH {
 
 
 
+void draw_triangle(POINT& a, POINT& b, POINT& c, POINT& orig, POINT norm, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255) {
+  
+  //optimization:
+  //identify clockwise/counterclockwise orientation
+  //draw in only one orientation (facing toward the camera)
+  int orientation = (b.y-a.y)*(c.x-b.x) - (c.y-b.y)*(b.x-a.x);
+  
+  if ( orientation < 0 ) {
+    draw_line_ybuffer(a, b);
+    draw_line_ybuffer(b, c);
+    draw_line_ybuffer(c, a);
+
+    long z_depth = orig.z+norm.z; 
+
+    matrix.rotate_x(norm,32);
+    matrix.rotate_y(norm,32);
+
+    int bri = 100 - orig.z/256;
+    bri = (bri*bri)/256;
+
+    bri = 255-bri;
+
+    bri = _min(_max((norm.z*bri)/256,0),220)+10;
+
+    CRGB rgb = CHSV(hue,sat,_min(_max((bri*val)/256,0),255));
+    //CRGB rgb(0,0,0);
+    //CRGB rgb2 = CHSV(hue,sat,val);
+    //nblend(rgb, rgb2, bri);
+
+    //fill between the pixels of our lines
+    for (int y = y_buffer_min; y <= y_buffer_max; y++) {
+        if (y_buffer[y][0] <= y_buffer[y][1]) {
+
+        for (int x = y_buffer[y][0]; x <= y_buffer[y][1]; x++) {
+          drawXYZ(leds, x, y, z_depth, rgb);
+        }
+
+      }
+      //clear the buffer to be used for filling the triangle
+      y_buffer[y][0] = MATRIX_WIDTH + 1;
+      y_buffer[y][1] = -1;
+    
+    }
+
+    y_buffer_max = 0;
+    y_buffer_min = MATRIX_HEIGHT-1;
+
+  }
+} //draw_triangle()
 
 
     void draw_fish(FISH& fish) {
@@ -852,6 +901,17 @@ class CURVY: public LIGHT_SKETCH {
 
       //draw the fish if it is on the screen
       if (on_screen) {
+
+        POINT norm(255,0,0);
+        matrix.rotate(norm);
+        norm.z = abs(norm.z);
+        POINT a(points[0][0],points[0][1],0);
+        POINT b(points[1][0],points[1][1],0);
+        POINT c(points[2][0],points[2][1],0);
+        POINT d(points[3][0],points[3][1],0);
+        POINT e(points[4][0],points[4][1],0);
+        POINT g(points[6][0],points[6][1],0);
+
         uint8_t detail = 255;
         //lower the level of detail when farther away
         if (detail_z > -150*256) {
@@ -859,7 +919,16 @@ class CURVY: public LIGHT_SKETCH {
         }
         int bri = detail_z/512+255;
         bri = _max(_min(bri,255),0);
-        matt_curve8(points,FISH_POINTS,fish.hue,fish.sat,bri,false,false,true,255,detail);
+
+        draw_triangle(a,b,g,a,norm,fish.hue,fish.sat,bri);
+        draw_triangle(a,g,b,a,norm,fish.hue,fish.sat,bri);
+
+        draw_triangle(b,c,e,b,norm,fish.hue,fish.sat,bri);
+        draw_triangle(b,e,c,b,norm,fish.hue,fish.sat,bri);
+
+        draw_triangle(c,d,e,c,norm,fish.hue,fish.sat,bri);
+        draw_triangle(c,e,d,c,norm,fish.hue,fish.sat,bri);
+        //matt_curve8(points,FISH_POINTS,fish.hue,fish.sat,bri,false,false,true,255,detail);
       }
             // //fish debug, lines between fish and target
             // long v0[3] = {fish.x,fish.y,fish.z};
