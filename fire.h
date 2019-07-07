@@ -6,8 +6,8 @@
 #define FIRE_GRID_WIDTH (MATRIX_WIDTH/2)
 #define FIRE_GRID_HEIGHT (MATRIX_HEIGHT)
 
-#define FIRE_GRID_MIN -60000
-#define FIRE_GRID_MAX 60000
+#define FIRE_GRID_MIN -120000
+#define FIRE_GRID_MAX 120000
 
 class FIRE2: public LIGHT_SKETCH {
     public:
@@ -34,16 +34,30 @@ class FIRE2: public LIGHT_SKETCH {
 
 
 
-    typedef cint18 pixel_data;
+    typedef int32_t pixel_data;
     class pixel {
       public:
-        pixel_data smoke = 0;
-        pixel_data fuel = 0;
-        pixel_data air = 0; //10000 = base density
-        pixel_data vx = 0; //10000 = max velocity? (all particles move out)
-        pixel_data vy = 0;
+        union {
+          struct {
+            union {
+                pixel_data smoke;
+            };
+            union {
+                pixel_data fuel;
+            };
+            union {
+                pixel_data air;
+            };
+            union {
+                pixel_data vx;
+            };
+            union {
+                pixel_data vy;
+            };
+          };
+          pixel_data raw_data[5];
+        };
 
-      public:
         int32_t get_smoke() {
           return smoke;
         }
@@ -60,22 +74,23 @@ class FIRE2: public LIGHT_SKETCH {
           return vy;
         }
 
-        void set_smoke(int32_t val) {
+        void set_smoke(const int32_t& val) {
           smoke = val;
         }
-        void set_fuel(int32_t val) {
+        void set_fuel(const int32_t& val) {
           fuel = val;
         }
-        void set_air(int32_t val) {
+        void set_air(const int32_t& val) {
           air = val;
         }
-        void set_vx(int32_t val) {
+        void set_vx(const int32_t& val) {
           vx = val;
         }
-        void set_vy(int32_t val) {
+        void set_vy(const int32_t& val) {
           vy = val;
         }
 
+        pixel() {}
 
     };
 
@@ -112,9 +127,9 @@ class FIRE2: public LIGHT_SKETCH {
     };
 
     //pixel * grid[FIRE_GRID_WIDTH];
-    pixel grid[FIRE_GRID_WIDTH][FIRE_GRID_HEIGHT];
-    #define GRID_BUFFER_SIZE 3
-    pixel_temp grid_temp[FIRE_GRID_WIDTH][GRID_BUFFER_SIZE]; //buffer for calculations
+    pixel grid[FIRE_GRID_HEIGHT][FIRE_GRID_WIDTH];
+    #define GRID_BUFFER_SIZE 4
+    pixel_temp grid_temp[GRID_BUFFER_SIZE][FIRE_GRID_WIDTH]; //buffer for calculations
 
 
     uint8_t order[4] = {0,1,2,3};
@@ -277,20 +292,20 @@ class FIRE2: public LIGHT_SKETCH {
       }
 
       //initialize our grid
-      for (int x = 0; x < FIRE_GRID_WIDTH; x++) {
+      for (int y = 0; y < FIRE_GRID_HEIGHT; y++) {
+        for (int x = 0; x < FIRE_GRID_WIDTH; x++) {
         //grid_temp[x] = (pixel *) malloc (FIRE_GRID_HEIGHT * sizeof(pixel));
-        for (int y = 0; y < FIRE_GRID_HEIGHT; y++) {
-          grid[x][y].set_smoke(0);
-          grid[x][y].set_fuel(0);
-          grid[x][y].set_air(10000); //10000 = base density
-          grid[x][y].set_vx(0); //10000 = max velocity? (all particles move out)
-          grid[x][y].set_vy(0);
+          grid[y][x].set_smoke(0);
+          grid[y][x].set_fuel(0);
+          grid[y][x].set_air(10000); //10000 = base density
+          grid[y][x].set_vx(0); //10000 = max velocity? (all particles move out)
+          grid[y][x].set_vy(0);
         }
       }
 
-      for (int x = 0; x < FIRE_GRID_WIDTH; x++) {
+      for (int y = 0; y < GRID_BUFFER_SIZE; y++) {
+        for (int x = 0; x < FIRE_GRID_WIDTH; x++) {
         //grid_temp[x] = (pixel *) malloc (FIRE_GRID_HEIGHT * sizeof(pixel));
-        for (int y = 0; y < 3; y++) {
           clear_buffer(x, y);
         }
       }
@@ -306,32 +321,48 @@ class FIRE2: public LIGHT_SKETCH {
     private:
     
     void fill_buffer(int x, int y) {
-      pixel * cell = &grid[x][y];
-      pixel_temp * buffer_cell = &grid_temp[x][y%GRID_BUFFER_SIZE];
+      pixel * cell = &grid[y][x];
+      pixel_temp * buffer_cell = &grid_temp[y%GRID_BUFFER_SIZE][x];
       if (y >= 0 && y < FIRE_GRID_HEIGHT) {
-        buffer_cell->air = cell->get_air();
-        buffer_cell->fuel = cell->get_fuel();
-        buffer_cell->smoke = cell->get_smoke();
-        buffer_cell->vx = cell->get_vx();
-        buffer_cell->vy = cell->get_vy();
+        memcpy ( &buffer_cell->smoke, &cell->smoke, 20 );
+
+        // buffer_cell->air = cell->get_air();
+        // buffer_cell->fuel = cell->get_fuel();
+        // buffer_cell->smoke = cell->get_smoke();
+        // buffer_cell->vx = cell->get_vx();
+        // buffer_cell->vy = cell->get_vy();
+
+        // buffer_cell->air = cell->air;
+        // buffer_cell->fuel = cell->fuel;
+        // buffer_cell->smoke = cell->smoke;
+        // buffer_cell->vx = cell->vx;
+        // buffer_cell->vy = cell->vy;
       }
     }
 
 
     void copy_buffer(int x, int y) {
-      pixel * cell = &grid[x][y];
-      pixel_temp * buffer_cell = &grid_temp[x][y%GRID_BUFFER_SIZE];
+      pixel * cell = &grid[y][x];
+      pixel_temp * buffer_cell = &grid_temp[y%GRID_BUFFER_SIZE][x];
       if (y >= 0 && y < FIRE_GRID_HEIGHT) {
-        cell->set_air(buffer_cell->air);
-        cell->set_fuel(buffer_cell->fuel);
-        cell->set_smoke(buffer_cell->smoke);
-        cell->set_vx(buffer_cell->vx);
-        cell->set_vy(buffer_cell->vy);
+        memcpy ( &cell->smoke, &buffer_cell->smoke, 20 );
+
+        // cell->set_air(buffer_cell->air);
+        // cell->set_fuel(buffer_cell->fuel);
+        // cell->set_smoke(buffer_cell->smoke);
+        // cell->set_vx(buffer_cell->vx);
+        // cell->set_vy(buffer_cell->vy);
+        
+        // cell->air=buffer_cell->air;
+        // cell->fuel=buffer_cell->fuel;
+        // cell->smoke=buffer_cell->smoke;
+        // cell->vx=buffer_cell->vx;
+        // cell->vy=buffer_cell->vy;
       }
     }
 
     void clear_buffer(int x, int y) {
-      grid_temp[x][y%GRID_BUFFER_SIZE].clear();
+      grid_temp[y%GRID_BUFFER_SIZE][x].clear();
     }
 
 
@@ -363,35 +394,35 @@ class FIRE2: public LIGHT_SKETCH {
         // for (int y = 0; y < FIRE_GRID_WIDTH; y++) {
         //   for (int x = 0; x < FIRE_GRID_WIDTH; x++) {
             
-        //     if (grid[x][y].air > max_air) {
-        //       max_air = grid[x][y].air;
+        //     if (grid[y][x].air > max_air) {
+        //       max_air = grid[y][x].air;
         //     }
-        //     if (grid[x][y].fuel > max_fuel) {
-        //       max_fuel = grid[x][y].fuel;
+        //     if (grid[y][x].fuel > max_fuel) {
+        //       max_fuel = grid[y][x].fuel;
         //     }
-        //     if (grid[x][y].smoke > max_smoke) {
-        //       max_smoke = grid[x][y].smoke;
+        //     if (grid[y][x].smoke > max_smoke) {
+        //       max_smoke = grid[y][x].smoke;
         //     }
-        //     if (grid[x][y].vx > max_vx) {
-        //       max_vx = grid[x][y].vx;
+        //     if (grid[y][x].vx > max_vx) {
+        //       max_vx = grid[y][x].vx;
         //     }
-        //     if (grid[x][y].vy > max_vy) {
-        //       max_vy = grid[x][y].vy;
+        //     if (grid[y][x].vy > max_vy) {
+        //       max_vy = grid[y][x].vy;
         //     }
-        //     if (grid[x][y].air < min_air) {
-        //       min_air = grid[x][y].air;
+        //     if (grid[y][x].air < min_air) {
+        //       min_air = grid[y][x].air;
         //     }
-        //     if (grid[x][y].fuel < min_fuel) {
-        //       min_fuel = grid[x][y].fuel;
+        //     if (grid[y][x].fuel < min_fuel) {
+        //       min_fuel = grid[y][x].fuel;
         //     }
-        //     if (grid[x][y].smoke < min_smoke) {
-        //       min_smoke = grid[x][y].smoke;
+        //     if (grid[y][x].smoke < min_smoke) {
+        //       min_smoke = grid[y][x].smoke;
         //     }
-        //     if (grid[x][y].vx < min_vx) {
-        //       min_vx = grid[x][y].vx;
+        //     if (grid[y][x].vx < min_vx) {
+        //       min_vx = grid[y][x].vx;
         //     }
-        //     if (grid[x][y].vy < min_vy) {
-        //       min_vy = grid[x][y].vy;
+        //     if (grid[y][x].vy < min_vy) {
+        //       min_vy = grid[y][x].vy;
         //     }
         //   }
         // }
@@ -439,9 +470,9 @@ class FIRE2: public LIGHT_SKETCH {
                 gas[i].vy *= .99f;
                 gas[i].x += gas[i].vx;
                 //gas[i].vx *= .99f;
-                grid[gas[i].x/10000][gas[i].y/10000].vy = gas[i].vy;
-                grid[gas[i].x/10000][gas[i].y/10000].fuel = _min(grid[gas[i].x/10000][gas[i].y/10000].fuel + gas[i].fuel*_max(_min(gas[i].vy,1600)-300,0), FIRE_GRID_MAX);
-                grid[gas[i].x/10000][gas[i].y/10000].air = _min(grid[gas[i].x/10000][gas[i].y/10000].air + gas[i].air*_max(_min(gas[i].vy,1600)-150,0), FIRE_GRID_MAX);
+                grid[gas[i].y/10000][gas[i].x/10000].vy = gas[i].vy;
+                grid[gas[i].y/10000][gas[i].x/10000].fuel = _min(grid[gas[i].y/10000][gas[i].x/10000].fuel + gas[i].fuel*_max(_min(gas[i].vy,1600)-300,0), FIRE_GRID_MAX);
+                grid[gas[i].y/10000][gas[i].x/10000].air = _min(grid[gas[i].y/10000][gas[i].x/10000].air + gas[i].air*_max(_min(gas[i].vy,1600)-150,0), FIRE_GRID_MAX);
               }
               if (gas[i].y > FIRE_GRID_HEIGHT*10000L || gas[i].vy == 0) {
                 gas[i].y = -1;
@@ -503,6 +534,7 @@ class FIRE2: public LIGHT_SKETCH {
         }
 
         
+     uint32_t debug_time2 = micros();
 
         //CALCULATE GRID
         //burn fuel, move particles
@@ -514,11 +546,10 @@ class FIRE2: public LIGHT_SKETCH {
         bool r1 = r0;
         //running the calculation multiple times can raise the maximum velocity of effects, but is less smooth/more jumpy
         while ( grid_cnt < grid_calcs ) {
-          grid_cnt++;
-
-          
 
           process_grid_effects(grid_cnt);
+
+          grid_cnt++;
 
           //CALCULATE VELOCITIES
           int velocity_count = 0;
@@ -532,19 +563,24 @@ class FIRE2: public LIGHT_SKETCH {
               for (int y = -1; y < FIRE_GRID_HEIGHT+GRID_BUFFER_SIZE; y++) {
                 
                 for (int x = 0; x < FIRE_GRID_WIDTH; x++) {  
+
+                  if (y < FIRE_GRID_HEIGHT) {
+                    if (y >= GRID_BUFFER_SIZE-1) {
+                      copy_buffer(x,y-(GRID_BUFFER_SIZE-1));
+                      //memcpy ( &grid[(y-(GRID_BUFFER_SIZE-1))][x], &grid_temp[(y-(GRID_BUFFER_SIZE-1))%GRID_BUFFER_SIZE][x], 20 );
+                    }
+                    clear_buffer(x,y+1);
+                    fill_buffer(x,y+1);
+                  }
+
+                }
+
+                for (int x = 0; x < FIRE_GRID_WIDTH; x++) {
                   if (y > GRID_BUFFER_SIZE-2) {
-                    resolve_velocity(x,y-(GRID_BUFFER_SIZE-1));
+                    resolve_velocity(x,y-(GRID_BUFFER_SIZE-2));
                   }
 
-                  if (y < 0) {
-                    clear_buffer(x,y+1);
-                    fill_buffer(x,y+1);
-                  }
-
-                  else if (y < FIRE_GRID_HEIGHT) {
-                    copy_buffer(x,y-(GRID_BUFFER_SIZE-1));
-                    clear_buffer(x,y+1);
-                    fill_buffer(x,y+1);
+                  if (y < FIRE_GRID_HEIGHT) {
                     calculate_velocity(x,y);
                   }
 
@@ -555,21 +591,28 @@ class FIRE2: public LIGHT_SKETCH {
               //calculate in reverse starting at FIRE_GRID_HEIGHT, FIRE_GRID_WIDTH
               for (int y = FIRE_GRID_HEIGHT; y >= 0-(GRID_BUFFER_SIZE-1); y--) {
                 
+                
                 for (int x = FIRE_GRID_WIDTH-1; x >= 0; x--) {
-                  
-                  if (y < (FIRE_GRID_HEIGHT-1) - (GRID_BUFFER_SIZE-2)) {
-                    resolve_velocity(x,y+(GRID_BUFFER_SIZE-1));
-                  }
-
                   if (y > FIRE_GRID_HEIGHT-1) {
                     clear_buffer(x,y-1);
                     fill_buffer(x,y-1);
-                  }
-
-                  else if (y >= 0) {
+                  } else if (y >= 0) {
                     copy_buffer(x,y+(GRID_BUFFER_SIZE-1));
                     clear_buffer(x,y+(GRID_BUFFER_SIZE-1));
                     fill_buffer(x,y-1);
+                  }
+                
+                }
+
+                for (int x = FIRE_GRID_WIDTH-1; x >= 0; x--) {
+                  
+                  if (y < (FIRE_GRID_HEIGHT-1) - (GRID_BUFFER_SIZE-2)) {
+                    resolve_velocity(x,y+(GRID_BUFFER_SIZE-2));
+                  }
+
+                  
+
+                  if (y >= 0) {
                     calculate_velocity(x,y);
                   }
                 }
@@ -596,7 +639,7 @@ class FIRE2: public LIGHT_SKETCH {
                 
                 for (int x = 0; x < FIRE_GRID_WIDTH; x++) {
                   
-                  if (y > GRID_BUFFER_SIZE-2) {
+                  if (y > GRID_BUFFER_SIZE-1) {
                     resolve_density(x,y-(GRID_BUFFER_SIZE-1));
                   }
 
@@ -624,7 +667,7 @@ class FIRE2: public LIGHT_SKETCH {
                 
                 for (int x = FIRE_GRID_WIDTH-1; x >= 0; x--) {
                   
-                  if (y < (FIRE_GRID_HEIGHT-1) - (GRID_BUFFER_SIZE-2)) {
+                  if (y < (FIRE_GRID_HEIGHT-1) - (GRID_BUFFER_SIZE-1)) {
                     resolve_density(x,y+(GRID_BUFFER_SIZE-1));
                   }
 
@@ -650,6 +693,7 @@ class FIRE2: public LIGHT_SKETCH {
         }  
         //END CALCULATE GRID
         
+     debug_micros1 += micros() - debug_time2;
       }
     }//LOOP
 
@@ -665,9 +709,9 @@ class FIRE2: public LIGHT_SKETCH {
     void process_grid_effects(int grid_cnt) {
 
       //burn fuel
-      for (int x = 0; x < FIRE_GRID_WIDTH; x++) {
-        for (int y = 0; y < FIRE_GRID_HEIGHT; y++) {
-          pixel * cell = &grid[x][y];
+      for (int y = 0; y < FIRE_GRID_HEIGHT; y++) {
+        for (int x = 0; x < FIRE_GRID_WIDTH; x++) {
+          pixel * cell = &grid[y][x];
           int32_t vx = cell->vx;
           int32_t vy = cell->vy;
           int32_t air = cell->air;
@@ -675,10 +719,10 @@ class FIRE2: public LIGHT_SKETCH {
           int32_t smoke = cell->smoke;
           //add drag
           if (vx > 5 ){
-            vx *= .99f; //caused wierd lines
+            vx = (vx*99)/100; //caused wierd lines
           }
             if (vy > 5 ){
-            vy *= .99f; //caused wierd lines
+            vy = (vy*99)/100; //caused wierd lines
           }
           //smoke to air
           int32_t smoke_dissipate = smoke/20;
@@ -695,8 +739,9 @@ class FIRE2: public LIGHT_SKETCH {
               vy = _min(vy + (burned_fuel*burned_fuel)/100, 30000);
             }
             //draw flame
+
             if(draw_flame == 1 && burned_fuel > 9) {
-              drawXY(leds, x, y, _max(_min((burned_fuel*2)/6, 255), 0)/10, 255 - _max(_min(burned_fuel/2-255, 255), 32)/4, _max(_min(burned_fuel/2, 255), 0));
+              drawXY(leds, x, y, _max(_min((burned_fuel*2)/6, 255), 0)/10, 255 - _max(_min(burned_fuel/2-255, 255), 32)/4, _max(_min(burned_fuel, 255)/2, 0));
               //drawXY(leds, x*2+1, y*2, _max(_min((burned_fuel*2)/6, 255), 0)/10, 255 - _max(_min(burned_fuel/2-255, 255), 32)/4, _max(_min(burned_fuel/2, 255), 0));
               //drawXY(leds, x*2, y*2+1, _max(_min((burned_fuel*2)/6, 255), 0)/10, 255 - _max(_min(burned_fuel/2-255, 255), 32)/4, _max(_min(burned_fuel/2, 255), 0));
               //drawXY(leds, x*2+1, y*2+1, _max(_min((burned_fuel*2)/6, 255), 0)/10, 255 - _max(_min(burned_fuel/2-255, 255), 32)/4, _max(_min(burned_fuel/2, 255), 0));
@@ -785,8 +830,8 @@ class FIRE2: public LIGHT_SKETCH {
             //add fuel to the grid
             for (int i = y_start; i < y_end; i++) {
               int x = (FIRE_GRID_WIDTH-1)/2+random(0,2);
-              grid[x][i].vy += (100)*random(200);
-              grid[x][i].vx += (i)*random(200)-(i)*100;
+              grid[i][x].vy += (100)*random(200);
+              grid[i][x].vx += (i)*random(200)-(i)*100;
               
               int r = random((i+1)*00, (i+15)*100);
               r = (r*r)/((i+15)*100);
@@ -797,10 +842,10 @@ class FIRE2: public LIGHT_SKETCH {
                   r*=5;
                 }
               }
-              grid[x][i].fuel += r*2;
+              grid[i][x].fuel += r*2;
               int r2 = random(0,i*175);
               
-              grid[x][i].air += r2;
+              grid[i][x].air += r2;
             }
           }
         }
@@ -814,10 +859,10 @@ class FIRE2: public LIGHT_SKETCH {
         for (int i =45; i < 50; i++) {
           int x = (FIRE_GRID_WIDTH-1)/2+random(0,2);
           //grid[x][i-5].vy += (50-i)*random(200);
-          grid[x][i-14].vx += (i)*random(50)-(i)*25;
+          grid[i-14][x].vx += (i)*random(50)-(i)*25;
           int r = random((i+1)*200, (i+1)*400);
           r = (r*r)/((i+1)*400);
-          grid[x][i-14].fuel += r*2;
+          grid[i-14][x].fuel += r*2;
           //grid[x][i-5].air += random(0,i*75);
         }
       }
@@ -832,12 +877,12 @@ class FIRE2: public LIGHT_SKETCH {
       int ty = y2%GRID_BUFFER_SIZE;
       int y = ty;
 
-      pixel_temp* source_cell=&grid_temp[x][y];
+      pixel_temp* source_cell=&grid_temp[y][x];
 
-      pixel_temp* right_cell=&grid_temp[x+1][y];
-      pixel_temp* left_cell=&grid_temp[x-1][y];
-      pixel_temp* top_cell=&grid_temp[x][(y+1)%GRID_BUFFER_SIZE];
-      pixel_temp* bottom_cell=&grid_temp[x][(y+2)%GRID_BUFFER_SIZE];
+      pixel_temp* right_cell=&grid_temp[y][x+1];
+      pixel_temp* left_cell=&grid_temp[y][x-1];
+      pixel_temp* top_cell=&grid_temp[(y+1)%GRID_BUFFER_SIZE][x];
+      pixel_temp* bottom_cell=&grid_temp[(y+(GRID_BUFFER_SIZE-1))%GRID_BUFFER_SIZE][x];
 
       //transfer particles between cells based on velocity (10000 max velocity, all particles move)
       int32_t total = source_cell->fuel + source_cell->air + source_cell->smoke;
@@ -920,7 +965,7 @@ class FIRE2: public LIGHT_SKETCH {
 
     void resolve_velocity(int x, int y) {
 
-      pixel_temp * cell = &grid_temp[x][y%GRID_BUFFER_SIZE];
+      pixel_temp * cell = &grid_temp[y%GRID_BUFFER_SIZE][x];
 
       int32_t total_existing = cell->fuel + cell->air + cell->smoke;
       int32_t total_new = cell->add_fuel + cell->add_air + cell->add_smoke;
@@ -952,12 +997,12 @@ class FIRE2: public LIGHT_SKETCH {
     void calculate_density(int x, int y, int density_cnt) {
       int ty = y%GRID_BUFFER_SIZE;
 
-      pixel_temp* source_cell=&grid_temp[x][ty];
+      pixel_temp* source_cell=&grid_temp[ty][x];
 
-      pixel_temp* right_cell=&grid_temp[x+1][ty];
-      pixel_temp* left_cell=&grid_temp[x-1][ty];
-      pixel_temp* top_cell=&grid_temp[x][(y+1)%GRID_BUFFER_SIZE];
-      pixel_temp* bottom_cell=&grid_temp[x][(y+2)%GRID_BUFFER_SIZE];
+      pixel_temp* right_cell=&grid_temp[ty][x+1];
+      pixel_temp* left_cell=&grid_temp[ty][x-1];
+      pixel_temp* top_cell=&grid_temp[(y+1)%GRID_BUFFER_SIZE][x];
+      pixel_temp* bottom_cell=&grid_temp[(y+(GRID_BUFFER_SIZE-1))%GRID_BUFFER_SIZE][x];
       
       //total number of particles in cell
       int32_t total_particles = source_cell->fuel + source_cell->air + source_cell->smoke;
@@ -1050,7 +1095,7 @@ class FIRE2: public LIGHT_SKETCH {
 
 
     void resolve_density(int x, int y2) {
-      pixel_temp * cell = &grid_temp[x][y2%GRID_BUFFER_SIZE];
+      pixel_temp * cell = &grid_temp[y2%GRID_BUFFER_SIZE][x];
       cell->fuel = _max(cell->fuel - cell->remove_fuel,0);
       cell->remove_fuel = 0;
       cell->air = _max(cell->air - cell->remove_air,0);
