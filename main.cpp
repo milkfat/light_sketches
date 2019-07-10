@@ -89,7 +89,7 @@ void update_matrix() {
             //SDL_RenderDrawLine(renderer, x_offset+x*5, WINDOW_HEIGHT-y_offset-y*5, x_offset+x*5+2, WINDOW_HEIGHT-y_offset-y*5);
             //SDL_RenderDrawLine(renderer, x_offset+x*5, WINDOW_HEIGHT-y_offset-y*5-1, x_offset+x*5+2, WINDOW_HEIGHT-y_offset-y*5-1);
             //SDL_RenderDrawLine(renderer, x_offset+x*5, WINDOW_HEIGHT-y_offset-y*5-2, x_offset+x*5+2, WINDOW_HEIGHT-y_offset-y*5-2);
-			
+				SDL_RenderDrawPoint(renderer,x_offset+x*5+1,WINDOW_HEIGHT-y_offset-y*5-2+1);
 				SDL_Rect rect;
 				rect.x = x_offset+x*5;
 				rect.y = WINDOW_HEIGHT-y_offset-y*5-2;
@@ -163,7 +163,7 @@ int main(int argc, char **argv){
 
 	//clock stuff to set frames-per-second
 	using clock = std::chrono::steady_clock;
-	using frames = std::chrono::duration<std::int64_t, std::ratio<1, 120>>;
+	using frames = std::chrono::duration<std::int64_t, std::ratio<1, 60>>;
 	auto next_frame = std::chrono::system_clock::now() + frames{0};
 
 	auto time_now = std::chrono::high_resolution_clock::now();
@@ -191,11 +191,13 @@ int main(int argc, char **argv){
             while (!done) {
 				
 				if (millis()-1000 > debug_time && debug_micros0 > 0) {
-						debug_count++;
+						debug_count=1;
 						uint32_t debug_micros0_avg = debug_micros0/debug_count;
 						uint32_t debug_micros1_avg = debug_micros1/debug_count;
 						std::cout << (debug_micros1_avg/(debug_micros0_avg+1.f)) << " " << debug_micros1_avg << " " << debug_micros0_avg << "\n";
 						debug_time = millis();
+						debug_micros0 = 0;
+						debug_micros1 = 0;
 					}
 
 				next_frame = next_frame + frames{1};
