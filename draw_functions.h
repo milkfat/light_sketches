@@ -111,7 +111,7 @@ CRGB * temp_canvas; //object for teh drawing
 
 //CRGB debug_canvas[HEIGHTMAP_WIDTH*HEIGHTMAP_HEIGHT]; //object for teh drawing
 //int height_map[HEIGHTMAP_WIDTH][HEIGHTMAP_HEIGHT];
-int * height_map[HEIGHTMAP_WIDTH];
+int16_t * height_map[HEIGHTMAP_WIDTH];
 
 
 //uint8_t led_mask[NUM_LEDS];
@@ -262,7 +262,7 @@ int * y_buffer[MATRIX_HEIGHT]; //stores the min/max X values per Y so that we ca
 int y_buffer_max = 0;
 int y_buffer_min = MATRIX_HEIGHT-1;
 //int z_buffer[MATRIX_WIDTH][MATRIX_HEIGHT];
-int32_t * z_buffer[MATRIX_WIDTH];
+int16_t * z_buffer[MATRIX_WIDTH];
 
 void drawXY_blend(CRGB crgb_object[], int x, int y, CRGB& rgb, uint8_t brightness = 255) {
   
@@ -400,7 +400,7 @@ struct POINT {
 
   POINT () {}
 
-  POINT (int x_in, int y_in, int z_in): x(x_in), y(y_in), z(z_in) {}
+  POINT (long x_in, long y_in, long z_in): x(x_in), y(y_in), z(z_in) {}
   
   //overload -=
   POINT& operator-= (const POINT& rhs) {
@@ -409,10 +409,24 @@ struct POINT {
     this->z -= rhs.z;
     return *this;
   }
+  
+  //overload /=
+  POINT& operator/= (const int& rhs) {
+    this->x /= rhs;
+    this->y /= rhs;
+    this->z /= rhs;
+    return *this;
+  }
 
   long& operator[] (const int index)
   {
       return index == 0 ? x : index == 1 ? y : z;
+  }
+
+  void invert () {
+    x = -x;
+    y = -y;
+    z = -z;
   }
 
 };
@@ -1622,7 +1636,7 @@ void LED_black() {
   //clear the Z buffer
   for (int x = 0; x < MATRIX_WIDTH; x++) {
     for (int y = 0; y < MATRIX_HEIGHT; y++) {
-      z_buffer[x][y] = INT32_MIN;
+      z_buffer[x][y] = INT16_MIN;
       height_map[x][y] = 0;
     }
   }
@@ -2050,4 +2064,15 @@ int32_t matt_decompress8(uint8_t val) {
          }
 
 
-   } cint18;
+  } cint18;
+
+  uint8_t gamma8_e[256];
+  uint8_t gamma8_d[256];
+
+  uint8_t gamma8_encode(uint8_t& value) {
+    return gamma8_e[value];
+  }
+
+  uint8_t gamma8_decode(uint8_t& value) {
+    return gamma8_d[value];
+  }

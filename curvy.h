@@ -31,16 +31,16 @@ class CURVY: public LIGHT_SKETCH {
     long my_points[NUM_THINGS][NUM_POINTS][2];
     uint32_t loop_time = millis();
     #define FISH_POINTS 7
-    int8_t fish_points[FISH_POINTS][2] =
+    POINT fish_points[FISH_POINTS] =
     {
       //{-32,0}, //tail center
-      {-64,32}, //tail tip bottom
-      {-16,0}, //tail meets body
-      {32,-32}, //body top
-      {64,0}, //nose
-      {32,32}, //body top
-      {-16,0}, //tail meets body
-      {-64,-32}, //tail tip bottom
+      {-64,32,0}, //tail tip bottom
+      {-16,0,0}, //tail meets body
+      {32,-32,0}, //body top
+      {64,0,0}, //nose
+      {32,32,0}, //body top
+      {-16,0,0}, //tail meets body
+      {-64,-32,0}, //tail tip bottom
       //{-32,0} //tail center
     };
 
@@ -195,14 +195,20 @@ class CURVY: public LIGHT_SKETCH {
     
     void handle_jellies() {
       for (int i = 0; i < NUM_JELLIES; i++) {
-        handle_jelly(jellies[i]);
+
+        while (jellies[i].age < loop_time) {
+          jellies[i].age+=16;
+          handle_jelly(jellies[i]);
+        }
+
+        draw_jelly(jellies[i]);
       }
     }
 
     void handle_jelly(JELLY& jelly) {
 
       //calculate step size
-      int this_step = (jelly.speed * (loop_time-jelly.age))/16;
+      int this_step = jelly.speed;
       
       //update jelly step
       jelly.steps++;
@@ -225,9 +231,8 @@ class CURVY: public LIGHT_SKETCH {
       //adjust velocity for animation speed
       jelly_velocity = (jelly_velocity*jelly.speed)/4;
       //adjust velocity for framerate
-      jelly_velocity = ( jelly_velocity * (loop_time-jelly.age) ) /16;
+      jelly_velocity = jelly_velocity;
 
-      jelly.age = millis(); 
 
       //reset the jelly if it goes off the screen
       if (!jelly.on_screen && loop_time > jelly.live_until) {
@@ -287,8 +292,34 @@ class CURVY: public LIGHT_SKETCH {
 
       }//end jelly reset
 
-      jelly.on_screen = false;
 
+      //a unit vector representing the jelly's velocity
+      long v[3] = {0,256,0};
+
+      //rotate the unit vector to figure out how far the jelly should move in each direction
+      matrix.rotate_z(v,jelly.az);
+      matrix.rotate_x(v,jelly.ax);
+
+      //update the jelly's position
+      jelly.x += 2*(jelly_velocity*v[0])/256;
+      jelly.y += 2*(jelly_velocity*v[1])/256;
+      jelly.z += 2*(jelly_velocity*v[2])/256;
+
+      if (jelly.steps % 16 == 0) {
+        jelly.ay += 1;
+      }
+
+
+      handle_tentacles(jelly);
+
+    
+
+    } //handle_jelly()
+
+
+void draw_jelly(JELLY& jelly) {
+
+      jelly.on_screen = false;
       long jelly_lines[NUM_JELLY_SEGMENTS/2][5][2];
       
       long ring_points[NUM_JELLY_SEGMENTS][2];
@@ -429,7 +460,7 @@ class CURVY: public LIGHT_SKETCH {
         
       }
 
-        int bri = jelly.z/1000+200;
+        int bri = jelly.z/1000+150;
         bri = _max(_min(bri,255),0);
      for (int i = 0; i < NUM_JELLY_SEGMENTS/2; i++) {
         //draw each segment
@@ -439,29 +470,8 @@ class CURVY: public LIGHT_SKETCH {
       //draw a circle tying the jelly's segments together
       matt_curve8(ring_points,NUM_JELLY_SEGMENTS,212,80,bri,false,true,true,255,128);
       
-
-      //a unit vector representing the jelly's velocity
-      long v[3] = {0,256,0};
-
-      //rotate the unit vector to figure out how far the jelly should move in each direction
-      matrix.rotate_z(v,jelly.az);
-      matrix.rotate_x(v,jelly.ax);
-
-      //update the jelly's position
-      jelly.x += 2*(jelly_velocity*v[0])/256;
-      jelly.y += 2*(jelly_velocity*v[1])/256;
-      jelly.z += 2*(jelly_velocity*v[2])/256;
-
-      if (jelly.steps % 16 == 0) {
-        jelly.ay += 1;
-      }
-
-      handle_tentacles(jelly);
-
-    
-
-    } //handle_jelly()
-
+      draw_tentacles(jelly);
+}
 
     /*
     Calculating bending force:
@@ -649,6 +659,17 @@ class CURVY: public LIGHT_SKETCH {
             
           }
 
+        }
+      }
+    }
+    
+
+    void draw_tentacles(JELLY& jelly) {
+      tentacle_segment (*tentacles)[NUM_TENTACLE_SEGMENTS] = jelly.tentacles;
+      for (int i = 0; i < NUM_JELLY_SEGMENTS; i++) {
+        long tentacle_points[NUM_TENTACLE_SEGMENTS][2];
+        for (int j = 0; j < NUM_TENTACLE_SEGMENTS; j++) {
+
           long p[3];
           p[0] = tentacles[i][j].x;
           p[1] = tentacles[i][j].y;
@@ -677,14 +698,12 @@ class CURVY: public LIGHT_SKETCH {
         }
 
         
-        int bri = jelly.z/1000+200;
+        int bri = jelly.z/1000+150;
         bri = _max(_min(bri,255),0);
         matt_curve8(tentacle_points,NUM_TENTACLE_SEGMENTS-1,212,48,bri,false,false,true,255,255);
         //matt_curve8(tentacle_points,NUM_TENTACLE_SEGMENTS-1,96,80,160,false,false,true,255,255);
-
       }
     }
-
 
 
 
@@ -796,104 +815,123 @@ class CURVY: public LIGHT_SKETCH {
     } //update_fish()
 
 
-
-void draw_triangle(POINT& a, POINT& b, POINT& c, POINT& orig, POINT norm, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255) {
-  
-  //optimization:
-  //identify clockwise/counterclockwise orientation
-  //draw in only one orientation (facing toward the camera)
-  int orientation = (b.y-a.y)*(c.x-b.x) - (c.y-b.y)*(b.x-a.x);
-  
-  if ( orientation < 0 ) {
-    draw_line_ybuffer(a, b);
-    draw_line_ybuffer(b, c);
-    draw_line_ybuffer(c, a);
-
-    long z_depth = orig.z+norm.z; 
-
-    matrix.rotate_x(norm,32);
-    matrix.rotate_y(norm,32);
-
-    int bri = 100 - orig.z/256;
-    bri = (bri*bri)/256;
-
-    bri = 255-bri;
-
-    bri = _min(_max((norm.z*bri)/256,0),220)+10;
-
-    CRGB rgb = CHSV(hue,sat,_min(_max((bri*val)/256,0),255));
-    //CRGB rgb(0,0,0);
-    //CRGB rgb2 = CHSV(hue,sat,val);
-    //nblend(rgb, rgb2, bri);
-
-    //fill between the pixels of our lines
-    for (int y = y_buffer_min; y <= y_buffer_max; y++) {
-        if (y_buffer[y][0] <= y_buffer[y][1]) {
-
-        for (int x = y_buffer[y][0]; x <= y_buffer[y][1]; x++) {
-          drawXYZ(leds, x, y, z_depth, rgb);
+    void normal(POINT& a, POINT& b, POINT& c, POINT& norm) {
+        POINT u(b.x-a.x, b.y-a.y, b.z-a.z);
+        POINT v(c.x-a.x, c.y-a.y, c.z-a.z);
+        //std::cout << " u: " << u.x << ", " << u.y << ", " << u.z << "\n";
+        //std::cout << " v: " << v.x << ", " << v.y << ", " << v.z << "\n";
+        norm.x = u.y*v.z - u.z*v.y;
+        norm.y = u.z*v.x - u.x*v.z;
+        norm.z = u.x*v.y - u.y*v.x;
+        //std::cout << " n: " << norm.x << ", " << norm.y << ", " << norm.z << "\n";
+        norm /= 1024;
+        //std::cout << "n2: " << norm.x << ", " << norm.y << ", " << norm.z << "\n";
+        long length = sqrt(norm.x*norm.x+norm.y*norm.y+norm.z*norm.z);
+        //std::cout << " l: " << length << "\n";
+        if (length != 0) {
+          norm.x = (norm.x*255)/length;
+          norm.y = (norm.y*255)/length;
+          norm.z = (norm.z*255)/length;
+        } else {
+          norm.x = 0;
+          norm.y = 0;
+          norm.z = 0;
         }
-
-      }
-      //clear the buffer to be used for filling the triangle
-      y_buffer[y][0] = MATRIX_WIDTH + 1;
-      y_buffer[y][1] = -1;
-    
     }
 
-    y_buffer_max = 0;
-    y_buffer_min = MATRIX_HEIGHT-1;
+    void draw_triangle(POINT& a, POINT& b, POINT& c, POINT& orig, POINT norm, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255) {
+      
+      //optimization:
+      //identify clockwise/counterclockwise orientation
+      //draw in only one orientation (facing toward the camera)
+      int orientation = (b.y-a.y)*(c.x-b.x) - (c.y-b.y)*(b.x-a.x);
+      
+      if ( orientation < 0 ) {
+        draw_line_ybuffer(a, b);
+        draw_line_ybuffer(b, c);
+        draw_line_ybuffer(c, a);
 
-  }
-} //draw_triangle()
+        long z_depth = orig.z+norm.z; 
 
+        //matrix.rotate_x(norm,32);
+        //matrix.rotate_y(norm,32);
+
+        int bri = 100 - orig.z/768;
+        bri = (bri*bri)/256;
+
+        bri = 255-bri;
+
+        bri = _min(_max((norm.z*bri)/256,bri/4),220);
+
+        CRGB rgb = CHSV(hue,sat,_min(_max((bri*val)/256,0),255));
+        //CRGB rgb(0,0,0);
+        //CRGB rgb2 = CHSV(hue,sat,val);
+        //nblend(rgb, rgb2, bri);
+
+        //fill between the pixels of our lines
+        for (int y = y_buffer_min; y <= y_buffer_max; y++) {
+            if (y_buffer[y][0] <= y_buffer[y][1]) {
+
+            for (int x = y_buffer[y][0]; x <= y_buffer[y][1]; x++) {
+              drawXYZ(leds, x, y, z_depth/16, rgb);
+            }
+
+          }
+          //clear the buffer to be used for filling the triangle
+          y_buffer[y][0] = MATRIX_WIDTH + 1;
+          y_buffer[y][1] = -1;
+        
+        }
+
+        y_buffer_max = 0;
+        y_buffer_min = MATRIX_HEIGHT-1;
+
+      }
+    } //draw_triangle()
 
     void draw_fish(FISH& fish) {
 
-      long points[FISH_POINTS][2];
+      POINT points_3d[FISH_POINTS];
+      POINT points_2d[FISH_POINTS];
       int32_t detail_z = 0;
       int32_t on_screen = false;
       for (int i = 0; i < FISH_POINTS; i++) {
-        long p[3];
+        POINT* p = &points_3d[i];
 
-        //scale z
-        long z = (inoise8(fish_points[i][0]*2+fish.wiggle*8, 0, 0)-128)*16;
+        //scale z to add wiggly swimming motion
+        long z = (inoise8(fish_points[i].x*2+fish.wiggle*8, 0, 0)-128)*16;
 
         //rotate around z-axis:
         //rotate x
         uint8_t sin_az = sin8(fish.az);
         uint8_t cos_az = cos8(fish.az);
-        long x = ( fish_points[i][0]*64*( cos_az - 128 ) - fish_points[i][1]*48*( sin_az - 128 )  )/128;
+        long x = ( fish_points[i].x*64*( cos_az - 128 ) - fish_points[i].y*48*( sin_az - 128 )  )/128;
         //rotate y
-        p[1] = ( fish_points[i][0]*64*( sin_az - 128 )  + fish_points[i][1]*48*( cos_az - 128 )  )/128;
+        p->y = ( fish_points[i].x*64*( sin_az - 128 )  + fish_points[i].y*48*( cos_az - 128 )  )/128;
 
 
         //rotate around y-axis:
         //rotate x
         uint8_t sin_ay = sin8(fish.ay);
         uint8_t cos_ay = cos8(fish.ay);
-        p[0] = ( x*( cos_ay - 128 ) - z*( sin_ay - 128 )  )/128;
+        p->x = ( x*( cos_ay - 128 ) - z*( sin_ay - 128 )  )/128;
         //rotate z
-        p[2] = ( x*( sin_ay - 128 ) + z*( cos_ay - 128 )  )/128;
+        p->z = ( x*( sin_ay - 128 ) + z*( cos_ay - 128 )  )/128;
 
         //translate fish to position        
-        p[0] += fish.x;
-        p[1] += fish.y;
-        p[2] += fish.z;
-        long p0[3];
-        matrix.rotate(p, p0);
+        p->x += fish.x;
+        p->y += fish.y;
+        p->z += fish.z;
+        matrix.rotate(*p);
 
-        matrix.scale_z(p0);
+        matrix.scale_z(*p);
         
-        detail_z = p0[2];
+        detail_z = p->z;
 
-        matrix.perspective(p0);
-
-        points[i][0] = p0[0];
-        points[i][1] = p0[1];
+        matrix.perspective(*p,points_2d[i]);
 
         //check to make sure at least one point is located on the screen
-        if (!on_screen && p0[0] > 0 && p0[0] < MATRIX_WIDTH*256 && p0[1] > 0 && p0[1] < MATRIX_HEIGHT*256) {
+        if (!on_screen && points_2d[i].x > 0 && points_2d[i].x < MATRIX_WIDTH*256 && points_2d[i].y > 0 && points_2d[i].y < MATRIX_HEIGHT*256) {
           on_screen = true;
         }
 
@@ -902,32 +940,37 @@ void draw_triangle(POINT& a, POINT& b, POINT& c, POINT& orig, POINT norm, uint8_
       //draw the fish if it is on the screen
       if (on_screen) {
 
-        POINT norm(255,0,0);
-        matrix.rotate(norm);
-        norm.z = abs(norm.z);
-        POINT a(points[0][0],points[0][1],0);
-        POINT b(points[1][0],points[1][1],0);
-        POINT c(points[2][0],points[2][1],0);
-        POINT d(points[3][0],points[3][1],0);
-        POINT e(points[4][0],points[4][1],0);
-        POINT g(points[6][0],points[6][1],0);
+        uint8_t a = 0;
+        uint8_t b = 1;
+        uint8_t c = 2;
+        uint8_t d = 3;
+        uint8_t e = 4;
+        uint8_t g = 6;
 
         uint8_t detail = 255;
         //lower the level of detail when farther away
         if (detail_z > -150*256) {
           detail = 128;
         }
-        int bri = detail_z/512+255;
-        bri = _max(_min(bri,255),0);
+        // int bri = detail_z/512+255;
+        // bri = _max(_min(bri,255),0);
+        int bri = 200;
 
-        draw_triangle(a,b,g,a,norm,fish.hue,fish.sat,bri);
-        draw_triangle(a,g,b,a,norm,fish.hue,fish.sat,bri);
+        POINT norm;
+        normal(points_3d[a],points_3d[b],points_3d[g],norm);
+        draw_triangle(points_2d[a],points_2d[b],points_2d[g],points_2d[a],norm,fish.hue,fish.sat,bri);
+        norm.invert();
+        draw_triangle(points_2d[a],points_2d[g],points_2d[b],points_2d[a],norm,fish.hue,fish.sat,bri);
 
-        draw_triangle(b,c,e,b,norm,fish.hue,fish.sat,bri);
-        draw_triangle(b,e,c,b,norm,fish.hue,fish.sat,bri);
+        normal(points_3d[b],points_3d[c],points_3d[e],norm);
+        draw_triangle(points_2d[b],points_2d[c],points_2d[e],points_2d[b],norm,fish.hue,fish.sat,bri);
+        norm.invert();
+        draw_triangle(points_2d[b],points_2d[e],points_2d[c],points_2d[b],norm,fish.hue,fish.sat,bri);
 
-        draw_triangle(c,d,e,c,norm,fish.hue,fish.sat,bri);
-        draw_triangle(c,e,d,c,norm,fish.hue,fish.sat,bri);
+        normal(points_3d[c],points_3d[d],points_3d[e],norm);
+        draw_triangle(points_2d[c],points_2d[d],points_2d[e],points_2d[c],norm,fish.hue,fish.sat,bri);
+        norm.invert();
+        draw_triangle(points_2d[c],points_2d[e],points_2d[d],points_2d[c],norm,fish.hue,fish.sat,bri);
         //matt_curve8(points,FISH_POINTS,fish.hue,fish.sat,bri,false,false,true,255,detail);
       }
             // //fish debug, lines between fish and target

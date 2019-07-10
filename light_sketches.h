@@ -57,42 +57,184 @@ class LIGHT_SKETCHES {
     //(if necessary)
     void salloc() {
       if(need_to_allocate) {
+        for (int i = 0; i < 256; i++) {
+          gamma8_e[i] = 255.f * pow(i/255.f,1.f/2.2f);
+          gamma8_d[i] = 255.f * pow(i/255.f,2.2f);
+        }
+
+        int leds_size = sizeof(CRGB) * (NUM_LEDS +1);
+        int canvas_size = sizeof(CRGB) * (NUM_LEDS +1);
+        int heightmap_size = sizeof(int16_t) * (HEIGHTMAP_WIDTH*HEIGHTMAP_HEIGHT);
+        int mask_size = sizeof(uint8_t) * (NUM_LEDS);
+        int ybuffer_size = sizeof(int) * 2 * (MATRIX_HEIGHT);
+        int zbuffer_size = sizeof(int16_t[MATRIX_HEIGHT]) * (MATRIX_WIDTH);
+        #ifdef __INC_FASTSPI_LED2_H 
+        Serial.print(largest_sketch);
+        Serial.println(" bytes required for largest sketch");
+        Serial.print(leds_size);
+        Serial.println(" bytes required for main CRGB object");
+        Serial.print(canvas_size);
+        Serial.println(" bytes required for temporary canvas");
+        Serial.print(heightmap_size);
+        Serial.println(" bytes required for height map");
+        Serial.print(mask_size);
+        Serial.println(" bytes required for led mask");
+        Serial.print(mask_size);
+        Serial.println(" bytes required for led mask2");
+        Serial.print(ybuffer_size);
+        Serial.println(" bytes required for Y buffer");
+        Serial.print(zbuffer_size);
+        Serial.println(" bytes required for Z buffer");
+        Serial.println();
+        Serial.print(largest_sketch+leds_size+canvas_size+heightmap_size+mask_size+ybuffer_size+zbuffer_size);
+        Serial.println(" bytes required total");
+        Serial.printf("\r\nHeap Memory Available: %d bytes total, %d bytes largest free block: \r\n\r\n", heap_caps_get_free_size(0), heap_caps_get_largest_free_block(0));
+        #else
+        std::cout << largest_sketch << " bytes required for largest sketch\n";
+        std::cout << leds_size << " bytes required for main CRGB object\n";
+        std::cout << canvas_size << " bytes required for temporary canvas\n";
+        std::cout << heightmap_size << " bytes required for height map\n";
+        std::cout << mask_size << " bytes required for led mask\n";
+        std::cout << mask_size << " bytes required for led mask2\n";
+        std::cout << ybuffer_size << " bytes required for Y buffer\n";
+        std::cout << zbuffer_size << " bytes required for Z buffer\n\n";
+        std::cout << largest_sketch+leds_size+canvas_size+heightmap_size+mask_size+ybuffer_size+zbuffer_size << " bytes required total\n\n";
+        #endif
+
         buffer = new char[largest_sketch];
+
+        #ifdef __INC_FASTSPI_LED2_H 
+        Serial.println("*sketch buffer allocated");
+        Serial.printf("Heap Memory Available: %d bytes total, %d bytes largest free block: \r\n\r\n", heap_caps_get_free_size(0), heap_caps_get_largest_free_block(0));
+        #else
+        std::cout << "*sketch buffer allocated\n";
+        #endif
+
         //buffer = (char*)ps_malloc(largest_sketch);
+        
+
+
+
+
+        
+
         leds = new CRGB[NUM_LEDS+1];
+        //leds = (CRGB*)ps_malloc(sizeof(CRGB)*(NUM_LEDS+1));
+
         for (int i = 0; i < NUM_LEDS; i++) {
           leds[i] = CRGB::Black;
         }
-        //leds = (CRGB*)ps_malloc(sizeof(CRGB)*(NUM_LEDS+1));
+
+        #ifdef __INC_FASTSPI_LED2_H 
+        Serial.println("*CRGB object allocated");
+        Serial.printf("Heap Memory Available: %d bytes total, %d bytes largest free block: \r\n\r\n", heap_caps_get_free_size(0), heap_caps_get_largest_free_block(0));
+        #else
+        std::cout << "*CRGB object allocated\n";
+        #endif
+
+
+
+
+
         temp_canvas = new CRGB[NUM_LEDS+1];
+        //temp_canvas = (CRGB*)ps_malloc(sizeof(CRGB)*(NUM_LEDS+1));
+
         for (int i = 0; i < NUM_LEDS; i++) {
           temp_canvas[i] = CRGB::Black;
         }
-        //temp_canvas = (CRGB*)ps_malloc(sizeof(CRGB)*(NUM_LEDS+1));
+
+        #ifdef __INC_FASTSPI_LED2_H 
+        Serial.println("*temp canvas allocated");
+        Serial.printf("Heap Memory Available: %d bytes total, %d bytes largest free block: \r\n\r\n", heap_caps_get_free_size(0), heap_caps_get_largest_free_block(0));
+        #else
+        std::cout << "*temp canvas allocated\n";
+        #endif
+
+
+
+
+
+
+
         for (int i = 0; i < HEIGHTMAP_WIDTH; i++) {
-          height_map[i] = new int[HEIGHTMAP_HEIGHT];
+          height_map[i] = new int16_t[HEIGHTMAP_HEIGHT];
           for (int j = 0; j < HEIGHTMAP_WIDTH; j++) {
             height_map[i][j] = 0;
           }
         }
+
+        #ifdef __INC_FASTSPI_LED2_H 
+        Serial.println("*height map allocated");
+        Serial.printf("Heap Memory Available: %d bytes total, %d bytes largest free block: \r\n\r\n", heap_caps_get_free_size(0), heap_caps_get_largest_free_block(0));
+        #else
+        std::cout << "*height map allocated\n";
+        #endif
+
+
+
+
+
+
+
         led_mask = new uint8_t[NUM_LEDS];
+
+        #ifdef __INC_FASTSPI_LED2_H 
+        Serial.println("*led mask allocated");
+        Serial.printf("Heap Memory Available: %d bytes total, %d bytes largest free block: \r\n\r\n", heap_caps_get_free_size(0), heap_caps_get_largest_free_block(0));
+        #else
+        std::cout << "*led mask allocated\n";
+        #endif
+
+
+
+
+
+
         led_mask2 = new uint8_t[NUM_LEDS];
+
+        #ifdef __INC_FASTSPI_LED2_H 
+        Serial.println("*led mask2 allocated");
+        Serial.printf("Heap Memory Available: %d bytes total, %d bytes largest free block: \r\n\r\n", heap_caps_get_free_size(0), heap_caps_get_largest_free_block(0));
+        #else
+        std::cout << "*led mask2 allocated\n";
+        #endif
+
+
+
         for (int i = 0; i < MATRIX_HEIGHT; i++) {
           y_buffer[i] = new int[2]; //stores the min/max X values per Y so that we can fill between them
           y_buffer[i][0] = MATRIX_WIDTH + 1;
           y_buffer[i][1] = -1;
         }
+
+
+        #ifdef __INC_FASTSPI_LED2_H 
+        Serial.println("*Y buffer allocated");
+        Serial.printf("Heap Memory Available: %d bytes total, %d bytes largest free block: \r\n\r\n", heap_caps_get_free_size(0), heap_caps_get_largest_free_block(0));
+        #else
+        std::cout << "*Y buffer allocated\n";
+        #endif
+
+
+
         for (int i = 0; i < MATRIX_WIDTH; i++) {
-          z_buffer[i] = new int[MATRIX_HEIGHT];
+          z_buffer[i] = new int16_t[MATRIX_HEIGHT];
         }
+
+
+        #ifdef __INC_FASTSPI_LED2_H 
+        Serial.println("*Z buffer allocated");
+        Serial.printf("Heap Memory Available: %d bytes total, %d bytes largest free block: \r\n\r\n", heap_caps_get_free_size(0), heap_caps_get_largest_free_block(0));
+        #else
+        std::cout << "*Z buffer allocated\n";
+        #endif
+
+
+
+
+
         light_sketches[current_light_sketch]->create();
         need_to_allocate = false;
-        #ifdef __INC_FASTSPI_LED2_H 
-        Serial.print(largest_sketch);
-        Serial.println(" bytes allocated for largest sketch");
-        #else
-        std::cout << largest_sketch << " bytes allocated\n";
-        #endif
       }
     }
 

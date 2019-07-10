@@ -103,6 +103,10 @@ class MATRIX {
             temp.z = in.z;
             rotate(temp.x, temp.y, temp.z, in.x, in.y, in.z);
         }
+        
+        void rotate (POINT& in, POINT& out) {
+            rotate(in.x, in.y, in.z, out.x, out.y, out.z);
+        }
             
 
 
@@ -145,6 +149,11 @@ class MATRIX {
 
         bool perspective(POINT& p) {
             return perspective(p.x, p.y, p.z);
+        }
+
+        bool perspective(POINT& p, POINT& p2) {
+            p2 = p;
+            return perspective(p2.x, p2.y, p2.z);
         }
 
         //find the 3D coordinate of a pixel on the screen
