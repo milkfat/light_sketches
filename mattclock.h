@@ -211,7 +211,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
     //update a digit
     //figure out which segments will move and merge with the old segments
-    void update_digit(uint8_t dig, uint8_t number) {
+    void update_digit(const uint8_t& dig, const uint8_t& number) {
       digit * d = &digits[dig];
       
 
@@ -291,7 +291,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
       }
     }
 
-    void draw_3d(int x0, int y0, int z0, int x1, int y1, int z1, uint8_t hue = 0, uint8_t sat = 255, uint8_t val = 255) {
+    void draw_3d(const int& x0, const int& y0, const int& z0, const int& x1, const int& y1, const int& z1, const uint8_t& hue = 0, const uint8_t& sat = 255, const uint8_t& val = 255) {
 
       long p[3];
       
@@ -324,7 +324,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
 
     //draw a segment
-    void draw_s(uint8_t i, int d = 0, uint8_t part = 0) {
+    void draw_s(const uint8_t& i, int d = 0, const uint8_t& part = 0) {
       
       uint8_t draw_part = 0;
 
@@ -422,7 +422,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
   
     //draw an interpolated segment between two segments based on a delta
-    void draw_si(uint8_t a, uint8_t b, int d) {
+    void draw_si(const uint8_t& a, const uint8_t& b, const int& d) {
 
       uint8_t bump = sin8(d-64);
 
@@ -478,7 +478,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
       cposx += (SEGMENT_LENGTH+SEGMENT_SPACING*3)*cx;
     }
 
-    void animate_digit(digit &d, int td) {
+    void animate_digit(digit &d, const int& td) {
       int tracker[7][7] = {0};
         for (uint8_t i = 0; i < 7; i++) {
           if (numbers[d.number_from][i] == 1 && numbers[d.number_to][i] == 1) {
@@ -541,7 +541,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
 
     //draw digits (and colons) on the screen
-    void draw_digit(char dig) {
+    void draw_digit(const char& dig) {
       uint8_t val = 255;
 
       switch (dig)

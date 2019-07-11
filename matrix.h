@@ -171,56 +171,56 @@ class MATRIX {
             return true;
         }
 
-        void rotate_x(long& x, long& y, long& z, int8_t s, int8_t c) {
+        void rotate_x(long& x, long& y, long& z, int8_t& s, int8_t& c) {
             long temp = ( y*c - z*s ) / 128;
             z = ( y*s + z*c ) / 128;
             y = temp;
         }
 
-        void rotate_x(long p[3], uint8_t ang) {
+        void rotate_x(long p[3], const uint8_t& ang) {
             int8_t s = sin8(ang)-128;
             int8_t c = cos8(ang)-128;
             rotate_x(p[0], p[1], p[2], s, c);
         }
 
-        void rotate_x(POINT& p, uint8_t ang) {
+        void rotate_x(POINT& p, const uint8_t& ang) {
             int8_t s = sin8(ang)-128;
             int8_t c = cos8(ang)-128;
             rotate_x(p.x, p.y, p.z, s, c);
         }
 
 
-        void rotate_y(long& x, long& y, long& z, int8_t s, int8_t c) {
+        void rotate_y(long& x, long& y, long& z, int8_t& s, int8_t& c) {
             long temp = ( x*c - z*s ) / 128;
             z = ( x*s + z*c ) / 128;
             x = temp;
         }
 
-        void rotate_y(long p[3], uint8_t ang) {
+        void rotate_y(long p[3], const uint8_t& ang) {
             int8_t s = sin8(ang)-128;
             int8_t c = cos8(ang)-128;
             rotate_y(p[0], p[1], p[2], s, c);
         }
 
-        void rotate_y(POINT& p, uint8_t ang) {
+        void rotate_y(POINT& p, const uint8_t& ang) {
             int8_t s = sin8(ang)-128;
             int8_t c = cos8(ang)-128;
             rotate_y(p.x, p.y, p.z, s, c);
         }
 
-        void rotate_z(long& x, long& y, long& z, int8_t s, int8_t c) {
+        void rotate_z(long& x, long& y, long& z, int8_t& s, int8_t& c) {
             long temp = ( x*c - y*s ) / 128;
             y = ( x*s + y*c ) / 128;
             x = temp;
         }
 
-        void rotate_z(long p[3], uint8_t ang) {
+        void rotate_z(long p[3], const uint8_t& ang) {
             int8_t s = sin8(ang)-128;
             int8_t c = cos8(ang)-128;
             rotate_z(p[0], p[1], p[2], s, c);
         }
 
-        void rotate_z(POINT& p, uint8_t ang) {
+        void rotate_z(POINT& p, const uint8_t& ang) {
             int8_t s = sin8(ang)-128;
             int8_t c = cos8(ang)-128;
             rotate_z(p.x, p.y, p.z, s, c);

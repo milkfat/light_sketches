@@ -127,7 +127,7 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
     }
 
     //check for collisions with walls
-    void check_wall_collisions(int i) {
+    void check_wall_collisions(const int& i) {
       //check for collisions with walls
 
       if (balls[i].y + balls[i].r > (MATRIX_HEIGHT-1) * 256.f) {
@@ -161,7 +161,7 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
     }
 
     //check for collisions with balls
-    void check_ball_collisions(int i, int j) {
+    void check_ball_collisions(const int& i, const int& j) {
       //if ( abs(balls[i].x_led - balls[j].x_led) < 3 && abs(balls[i].y_led - balls[j].y_led) < 3 ) {
 
       float dx = balls[j].x - balls[i].x;
@@ -186,7 +186,7 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
     }
 
 
-    void wall_collide (int i, float d, int x, int y) {
+    void wall_collide (const int& i, const float& d, const int& x, const int& y) {
       float i_angle = atan2((balls[i].x+x) - balls[i].x, (balls[i].y+y) - balls[i].y);
 
       //convert angle to 0-1

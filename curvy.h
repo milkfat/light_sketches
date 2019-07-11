@@ -558,9 +558,9 @@ void draw_jelly(JELLY& jelly) {
                 b->vz += dz/2;
               }
 
-              dx *= -1;
-              dy *= -1;
-              dz *= -1;
+              dx = -dx;
+              dy = -dy;
+              dz = -dz;
 
               if (j > 2) {
                 a->x += dx;
@@ -865,7 +865,7 @@ void draw_jelly(JELLY& jelly) {
       draw_line_fine(leds, a, b, rgb, z_depth);
       draw_line_fine(leds, b, c, rgb, z_depth);
       draw_line_fine(leds, c, a, rgb, z_depth);
-      rgb = CHSV(hue,0,_min(_max((bri*val)/256,0),255));
+      rgb = CHSV(hue,sat,_min(_max((bri*val)/256,0),255));
       //CRGB rgb(0,0,0);
       //CRGB rgb2 = CHSV(hue,sat,val);
       //nblend(rgb, rgb2, bri);

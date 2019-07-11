@@ -233,7 +233,7 @@ class TEST3D: public LIGHT_SKETCH {
     }
 
     //burst into colors!
-    void spawn_firework_burst(int16_t start_x, int16_t start_y, int16_t start_z, int16_t start_vx, int16_t start_vy, int16_t start_vz) {
+    void spawn_firework_burst(const int16_t& start_x, const int16_t& start_y, const int16_t& start_z, const int16_t& start_vx, const int16_t& start_vy, const int16_t& start_vz) {
       
      
       //adjust the minimum/maximum size of the burst based on the height of the shell
@@ -719,7 +719,7 @@ class TEST3D: public LIGHT_SKETCH {
     #define GRID_SIZE 20
     CHSV grid_hsv[GRID_SIZE*2+1][GRID_SIZE*2+1];
 
-    void grid_hsv_v(int x, int y, long &var, int &cnt) {
+    void grid_hsv_v(const int& x, const int& y, long& var, int& cnt) {
       if (x >= 0 && x < GRID_SIZE*2+1 && y >= 0 && y < GRID_SIZE*2+1) {
         var += grid_hsv[x][y].v;
         cnt++;
@@ -1293,7 +1293,7 @@ void handle_spiral() {
 
 } //handle_spiral();
 
-void draw_quad(POINT& a, POINT& b, POINT& c, POINT& d, POINT& orig, POINT& norm, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255) {
+void draw_quad(POINT& a, POINT& b, POINT& c, POINT& d, const POINT& orig, POINT& norm, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255) {
   
   //optimization:
   //identify clockwise/counterclockwise orientation
@@ -1345,7 +1345,7 @@ void draw_quad(POINT& a, POINT& b, POINT& c, POINT& d, POINT& orig, POINT& norm,
 } //draw_quad()
 
 
-void draw_cube(POINT p, long width, long height, long depth) {
+void draw_cube(const POINT& p, const long& width, const long& height, const long& depth) {
 
   POINT norm_right(255,0,0);
   POINT norm_left(-255,0,0);
@@ -1386,18 +1386,19 @@ void draw_cube(POINT p, long width, long height, long depth) {
 
   }
 
-  matrix.rotate(p);
+  POINT newp = p;
+  matrix.rotate(newp);
 
-  draw_quad(points[0],points[4],points[5],points[1],p,norm_right,212,0,255);  //right
-  draw_quad(points[2],points[6],points[7],points[3],p,norm_left,0,0,255); //left
-
-
-  draw_quad(points[0],points[1],points[2],points[3],p,norm_top,0,0,255);  //top
-  draw_quad(points[7],points[6],points[5],points[4],p,norm_bottom,48,0,255); //bottom
+  draw_quad(points[0],points[4],points[5],points[1],newp,norm_right,212,0,255);  //right
+  draw_quad(points[2],points[6],points[7],points[3],newp,norm_left,0,0,255); //left
 
 
-  draw_quad(points[0],points[3],points[7],points[4],p,norm_front,96,255,255);  //front
-  draw_quad(points[1],points[5],points[6],points[2],p,norm_back,160,255,255); //back
+  draw_quad(points[0],points[1],points[2],points[3],newp,norm_top,0,0,255);  //top
+  draw_quad(points[7],points[6],points[5],points[4],newp,norm_bottom,48,0,255); //bottom
+
+
+  draw_quad(points[0],points[3],points[7],points[4],newp,norm_front,96,255,255);  //front
+  draw_quad(points[1],points[5],points[6],points[2],newp,norm_back,160,255,255); //back
   
 
 } //draw_cube()

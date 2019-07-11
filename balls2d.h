@@ -75,7 +75,7 @@ class BALLS2D: public LIGHT_SKETCH {
     int max_buffer_position = -1;
     int collision_buffer_position = 0;
 
-    void add_to_buffer(int ii, int ij, float idt, char iflag, float id = 0) {
+    void add_to_buffer(const int& ii, const int& ij, const float& idt, const char& iflag, const float& id = 0) {
 
       //find the first available buffer position
       for (int i = 0; i < (NUM_BALLS * COLLISION_BUFFER_SIZE); i++) {
@@ -156,7 +156,7 @@ class BALLS2D: public LIGHT_SKETCH {
     }
 
     //check for collisions with walls
-    void check_wall_collisions(int i) {
+    void check_wall_collisions(const int& i) {
       //check for collisions with walls
 
       if (balls[i].y + balls[i].r > (MATRIX_HEIGHT - 1.f) * 256.f) {
@@ -187,7 +187,7 @@ class BALLS2D: public LIGHT_SKETCH {
     }
 
     //check for collisions with balls
-    void check_ball_collisions(int i, int j) {
+    void check_ball_collisions(const int& i, const int& j) {
       //if ( abs(balls[i].x_led - balls[j].x_led) < 3 && abs(balls[i].y_led - balls[j].y_led) < 3 ) {
 
       float dx = balls[j].x - balls[i].x;

@@ -22,18 +22,18 @@ class PHOSPHENE: public LIGHT_SKETCH {
     uint16_t delta[SIZE_Y][SIZE_X];
 
 
-    void setVal(uint32_t x, uint32_t y, float val) {
+    void setVal(const uint32_t& x, const uint32_t& y, const float& val) {
         float old = getVal(x,y);
         pixels[y][x] = FC.compress(val);
         delta[y][x] = FC.compress(val-old);
     }
 
-    float getVal(uint32_t x,uint32_t y) {
+    float getVal(const uint32_t& x,const uint32_t& y) {
         return FC.decompress(pixels[y][x]);
     }
 
 
-    float getDel(uint32_t x, uint32_t y) {
+    float getDel(const uint32_t& x, const uint32_t& y) {
         return FC.decompress(delta[y][x]);
     }
 
@@ -41,7 +41,7 @@ class PHOSPHENE: public LIGHT_SKETCH {
     #define ADVANCE 0.1f
 
     
-    void processPix(uint32_t x, uint32_t y) {
+    void processPix(const uint32_t& x, const uint32_t& y) {
         // get block values
         float vals = 0;
         float vals_cnt = 0;
