@@ -99,6 +99,7 @@ class METABALLS: public LIGHT_SKETCH {
         frame_time = millis();
         LED_show();
         LED_black();
+        reset_heightmap();
 
         
         int max_touch = -1;

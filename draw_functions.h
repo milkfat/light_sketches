@@ -137,23 +137,23 @@ int growing = 0;
 
 #define PI 355/113.f
 
-int PI_m (int num) {
+int PI_m (const int num) {
     return (num*355)/113;
 };
 
-float PI_m (float num) {
+float PI_m (const float& num) {
     return (num*355)/113;
 };
 
-int PI_d (int num) {
+int PI_d (const int& num) {
     return (num*113)/355;
 };
 
-float PI_d (float num) {
+float PI_d (const float& num) {
     return (num*113)/355;
 };
 
-uint8_t ease8In (uint8_t stp) {
+uint8_t ease8In (const uint8_t& stp) {
   //ease in
   return stp*stp/255.f;
 }
@@ -181,7 +181,7 @@ long cursor_position_x = 0;
 long cursor_position_y = 0;
 
 //CIE 1931 luminescence scale (or some shit)
-uint8_t cie (uint8_t a) {
+uint8_t cie (const uint8_t& a) {
   float y = (a*100.f)/255.f;
   if(y <= 8) {
     return y/903.3f;
@@ -196,7 +196,7 @@ uint8_t cie (uint8_t a) {
 POINTER pointers[NUM_POINTERS];
 
 
-int adjust (int p) {
+int adjust (const int& p) {
     int po = p;
     
     //adjust for the ceiling beams in my home
@@ -217,7 +217,7 @@ int adjust (int p) {
 
 //return LED position from X,Y coordinates
 //return NUM_LEDS-1 (our safety "invisible" pixel) if coordinates are off-screen
-__attribute__ ((always_inline)) uint32_t XY(int x, int y) {
+__attribute__ ((always_inline)) uint32_t XY(const int& x, const int& y) {
     if (x >= 0 && x < MATRIX_WIDTH && y >= 0 && y < MATRIX_HEIGHT) {
       int32_t location = y*MATRIX_WIDTH + x;
       if (location > NUM_LEDS-1 || location < 0) {
@@ -230,28 +230,26 @@ __attribute__ ((always_inline)) uint32_t XY(int x, int y) {
     }
 }
 
-void drawXY_fine(CRGB crgb_object[], long xpos, long ypos, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255) {
-  int x = xpos / 256;
-  int y = ypos / 256;
+void drawXY_fine(CRGB crgb_object[], const long& xpos, const long& ypos, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255) {
 
-  crgb_object[XY(x,y)] += CHSV(hue,sat,val);
+  crgb_object[XY(xpos/256,ypos/256)] += CHSV(hue,sat,val);
+
 }
 
 
-void drawXY(CRGB crgb_object[], int x, int y, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = default_value) {
+void drawXY(CRGB crgb_object[], const int& x, const int& y, const uint8_t& hue, const uint8_t& sat, const uint8_t& val) {
   
   crgb_object[XY(x,y)] += CHSV(hue,sat,val);
   
 }
 
-void drawXY_fineRGB(CRGB crgb_object[], long xpos, long ypos, uint8_t r, uint8_t g, uint8_t b) {
-  int x = xpos / 256;
-  int y = ypos / 256;
+void drawXY_fineRGB(CRGB crgb_object[], const long& xpos, const long& ypos, const uint8_t& r, const uint8_t& g, const uint8_t& b) {
 
-  crgb_object[XY(x,y)] += CRGB(r,g,b);
+  crgb_object[XY(xpos / 256,ypos / 256)] += CRGB(r,g,b);
+
 }
 
-void drawXY_RGB(CRGB crgb_object[], int x, int y, uint8_t r, uint8_t g, uint8_t b) {
+void drawXY_RGB(CRGB crgb_object[], const int& x, const int& y, const uint8_t& r, const uint8_t& g, const uint8_t& b) {
   
   crgb_object[XY(x,y)] += CRGB(r,g,b);
   
@@ -264,13 +262,13 @@ int y_buffer_min = MATRIX_HEIGHT-1;
 //int z_buffer[MATRIX_WIDTH][MATRIX_HEIGHT];
 int16_t * z_buffer[MATRIX_WIDTH];
 
-void drawXY_blend(CRGB crgb_object[], int x, int y, CRGB& rgb, uint8_t brightness = 255) {
+void drawXY_blend(CRGB crgb_object[], const int& x, const int& y, CRGB& rgb, const uint8_t& brightness = 255) {
   
   nblend(crgb_object[XY(x,y)], rgb, brightness);
 
 }
 
-void drawXY_blend(CRGB crgb_object[], int x, int y, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255, uint8_t brightness = 255) {
+void drawXY_blend(CRGB crgb_object[], const int& x, const int& y, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const uint8_t& brightness = 255) {
   
   CRGB rgb;
   rgb = CHSV(hue,sat,val);
@@ -278,7 +276,7 @@ void drawXY_blend(CRGB crgb_object[], int x, int y, uint8_t hue = default_color,
 
 }
 
-void drawXYZ(CRGB crgb_object[], int32_t x, int32_t y, int32_t z, CRGB& rgb) {
+void drawXYZ(CRGB crgb_object[], const int32_t& x, const int32_t& y, const int32_t& z, CRGB& rgb) {
   
   if (y >= 0 && y < MATRIX_HEIGHT) {
 
@@ -296,7 +294,7 @@ void drawXYZ(CRGB crgb_object[], int32_t x, int32_t y, int32_t z, CRGB& rgb) {
 
 }
 
-void drawXYZ(CRGB crgb_object[], int x, int y, int z, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255) {
+void drawXYZ(CRGB crgb_object[], const int& x, const int& y, const int& z, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255) {
   
   if (y >= 0 && y < MATRIX_HEIGHT) {
     y_buffer[y][0] = _min(y_buffer[y][0], x);
@@ -318,20 +316,20 @@ void drawXYZ(CRGB crgb_object[], int x, int y, int z, uint8_t hue = default_colo
 }
 
 
-void drawXYZ2(CRGB crgb_object[], int x, int y, int z, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255, uint8_t brightness = 255) {
+void drawXYZ2(CRGB crgb_object[], const int& x, const int& y, const int& z, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const uint8_t& brightness = 255) {
   
   drawXY_blend(crgb_object, x, y, hue, sat, val, brightness);
 
 }
 
-void drawXYZ2(CRGB crgb_object[], int x, int y, int z, CRGB& rgb, uint8_t brightness = 255) {
+void drawXYZ2(CRGB crgb_object[], const int& x, const int& y, const int& z, CRGB& rgb, const uint8_t& brightness = 255) {
   
   drawXY_blend(crgb_object, x, y, rgb, brightness);
 
 }
 
 
-void blendXY(CRGB crgb_object[], long xpos, long ypos, CRGB& rgb) {
+void blendXY(CRGB crgb_object[], const long& xpos, const long& ypos, CRGB& rgb) {
   
   //find the base x and y positions
   //add 2 pixels before division to avoid rounding errors at 0 (between -1 and 0)
@@ -387,7 +385,7 @@ void blendXY(CRGB crgb_object[], long xpos, long ypos, CRGB& rgb) {
 
 
 
-void blendXY(CRGB crgb_object[], long xpos, long ypos, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255) {
+void blendXY(CRGB crgb_object[], const long& xpos, const long& ypos, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255) {
   CRGB rgb;
   hsv2rgb_rainbow(CHSV(hue,sat,val),rgb);
   blendXY(crgb_object, xpos, ypos, rgb);
@@ -400,7 +398,7 @@ struct POINT {
 
   POINT () {}
 
-  POINT (long x_in, long y_in, long z_in): x(x_in), y(y_in), z(z_in) {}
+  POINT (const long& x_in, const long& y_in, const long& z_in): x(x_in), y(y_in), z(z_in) {}
   
   //overload -=
   POINT& operator-= (const POINT& rhs) {
@@ -418,7 +416,7 @@ struct POINT {
     return *this;
   }
 
-  long& operator[] (const int index)
+  long& operator[] (const int& index)
   {
       return index == 0 ? x : index == 1 ? y : z;
   }
@@ -431,7 +429,7 @@ struct POINT {
 
 };
 
-void blendXY(CRGB crgb_object[], POINT point, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255) {
+void blendXY(CRGB crgb_object[], const POINT& point, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255) {
   CRGB rgb;
   hsv2rgb_rainbow(CHSV(hue,sat,val),rgb);
   blendXY(crgb_object, point.x, point.y, rgb);
@@ -446,7 +444,7 @@ struct alpha_pixel {
     uint16_t cnt = 0;
 };
 
-void blendXY_RGBA(alpha_pixel ap[], long xpos, long ypos, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+void blendXY_RGBA(alpha_pixel ap[], const long& xpos, const long& ypos, const uint8_t& r, const uint8_t& g, const uint8_t& b, const uint8_t& a) {
   
   //find the base x and y positions
   //add 2 pixels before division to avoid rounding errors at 0 (between -1 and 0)
@@ -509,7 +507,7 @@ void blendXY_RGBA(alpha_pixel ap[], long xpos, long ypos, uint8_t r, uint8_t g, 
 }
 
 //https://stackoverflow.com/questions/1903954/is-there-a-standard-sign-function-signum-sgn-in-c-c
-template <typename T> int sgn(T val) {
+template <typename T> int sgn(const T& val) {
     return (T(0) < val) - (val < T(0));
 }
 
@@ -523,7 +521,7 @@ void swap_coords(long& x1, long& y1, long& x2, long& y2, long& dist) {
   dist = -dist;
 }
 
-void draw_line_ybuffer(long& x1i, long& y1i, long& x2i, long& y2i) {
+void draw_line_ybuffer(const long& x1i, const long& y1i, const long& x2i, const long& y2i) {
   long x1 = (x1i+128)/256;
   long y1 = (y1i+128)/256;
   long x2 = (x2i+128)/256;
@@ -585,7 +583,7 @@ void draw_line_ybuffer(POINT& a, POINT& b) {
   draw_line_ybuffer(a.x, a.y, b.x, b.y);
 }
 
-void draw_line_ybuffer2(long x1, long y1, long x2, long y2) {
+void draw_line_ybuffer2(long x1, long y1, const long& x2, const long& y2) {
   long x_dist = x2-x1;
   long y_dist = y2-y1;
   long ax_dist = abs(x_dist);
@@ -641,7 +639,7 @@ void draw_line_ybuffer2(long x1, long y1, long x2, long y2) {
 
 }
 
-void draw_line_fine2(CRGB crgb_object[], long x1, long y1, long x2, long y2, CRGB& rgb, uint8_t val = 255) {
+void draw_line_fine2(CRGB crgb_object[], long x1, long y1, long x2, long y2, CRGB& rgb, const uint8_t& val = 255) {
   x1+=65536;
   y1+=65536;
   x2+=65536;
@@ -699,7 +697,7 @@ void draw_line_fine2(CRGB crgb_object[], long x1, long y1, long x2, long y2, CRG
 
 }
 
-void draw_line_fine2(CRGB crgb_object[], long x1, long y1, long x2, long y2, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255) {
+void draw_line_fine2(CRGB crgb_object[], const long& x1, const long& y1, const long& x2, const long& y2, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255) {
   CRGB rgb = CHSV(hue,sat,255);
   draw_line_fine2(crgb_object, x1, y1, x2, y2, rgb, val);
 }
@@ -710,7 +708,7 @@ void draw_line_fine2(CRGB crgb_object[], long x1, long y1, long x2, long y2, uin
 //DRAW LINE FINE
 
 
-void draw_line_fine(CRGB crgb_object[], long x1, long y1, long x2, long y2, CRGB& rgb, int z_depth = -10000, uint8_t val = 255, uint8_t val2 = 255, bool trim = false) {
+void draw_line_fine(CRGB crgb_object[], long x1, long y1, long x2, long y2, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false) {
   
   //avoid vertical and horizontal lines by fudging a bit
   if (x1 == x2 ) {
@@ -876,17 +874,20 @@ void draw_line_fine(CRGB crgb_object[], long x1, long y1, long x2, long y2, CRGB
 
 } //draw_line_fine()
 
-void draw_line_fine(CRGB crgb_object[], long x1, long y1, long x2, long y2, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255, int z_depth = -10000, uint8_t val2 = 255, bool trim = false) {
+void draw_line_fine(CRGB crgb_object[], const long& x1, const long& y1, const long& x2, const long& y2, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const int& z_depth = -10000, const uint8_t& val2 = 255, const bool& trim = false) {
   CRGB rgb = CHSV(hue,sat,255);
   draw_line_fine(crgb_object, x1, y1, x2, y2, rgb, z_depth, val, val2, trim);
 }
 
+void draw_line_fine(CRGB crgb_object[], const POINT& a, const POINT& b, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false) {
+  draw_line_fine(crgb_object, a.x, a.y, b.x, b.y, rgb, z_depth, val, val2, trim);
+}
 
 //DRAW CURVE
 
 //draw a curve by simultaneously shortening and rotating the line segment vectors
 
-void matt_curve(long coordinate_array[][2], size_t len, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255, bool flipXY = false, bool closedShape = false, bool extraSmooth = false) {
+void matt_curve(long coordinate_array[][2], const size_t& len, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const bool& flipXY = false, const bool& closedShape = false, const bool& extraSmooth = false) {
 
   //a variable to store the angle for segment 2 from the previous pass (which will become segment 1 of the current pass)
   //we must blend the curves together to make one smooth continuous curve
@@ -1189,7 +1190,7 @@ void matt_curve(long coordinate_array[][2], size_t len, uint8_t hue = default_co
 
 //draw a curve by simultaneously shortening and rotating the line segment vectors
 
-void matt_curve8(CRGB crgb_object[], long coordinate_array[][2], size_t len, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255, bool flipXY = false, bool closedShape = false, bool extraSmooth = false, uint8_t percentage = 255, uint8_t step_size = 32) {
+void matt_curve8(CRGB crgb_object[], long coordinate_array[][2], const size_t& len, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const bool& flipXY = false, const bool& closedShape = false, const bool& extraSmooth = false, const uint8_t& percentage = 255, const uint8_t& step_size = 32) {
   CRGB rgb = CHSV(hue, sat, val);
   //draw simple lines for step size of 255
   if (step_size == 255) {
@@ -1474,7 +1475,7 @@ void matt_curve8(CRGB crgb_object[], long coordinate_array[][2], size_t len, uin
 } //matt_curve8_base
 
 
-void matt_curve8(long coordinate_array[][2], size_t len, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255, bool flipXY = false, bool closedShape = false, bool extraSmooth = false, uint8_t percentage = 255, uint8_t step_size = 32) {
+void matt_curve8(long coordinate_array[][2], const size_t& len, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const bool& flipXY = false, const bool& closedShape = false, const bool& extraSmooth = false, const uint8_t& percentage = 255, const uint8_t& step_size = 32) {
 
   matt_curve8(leds, coordinate_array, len, hue, sat, val, flipXY, closedShape, extraSmooth, percentage, step_size);
 
@@ -1494,7 +1495,7 @@ void reset_circle_angles() {
   }
 }
 
-void draw_circle_fine(long x, long y, long r, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255, int ballnum = -1, uint8_t step_size = 16) {
+void draw_circle_fine(const long& x, const long& y, const long& r, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const int& ballnum = -1, const uint8_t& step_size = 16) {
   
   if(step_size == 255) {
     blendXY(leds, x, y, hue, sat, val);
@@ -1526,7 +1527,7 @@ void draw_circle_fine(long x, long y, long r, uint8_t hue = default_color, uint8
 
 
 
-void height_map_to_LED(int threshold = -128*256, int light_x = 100, int light_y = 100, int spec_x = 15, int spec_y = 15) {
+void height_map_to_LED(const int& threshold = -128*256, const int& light_x = 100, const int& light_y = 100, const int& spec_x = 15, const int& spec_y = 15) {
   //write our computed values to the screen
   for (int x = 0; x < MATRIX_WIDTH; x++) {
     for (int y = 0; y < MATRIX_HEIGHT; y++) {
@@ -1637,6 +1638,15 @@ void LED_black() {
   for (int x = 0; x < MATRIX_WIDTH; x++) {
     for (int y = 0; y < MATRIX_HEIGHT; y++) {
       z_buffer[x][y] = INT16_MIN;
+    }
+  }
+
+}
+
+void reset_heightmap() {
+
+  for (int x = 0; x < MATRIX_WIDTH; x++) {
+    for (int y = 0; y < MATRIX_HEIGHT; y++) {
       height_map[x][y] = 0;
     }
   }
@@ -1999,67 +2009,41 @@ int32_t matt_decompress8(uint8_t val) {
         }
 
         #define CINT18_MULT 4
+        
         //conversion to int
         operator int() {
             return val*CINT18_MULT;
         }
 
-
         //conversion from int
-        cint18(int n) {
+        cint18(const int& n) {
             val = n/CINT18_MULT;
         }
 
         //conversion from float
-        cint18(float n) {
+        cint18(const float& n) {
             val = n/CINT18_MULT;
         }
 
-
-        //  //overload +=
-        //  void operator+= (int rhs) {
-        //     val = val + rhs/CINT18_MULT;
-        //  }
-
-
-        //  //overload -=
-        //  void operator-= (int rhs) {
-        //     val = val - rhs/CINT18_MULT;
-        //  }
-
-
-        //  //overload *=
-        //  void operator*= (int rhs) {
-        //     val = val * rhs;
-        //  }
-
-
-        //  //overload /=
-        //  void operator/= (int rhs) {
-        //     val = val / rhs;
-        //  }
-
-
          //overload +=
-         void operator+= (float rhs) {
+         void operator+= (const int& rhs) {
             val = val + rhs/CINT18_MULT;
          }
 
-
          //overload -=
-         void operator-= (float rhs) {
+         void operator-= (const int& rhs) {
             val = val - rhs/CINT18_MULT;
          }
 
 
          //overload *=
-         void operator*= (float rhs) {
+         void operator*= (const int& rhs) {
             val = val * rhs;
          }
 
 
          //overload /=
-         void operator/= (float rhs) {
+         void operator/= (const int& rhs) {
             val = val / rhs;
          }
 
@@ -2069,10 +2053,10 @@ int32_t matt_decompress8(uint8_t val) {
   uint8_t gamma8_e[256];
   uint8_t gamma8_d[256];
 
-  uint8_t gamma8_encode(uint8_t& value) {
+  uint8_t gamma8_encode(const uint8_t& value) {
     return gamma8_e[value];
   }
 
-  uint8_t gamma8_decode(uint8_t& value) {
+  uint8_t gamma8_decode(const uint8_t& value) {
     return gamma8_d[value];
   }

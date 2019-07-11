@@ -155,10 +155,10 @@ class LIGHT_SKETCHES {
 
 
 
-
+        int16_t* height_map_pool = new int16_t[HEIGHTMAP_WIDTH*HEIGHTMAP_HEIGHT];
         for (int i = 0; i < HEIGHTMAP_WIDTH; i++) {
-          height_map[i] = new int16_t[HEIGHTMAP_HEIGHT];
-          for (int j = 0; j < HEIGHTMAP_WIDTH; j++) {
+          height_map[i] = &height_map_pool[i*HEIGHTMAP_HEIGHT];
+          for (int j = 0; j < HEIGHTMAP_HEIGHT; j++) {
             height_map[i][j] = 0;
           }
         }

@@ -3,11 +3,13 @@
 //this class uses malloc for the grid, because it gets HUGE with large displays
 //128x32 uses ~213KB
 //should probaby optimize that somehow
-#define FIRE_GRID_WIDTH (MATRIX_WIDTH)
+#define FIRE_GRID_WIDTH (MATRIX_WIDTH/2)
 #define FIRE_GRID_HEIGHT (MATRIX_HEIGHT)
 
-#define FIRE_GRID_MIN -120000
-#define FIRE_GRID_MAX 120000
+#define FIRE_GRID_VELOCITY_MIN -120000
+#define FIRE_GRID_VELOCITY_MAX 120000
+#define FIRE_GRID_MIN INT16_MIN
+#define FIRE_GRID_MAX INT16_MAX
 
 class FIRE2: public LIGHT_SKETCH {
     public:
@@ -15,9 +17,7 @@ class FIRE2: public LIGHT_SKETCH {
       ~FIRE2 () {}
 
     private:
-    uint16_t order[FIRE_GRID_HEIGHT*FIRE_GRID_WIDTH];
-    uint16_t yorder[FIRE_GRID_HEIGHT];
-    uint16_t xorder[FIRE_GRID_WIDTH];
+    uint16_t* order;
     uint8_t current_variation = 1;
     uint8_t grid_calcs = 1;
     uint8_t velocity_calcs = 1;
@@ -32,38 +32,35 @@ class FIRE2: public LIGHT_SKETCH {
 
     bool flame_on = false;
 
-
-
-    typedef int32_t pixel_data;
     struct pixel {
-        pixel_data smoke;
-        pixel_data fuel;
-        pixel_data air;
-        pixel_data vx;
-        pixel_data vy;
+        int16_t smoke;
+        int16_t fuel;
+        int16_t air;
+        cint18 vx;
+        cint18 vy;
     };
 
     pixel grid[FIRE_GRID_HEIGHT][FIRE_GRID_WIDTH];
 
-    void velocity_transfer(pixel &source_cell, pixel &target_cell, int32_t &moved_fuel, int32_t &moved_air, int32_t &moved_smoke, int32_t &moved_total, bool debug = false ) { 
+    void velocity_transfer(pixel& source_cell, pixel& target_cell, int32_t& moved_fuel, int32_t& moved_air, int32_t& moved_smoke, int32_t& moved_total, const bool& debug = false ) { 
       int32_t existing_total = target_cell.fuel + target_cell.air + target_cell.smoke;
       if (moved_total + existing_total == 0) {
-        existing_total++; //avoid divide by zero
+        return; //avoid divide by zero
       }
       int32_t total = moved_total + existing_total;
-      if (debug) {
-        std::cout << "VB tvy: " << target_cell.vy
-          << " tvx: " << target_cell.vx
-          << " tf: " << target_cell.fuel
-          << " ta: " << target_cell.air
-          << " ts: " << target_cell.smoke
-          << " ms: " << moved_smoke
-          << " mf: " << moved_fuel
-          << " ma: " << moved_air
-          << " mt: " << moved_total
-          << " et: " << existing_total
-          << "\n";
-      }
+      // if (debug) {
+      //   std::cout << "VB tvy: " << target_cell.vy
+      //     << " tvx: " << target_cell.vx
+      //     << " tf: " << target_cell.fuel
+      //     << " ta: " << target_cell.air
+      //     << " ts: " << target_cell.smoke
+      //     << " ms: " << moved_smoke
+      //     << " mf: " << moved_fuel
+      //     << " ma: " << moved_air
+      //     << " mt: " << moved_total
+      //     << " et: " << existing_total
+      //     << "\n";
+      // }
       target_cell.smoke += moved_smoke;
       target_cell.fuel += moved_fuel;
       target_cell.air += moved_air;
@@ -71,17 +68,17 @@ class FIRE2: public LIGHT_SKETCH {
       target_cell.vy = ((source_cell.vy * moved_total) + (target_cell.vy * existing_total))/total;
       //source_cell.vx *= .998f;
       //source_cell.vy *= .998f;
-      if (debug) {
-        std::cout << "VA tvy: " << target_cell.vy
-          << " tvx: " << target_cell.vx
-          << " tf: " << target_cell.fuel
-          << " ta: " << target_cell.air
-          << " ts: " << target_cell.smoke
-          << "\n";
-      }
+      // if (debug) {
+      //   std::cout << "VA tvy: " << target_cell.vy
+      //     << " tvx: " << target_cell.vx
+      //     << " tf: " << target_cell.fuel
+      //     << " ta: " << target_cell.air
+      //     << " ts: " << target_cell.smoke
+      //     << "\n";
+      // }
     }
 
-    void pull_particles(pixel &source_cell, pixel &target_cell, int32_t &pressure, int x_dir, int y_dir) {
+    void pull_particles(pixel& source_cell, pixel& target_cell, int32_t& pressure, const int& x_dir, const int& y_dir) {
 
       //find the total of the target cell
       int32_t target_cell_total = target_cell.fuel + target_cell.air + target_cell.smoke;
@@ -111,14 +108,14 @@ class FIRE2: public LIGHT_SKETCH {
           source_cell.vy = ((source_cell.vy * existing_total) + (target_cell.vy * moved_total))/total;
 
           //add a bit of velocity to the target cell (sucking effect?)
-          target_cell.vx += (moved_total * x_dir);
-          target_cell.vy += (moved_total * y_dir);
+          target_cell.vx += moved_total * x_dir;
+          target_cell.vy += moved_total * y_dir;
         }
         
       }
     }
 
-    void pull_air(pixel &source_cell, int32_t pressure) {
+    void pull_air(pixel& source_cell, const int32_t& pressure) {
       //pull air from off the grid
       int32_t existing_total = source_cell.fuel + source_cell.air + source_cell.smoke;
       int32_t total = pressure + existing_total;
@@ -208,12 +205,13 @@ class FIRE2: public LIGHT_SKETCH {
     }
 
     void setup() {
-      for (int i = 0; i < FIRE_GRID_HEIGHT; i++) {
-        yorder[i] = i;
-      }
-      for (int i = 0; i < FIRE_GRID_WIDTH; i++) {
-        xorder[i] = i;
-      }
+      // for (int i = 0; i < FIRE_GRID_HEIGHT; i++) {
+      //   yorder[i] = i;
+      // }
+      // for (int i = 0; i < FIRE_GRID_WIDTH; i++) {
+      //   xorder[i] = i;
+      // }
+      order = reinterpret_cast<uint16_t*>(height_map[0]);
       for (int i = 0; i < FIRE_GRID_WIDTH*FIRE_GRID_HEIGHT; i++) {
         order[i] = i;
       }
@@ -322,12 +320,12 @@ class FIRE2: public LIGHT_SKETCH {
         //display and blackout
 
         LED_show();
-        LED_black();
-        // for (int i = 0; i < NUM_LEDS; i++) {
-        //   leds[i].r *= .5;
-        //   leds[i].g *= .5;
-        //   leds[i].b *= .5;
-        // }
+        //LED_black();
+        for (int i = 0; i < NUM_LEDS; i++) {
+          leds[i].r >>= 2;
+          leds[i].g >>= 2;
+          leds[i].b >>= 2;
+        }
 
         static unsigned long gas_time = millis();
         static uint8_t gas_pos = 0;
@@ -426,7 +424,7 @@ class FIRE2: public LIGHT_SKETCH {
 
         
 
-     uint32_t debug_time2 = micros();
+     //uint32_t debug_time2 = micros();
         //CALCULATE GRID
         //burn fuel, move particles
         static uint8_t loop_cnt = 0;
@@ -449,8 +447,11 @@ class FIRE2: public LIGHT_SKETCH {
             shuffle_order();
 
             for (int i = 0; i < FIRE_GRID_WIDTH*FIRE_GRID_HEIGHT; i++) {
-              int y = order[i] / FIRE_GRID_WIDTH;
-              int x = order[i] % FIRE_GRID_WIDTH;
+
+              uint16_t y = order[i] / FIRE_GRID_WIDTH;
+              uint16_t x = order[i] % FIRE_GRID_WIDTH;
+              //uint16_t y = order[i] >> 4;
+              //uint16_t x = order[i] & 0b0000000000001111;
 
             // for (int y = 0; y < FIRE_GRID_HEIGHT; y++) {
             //   for (int x = 0; x < FIRE_GRID_WIDTH; x++) {
@@ -471,27 +472,27 @@ class FIRE2: public LIGHT_SKETCH {
           }  
         //END CALCULATE GRID
         
-     debug_micros1 += micros() - debug_time2;
+     //debug_micros1 += micros() - debug_time2;
       }
     }//LOOP
 
-  void shuffle_yorder() {
-    for (int i = 0; i < FIRE_GRID_HEIGHT; i++) {
-      uint8_t rand = random(FIRE_GRID_HEIGHT);
-      uint8_t temp = yorder[i];
-      yorder[i] = yorder[rand];
-      yorder[rand] = temp;
-    }
-  }
+  // void shuffle_yorder() {
+  //   for (int i = 0; i < FIRE_GRID_HEIGHT; i++) {
+  //     uint8_t rand = random(FIRE_GRID_HEIGHT);
+  //     uint8_t temp = yorder[i];
+  //     yorder[i] = yorder[rand];
+  //     yorder[rand] = temp;
+  //   }
+  // }
 
-  void shuffle_xorder() {
-    for (int j = 0; j < FIRE_GRID_WIDTH; j++) {
-      uint8_t rand = random(FIRE_GRID_WIDTH);
-      uint8_t temp = xorder[j];
-      xorder[j] = xorder[rand];
-      xorder[rand] = temp;
-    }
-  }
+  // void shuffle_xorder() {
+  //   for (int j = 0; j < FIRE_GRID_WIDTH; j++) {
+  //     uint8_t rand = random(FIRE_GRID_WIDTH);
+  //     uint8_t temp = xorder[j];
+  //     xorder[j] = xorder[rand];
+  //     xorder[rand] = temp;
+  //   }
+  // }
   void shuffle_order() {
     for (int j = 0; j < FIRE_GRID_WIDTH*FIRE_GRID_HEIGHT; j++) {
       uint16_t rand = random(FIRE_GRID_WIDTH*FIRE_GRID_HEIGHT);
@@ -507,7 +508,7 @@ class FIRE2: public LIGHT_SKETCH {
 
 
 
-    void process_grid_effects(int grid_cnt) {
+    void process_grid_effects(const int& grid_cnt) {
 
       //burn fuel
       for (int y = 0; y < FIRE_GRID_HEIGHT; y++) {
@@ -520,10 +521,13 @@ class FIRE2: public LIGHT_SKETCH {
           int32_t smoke = cell->smoke;
           //add drag
           //smoke to air
-          int32_t smoke_dissipate = smoke/20;
-          smoke -= smoke_dissipate;
-          air += smoke_dissipate;
-          
+
+          if (smoke > 19) {
+            int32_t smoke_dissipate = smoke/20;
+            smoke -= smoke_dissipate;
+            air += smoke_dissipate;
+          }
+
           //burn fuel
           if (fuel > 0 && air > 0) {
             int32_t burned_fuel = _min(fuel/4, air);
@@ -550,7 +554,7 @@ class FIRE2: public LIGHT_SKETCH {
 
 
             if(draw_fuel == 1 && fuel != 0) {
-              int fuel2 = 0;
+              uint16_t fuel2 = 0;
               int low_x = _max(x-2, 0);
               int high_x = _min(x+2, FIRE_GRID_WIDTH);
               int low_y = _max(y-2, 0);
@@ -559,22 +563,23 @@ class FIRE2: public LIGHT_SKETCH {
               for (int y2 = low_y; y2 < high_y; y2++) {
                 for (int x2 = low_x; x2 < high_x; x2++) {
                   if (grid[y2][x2].fuel > 0) {
-                    int dist = 1;
-                    dist += abs(x - x2) + abs(y - y2);
+                    int dist = 1 + abs(x - x2) + abs(y - y2);
                     fuel2+=grid[y2][x2].fuel/dist;
                     cnt++;
                   }
                 }
               }
-              fuel2 /= 2;
-              fuel2 -= 500;
-              fuel2 /= 15;
-              int h = _max(_min(fuel2, 255), 0)/20;
-              int s = 255 - _max(_min(fuel2-255, 255), 32)/4;
-              int v = _max(_min(fuel2, 255), 0);
-
-              drawXY(leds, x, y, h, s, v); 
               
+              fuel2 = ((_max(fuel2, 1000) >> 1) - 500) >> 4;
+
+              if (fuel2 > 0) {
+                uint8_t h = _max(_min(fuel2, 200), 0) >> 4;
+                uint8_t s = 255 - (_max(_min(fuel2-255, 255), 32) >> 2);
+                uint8_t v = _max(_min(fuel2, 255), 0);
+
+                drawXY(leds, x, y, h, s, v); 
+              }
+                
               //drawXY(leds, x*2+1, y*2, _max(_min((cell->fuel-500)/15, 255), 0)/20, 255 - _max(_min((cell->fuel-500)/15-255, 255), 32)/4, _max(_min((cell->fuel-500)/15, 255), 0)); 
               //drawXY(leds, x*2, y*2+1, _max(_min((cell->fuel-500)/15, 255), 0)/20, 255 - _max(_min((cell->fuel-500)/15-255, 255), 32)/4, _max(_min((cell->fuel-500)/15, 255), 0)); 
               //drawXY(leds, x*2+1, y*2+1, _max(_min((cell->fuel-500)/15, 255), 0)/20, 255 - _max(_min((cell->fuel-500)/15-255, 255), 32)/4, _max(_min((cell->fuel-500)/15, 255), 0)); 
@@ -594,8 +599,8 @@ class FIRE2: public LIGHT_SKETCH {
            cell->fuel = _max(_min(fuel, FIRE_GRID_MAX), FIRE_GRID_MIN);
            cell->air = _max(_min(air, FIRE_GRID_MAX), FIRE_GRID_MIN);
            cell->smoke = _max(_min(smoke, FIRE_GRID_MAX), FIRE_GRID_MIN);
-           cell->vx = _max(_min(vx, FIRE_GRID_MAX), FIRE_GRID_MIN);
-           cell->vy = _max(_min(vy, FIRE_GRID_MAX), FIRE_GRID_MIN);
+           cell->vx = _max(_min(vx, FIRE_GRID_VELOCITY_MAX), FIRE_GRID_VELOCITY_MIN);
+           cell->vy = _max(_min(vy, FIRE_GRID_VELOCITY_MAX), FIRE_GRID_VELOCITY_MIN);
         }
       }
 
@@ -667,7 +672,7 @@ class FIRE2: public LIGHT_SKETCH {
             //add fuel to the grid
             for (int i = y_start; i < y_end; i++) {
               int width = i/25;
-              int x = 15-width;
+              int x = FIRE_GRID_WIDTH/2-width;
               x += random(width*2+2);
               grid[i][x].vy += random(10000);
               grid[i][x].vx += random(8000)-4000;
@@ -713,7 +718,7 @@ class FIRE2: public LIGHT_SKETCH {
 
 
 
-
+    
 
     void calculate_velocity(int x, int y) {
 
@@ -737,6 +742,7 @@ class FIRE2: public LIGHT_SKETCH {
           int32_t moved_air = (source_cell->air * x_portion) / div;
           int32_t moved_smoke = (source_cell->smoke * x_portion) / div;
           int32_t moved_total = moved_fuel + moved_air + moved_smoke;
+          
           if (moved_total > 0 && x < FIRE_GRID_WIDTH - 1) {
             pixel* right_cell=&grid[y][x+1];
             velocity_transfer(*source_cell, *right_cell, moved_fuel, moved_air, moved_smoke, moved_total);
@@ -789,10 +795,24 @@ class FIRE2: public LIGHT_SKETCH {
           total_moved_air += moved_air;
         }
 
-        if (v_total_constrain > 25000) {
-          int h = _max(_min((source_cell->fuel-500)/15, 255), 0)/20;
-          int s = 255 - _max(_min((source_cell->fuel-500)/15-255, 255), 32)/4;
-          int v = _max(_min((source_cell->fuel-500)/15, 255), 0);
+/*
+        if (v_total_constrain > 25000 && source_cell->fuel > 0) {
+          uint32_t fuel2 = (source_cell->fuel - 500) / 15;
+          uint8_t h = _max(_min(fuel2, 200), 0) >> 4;
+          uint8_t s = 255 - (_max(_min(fuel2-255, 255), 32) >> 2);
+          uint8_t v = _max(_min(fuel2, 255), 0);
+
+          drawXY(leds, x, y, h, s, v);  
+        }
+
+ */
+
+
+        if ( v_total_constrain > 25000 && (source_cell->fuel-500 > 14) ) {
+          uint32_t fuel2 = (source_cell->fuel - 500) / 15;
+          int h = _max(_min(fuel2, 255), 0)/20;
+          int s = 255 - _max(_min(fuel2-255, 255), 32)/4;
+          int v = _max(_min(fuel2, 255), 0);
           drawXY(leds, x, y, h, s, v); 
         }
 
@@ -825,10 +845,10 @@ class FIRE2: public LIGHT_SKETCH {
         source_cell->smoke -= smoke_pressure;
 
         //number of particles to push to neighboring cells
-        int32_t moved_total = (fuel_pressure + air_pressure + smoke_pressure) / 6;
         int32_t moved_fuel = fuel_pressure / 6;
         int32_t moved_air = air_pressure / 6;
         int32_t moved_smoke = smoke_pressure / 6;
+        int32_t moved_total = moved_fuel + moved_air + moved_smoke;
         
 
           //right cell
