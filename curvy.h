@@ -837,57 +837,87 @@ void draw_jelly(JELLY& jelly) {
           norm.y = 0;
           norm.z = 0;
         }
+        //matrix.rotate_y(norm,16);
     }
 
-    void draw_triangle(POINT& a, POINT& b, POINT& c, POINT& orig, POINT norm, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255) {
+    void draw_triangle(POINT& a, POINT& b, POINT& c, POINT& orig, POINT& norm, uint8_t& hue, uint8_t& sat, uint8_t& val) {
+      
+      draw_line_ybuffer(a, b);
+      draw_line_ybuffer(b, c);
+      draw_line_ybuffer(c, a);
+
+      long z_depth = orig.z+norm.z; 
+
+
+      //matrix.rotate_x(norm,32);
+      //matrix.rotate_y(norm,32);
+
+      int bri = 100 - orig.z/768;
+      bri = (bri*bri)/256;
+
+      bri = 255-bri;
+
+      bri = _min(_max((norm.z*bri*3)/(256*4) + bri/4,bri/4),220);
+
+      CRGB rgb = CHSV(hue,sat,_min(_max((bri*val)/256,0),255));
+
+
+      draw_line_fine(leds, a, b, rgb, z_depth);
+      draw_line_fine(leds, b, c, rgb, z_depth);
+      draw_line_fine(leds, c, a, rgb, z_depth);
+      rgb = CHSV(hue,0,_min(_max((bri*val)/256,0),255));
+      //CRGB rgb(0,0,0);
+      //CRGB rgb2 = CHSV(hue,sat,val);
+      //nblend(rgb, rgb2, bri);
+
+      //fill between the pixels of our lines
+      for (int y = y_buffer_min; y <= y_buffer_max; y++) {
+          if (y_buffer[y][0] <= y_buffer[y][1]) {
+
+          for (int x = y_buffer[y][0]; x <= y_buffer[y][1]; x++) {
+            drawXYZ(leds, x, y, z_depth/16, rgb);
+          }
+
+        }
+        //clear the buffer to be used for filling the triangle
+        y_buffer[y][0] = MATRIX_WIDTH + 1;
+        y_buffer[y][1] = -1;
+      
+      }
+
+      y_buffer_max = 0;
+      y_buffer_min = MATRIX_HEIGHT-1;
+
+    
+    } //void draw_triangle(POINT& a, POINT& b, POINT& c, POINT& orig, POINT& norm, uint8_t& hue, uint8_t& sat, uint8_t& val)
+
+
+
+
+    void draw_triangle(POINT& a, POINT& b, POINT& c, uint8_t& hue, uint8_t& sat, uint8_t& val) {
       
       //optimization:
       //identify clockwise/counterclockwise orientation
       //draw in only one orientation (facing toward the camera)
       int orientation = (b.y-a.y)*(c.x-b.x) - (c.y-b.y)*(b.x-a.x);
       
+      POINT norm;
+      
+      normal(a,b,c,norm);
+
       if ( orientation < 0 ) {
-        draw_line_ybuffer(a, b);
-        draw_line_ybuffer(b, c);
-        draw_line_ybuffer(c, a);
-
-        long z_depth = orig.z+norm.z; 
-
-        //matrix.rotate_x(norm,32);
-        //matrix.rotate_y(norm,32);
-
-        int bri = 100 - orig.z/768;
-        bri = (bri*bri)/256;
-
-        bri = 255-bri;
-
-        bri = _min(_max((norm.z*bri)/256,bri/4),220);
-
-        CRGB rgb = CHSV(hue,sat,_min(_max((bri*val)/256,0),255));
-        //CRGB rgb(0,0,0);
-        //CRGB rgb2 = CHSV(hue,sat,val);
-        //nblend(rgb, rgb2, bri);
-
-        //fill between the pixels of our lines
-        for (int y = y_buffer_min; y <= y_buffer_max; y++) {
-            if (y_buffer[y][0] <= y_buffer[y][1]) {
-
-            for (int x = y_buffer[y][0]; x <= y_buffer[y][1]; x++) {
-              drawXYZ(leds, x, y, z_depth/16, rgb);
-            }
-
-          }
-          //clear the buffer to be used for filling the triangle
-          y_buffer[y][0] = MATRIX_WIDTH + 1;
-          y_buffer[y][1] = -1;
-        
-        }
-
-        y_buffer_max = 0;
-        y_buffer_min = MATRIX_HEIGHT-1;
-
+        draw_triangle(a,b,c,a,norm,hue,sat,val);
+        return;
       }
-    } //draw_triangle()
+
+      norm.invert();
+      draw_triangle(a,c,b,a,norm,hue,sat,val);
+      
+
+    } //void draw_triangle(POINT& a, POINT& b, POINT& c, uint8_t& hue, uint8_t& sat, uint8_t& val)
+
+
+
 
     void draw_fish(FISH& fish) {
 
@@ -954,23 +984,13 @@ void draw_jelly(JELLY& jelly) {
         }
         // int bri = detail_z/512+255;
         // bri = _max(_min(bri,255),0);
-        int bri = 200;
+        uint8_t bri = 200;
 
-        POINT norm;
-        normal(points_3d[a],points_3d[b],points_3d[g],norm);
-        draw_triangle(points_2d[a],points_2d[b],points_2d[g],points_2d[a],norm,fish.hue,fish.sat,bri);
-        norm.invert();
-        draw_triangle(points_2d[a],points_2d[g],points_2d[b],points_2d[a],norm,fish.hue,fish.sat,bri);
+        draw_triangle(points_2d[a],points_2d[b],points_2d[g],fish.hue,fish.sat,bri);
 
-        normal(points_3d[b],points_3d[c],points_3d[e],norm);
-        draw_triangle(points_2d[b],points_2d[c],points_2d[e],points_2d[b],norm,fish.hue,fish.sat,bri);
-        norm.invert();
-        draw_triangle(points_2d[b],points_2d[e],points_2d[c],points_2d[b],norm,fish.hue,fish.sat,bri);
+        draw_triangle(points_2d[b],points_2d[c],points_2d[e],fish.hue,fish.sat,bri);
 
-        normal(points_3d[c],points_3d[d],points_3d[e],norm);
-        draw_triangle(points_2d[c],points_2d[d],points_2d[e],points_2d[c],norm,fish.hue,fish.sat,bri);
-        norm.invert();
-        draw_triangle(points_2d[c],points_2d[e],points_2d[d],points_2d[c],norm,fish.hue,fish.sat,bri);
+        draw_triangle(points_2d[c],points_2d[d],points_2d[e],fish.hue,fish.sat,bri);
         //matt_curve8(points,FISH_POINTS,fish.hue,fish.sat,bri,false,false,true,255,detail);
       }
             // //fish debug, lines between fish and target
@@ -992,7 +1012,7 @@ void draw_jelly(JELLY& jelly) {
 
             // draw_line_fine(leds, p0[0], p0[1], p1[0], p1[1], 255, 255, 255, -10000, 255, true);
 
-    } //draw_fish()
+    } //void draw_fish(FISH& fish)
 
 
 
@@ -1032,12 +1052,12 @@ void draw_jelly(JELLY& jelly) {
           
       }
 
-    }
+    } //void draw_grass()
 
 
 
     //buffer our water effect, we won't update the whole screen on every frame (too slow)
-    CRGB water_canvas[NUM_LEDS];
+    //CRGB water_canvas[NUM_LEDS];
     void draw_water() {
 
       int z = loop_time/8;
@@ -1072,13 +1092,13 @@ void draw_jelly(JELLY& jelly) {
             bri = _min(light+caustics,255);
             bri = (bri*3)/4;
             int i = XY(x,y);
-            water_canvas[i] = CHSV(142, 255, bri);
+            temp_canvas[i] = CHSV(142, 255, bri);
           }
         }
       }
       
       for (int i = 0; i < NUM_LEDS; i++) {
-          nblend(leds[i], water_canvas[i], 127);
+          nblend(leds[i], temp_canvas[i], 127);
       }
 
     }
