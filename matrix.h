@@ -11,10 +11,10 @@ class MATRIX {
     private:
     int z_scaler;
 
-    long Cz; //camera Z
-    long Sz; //projection screen Z (between camera and object)
-    long Cz2;
-    long Sz2;
+    int32_t Cz; //camera Z
+    int32_t Sz; //projection screen Z (between camera and object)
+    int32_t Cz2;
+    int32_t Sz2;
 
     //find our angles in radians
     float alpha; //Z
@@ -33,7 +33,7 @@ class MATRIX {
     float matrix[3][3];
     //END 3D ROTATION MATRIX VARIABLES
 
-    unsigned long update_time = millis();
+    uint32_t update_time = millis();
 
     void update() {
         if (millis() - 16 > update_time) {
@@ -77,7 +77,7 @@ class MATRIX {
     public:
 
         //rotate X,Y,Z coordinate based on our current matrix
-        // void rotate (long in[3], long out[3]) {
+        // void rotate (int32_t in[3], int32_t out[3]) {
         
         //     //update the matrix if necessary
         //     update();
@@ -86,7 +86,7 @@ class MATRIX {
         //     out[1] = in[0] * matrix[2][0] + in[1] * matrix[2][1] + in[2] * matrix[2][2];
 
         // }
-        void rotate (long& in_x, long& in_y, long& in_z, long& out_x, long& out_y, long& out_z) {
+        void rotate (int32_t& in_x, int32_t& in_y, int32_t& in_z, int32_t& out_x, int32_t& out_y, int32_t& out_z) {
         
         //update the matrix if necessary
         update();
@@ -96,27 +96,27 @@ class MATRIX {
 
         }
 
-        void rotate (POINT& in) {
-            POINT temp;
+        void rotate (VECTOR3& in) {
+            VECTOR3 temp;
             temp.x = in.x;
             temp.y = in.y;
             temp.z = in.z;
             rotate(temp.x, temp.y, temp.z, in.x, in.y, in.z);
         }
         
-        void rotate (POINT& in, POINT& out) {
+        void rotate (VECTOR3& in, VECTOR3& out) {
             rotate(in.x, in.y, in.z, out.x, out.y, out.z);
         }
             
 
 
-        void rotate (long in[3], long out[3]) {
+        void rotate (int32_t in[3], int32_t out[3]) {
             rotate(in[0],in[1],in[2],out[0],out[1],out[2]);
         }
 
-        void rotate (long in[3]) {
+        void rotate (int32_t in[3]) {
         
-            long temp[3] = {
+            int32_t temp[3] = {
                 in[0],
                 in[1],
                 in[2]
@@ -128,7 +128,7 @@ class MATRIX {
 
         //take X,Y,Z coordinate
         //modifies X,Y to screen coordinates
-        bool perspective(long& x, long& y, long& z) {
+        bool perspective(int32_t& x, int32_t& y, int32_t& z) {
             if (z < Cz) {
                 x/=2;//half precision to double each axis of our available coordinate space
                 y/=2;
@@ -143,15 +143,15 @@ class MATRIX {
             return false;
         }
 
-        bool perspective(long p[3]) {
+        bool perspective(int32_t p[3]) {
             return perspective(p[0], p[1], p[2]);
         }
 
-        bool perspective(POINT& p) {
+        bool perspective(VECTOR3& p) {
             return perspective(p.x, p.y, p.z);
         }
 
-        bool perspective(POINT& p, POINT& p2) {
+        bool perspective(VECTOR3& p, VECTOR3& p2) {
             p2 = p;
             return perspective(p2.x, p2.y, p2.z);
         }
@@ -159,7 +159,7 @@ class MATRIX {
         //find the 3D coordinate of a pixel on the screen
         //takes screen X,Y coordinate along with the desired Z coordinate
         //modifies X,Y to provide X,Y,Z coordinate
-        bool reverse_perspective(long p[3]) {
+        bool reverse_perspective(int32_t p[3]) {
             p[0]/=2;//half precision to double each axis of our available coordinate space
             p[1]/=2;
             p[2]/=2;
@@ -171,71 +171,71 @@ class MATRIX {
             return true;
         }
 
-        void rotate_x(long& x, long& y, long& z, int8_t& s, int8_t& c) {
-            long temp = ( y*c - z*s ) / 128;
+        void rotate_x(int32_t& x, int32_t& y, int32_t& z, int8_t& s, int8_t& c) {
+            int32_t temp = ( y*c - z*s ) / 128;
             z = ( y*s + z*c ) / 128;
             y = temp;
         }
 
-        void rotate_x(long p[3], const uint8_t& ang) {
+        void rotate_x(int32_t p[3], const uint8_t& ang) {
             int8_t s = sin8(ang)-128;
             int8_t c = cos8(ang)-128;
             rotate_x(p[0], p[1], p[2], s, c);
         }
 
-        void rotate_x(POINT& p, const uint8_t& ang) {
+        void rotate_x(VECTOR3& p, const uint8_t& ang) {
             int8_t s = sin8(ang)-128;
             int8_t c = cos8(ang)-128;
             rotate_x(p.x, p.y, p.z, s, c);
         }
 
 
-        void rotate_y(long& x, long& y, long& z, int8_t& s, int8_t& c) {
-            long temp = ( x*c - z*s ) / 128;
+        void rotate_y(int32_t& x, int32_t& y, int32_t& z, int8_t& s, int8_t& c) {
+            int32_t temp = ( x*c - z*s ) / 128;
             z = ( x*s + z*c ) / 128;
             x = temp;
         }
 
-        void rotate_y(long p[3], const uint8_t& ang) {
+        void rotate_y(int32_t p[3], const uint8_t& ang) {
             int8_t s = sin8(ang)-128;
             int8_t c = cos8(ang)-128;
             rotate_y(p[0], p[1], p[2], s, c);
         }
 
-        void rotate_y(POINT& p, const uint8_t& ang) {
+        void rotate_y(VECTOR3& p, const uint8_t& ang) {
             int8_t s = sin8(ang)-128;
             int8_t c = cos8(ang)-128;
             rotate_y(p.x, p.y, p.z, s, c);
         }
 
-        void rotate_z(long& x, long& y, long& z, int8_t& s, int8_t& c) {
-            long temp = ( x*c - y*s ) / 128;
+        void rotate_z(int32_t& x, int32_t& y, int32_t& z, int8_t& s, int8_t& c) {
+            int32_t temp = ( x*c - y*s ) / 128;
             y = ( x*s + y*c ) / 128;
             x = temp;
         }
 
-        void rotate_z(long p[3], const uint8_t& ang) {
+        void rotate_z(int32_t p[3], const uint8_t& ang) {
             int8_t s = sin8(ang)-128;
             int8_t c = cos8(ang)-128;
             rotate_z(p[0], p[1], p[2], s, c);
         }
 
-        void rotate_z(POINT& p, const uint8_t& ang) {
+        void rotate_z(VECTOR3& p, const uint8_t& ang) {
             int8_t s = sin8(ang)-128;
             int8_t c = cos8(ang)-128;
             rotate_z(p.x, p.y, p.z, s, c);
         }
 
 
-        void scale_z(long& z) {
+        void scale_z(int32_t& z) {
             z += z_scaler;
         }
         
-        void scale_z(long p[3]) {
+        void scale_z(int32_t p[3]) {
             scale_z(p[2]);
         }
 
-        void scale_z(POINT& p) {
+        void scale_z(VECTOR3& p) {
             scale_z(p.z);
         }
         

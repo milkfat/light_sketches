@@ -177,8 +177,8 @@ class POINTER {
     bool new_press = false;
 };
 
-long cursor_position_x = 0;
-long cursor_position_y = 0;
+int32_t cursor_position_x = 0;
+int32_t cursor_position_y = 0;
 
 //CIE 1931 luminescence scale (or some shit)
 uint8_t cie (const uint8_t& a) {
@@ -230,7 +230,7 @@ __attribute__ ((always_inline)) uint32_t XY(const int& x, const int& y) {
     }
 }
 
-void drawXY_fine(CRGB crgb_object[], const long& xpos, const long& ypos, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255) {
+void drawXY_fine(CRGB crgb_object[], const int32_t& xpos, const int32_t& ypos, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255) {
 
   crgb_object[XY(xpos/256,ypos/256)] += CHSV(hue,sat,val);
 
@@ -243,7 +243,7 @@ void drawXY(CRGB crgb_object[], const int& x, const int& y, const uint8_t& hue, 
   
 }
 
-void drawXY_fineRGB(CRGB crgb_object[], const long& xpos, const long& ypos, const uint8_t& r, const uint8_t& g, const uint8_t& b) {
+void drawXY_fineRGB(CRGB crgb_object[], const int32_t& xpos, const int32_t& ypos, const uint8_t& r, const uint8_t& g, const uint8_t& b) {
 
   crgb_object[XY(xpos / 256,ypos / 256)] += CRGB(r,g,b);
 
@@ -259,6 +259,7 @@ void drawXY_RGB(CRGB crgb_object[], const int& x, const int& y, const uint8_t& r
 int * y_buffer[MATRIX_HEIGHT]; //stores the min/max X values per Y so that we can fill between them
 int y_buffer_max = 0;
 int y_buffer_min = MATRIX_HEIGHT-1;
+
 //int z_buffer[MATRIX_WIDTH][MATRIX_HEIGHT];
 int16_t * z_buffer[MATRIX_WIDTH];
 
@@ -329,7 +330,7 @@ void drawXYZ2(CRGB crgb_object[], const int& x, const int& y, const int& z, CRGB
 }
 
 
-void blendXY(CRGB crgb_object[], const long& xpos, const long& ypos, CRGB& rgb) {
+void blendXY(CRGB crgb_object[], const int32_t& xpos, const int32_t& ypos, CRGB& rgb) {
   
   //find the base x and y positions
   //add 2 pixels before division to avoid rounding errors at 0 (between -1 and 0)
@@ -385,38 +386,78 @@ void blendXY(CRGB crgb_object[], const long& xpos, const long& ypos, CRGB& rgb) 
 
 
 
-void blendXY(CRGB crgb_object[], const long& xpos, const long& ypos, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255) {
+void blendXY(CRGB crgb_object[], const int32_t& xpos, const int32_t& ypos, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255) {
   CRGB rgb;
   hsv2rgb_rainbow(CHSV(hue,sat,val),rgb);
   blendXY(crgb_object, xpos, ypos, rgb);
 }
 
-struct POINT {
-  long x;
-  long y;
-  long z;
+struct VECTOR3 {
+  int32_t x;
+  int32_t y;
+  int32_t z;
 
-  POINT () {}
+  VECTOR3 () {}
 
-  POINT (const long& x_in, const long& y_in, const long& z_in): x(x_in), y(y_in), z(z_in) {}
+  VECTOR3 (const int32_t& x_in, const int32_t& y_in, const int32_t& z_in): x(x_in), y(y_in), z(z_in) {}
   
+  VECTOR3 operator + (VECTOR3 const &p_in) { 
+    VECTOR3 p; 
+    p.x = x + p_in.x; 
+    p.y = y + p_in.y; 
+    p.z = z + p_in.z; 
+    return p; 
+  } 
+  
+  VECTOR3 operator - (VECTOR3 const &p_in) { 
+    VECTOR3 p; 
+    p.x = x - p_in.x; 
+    p.y = y - p_in.y; 
+    p.z = z - p_in.z; 
+    return p; 
+  } 
+
+  VECTOR3 operator / (int const &num) { 
+    VECTOR3 p; 
+    p.x = x / num; 
+    p.y = y / num; 
+    p.z = z / num; 
+    return p; 
+  } 
+
+
   //overload -=
-  POINT& operator-= (const POINT& rhs) {
+  VECTOR3& operator-= (const VECTOR3& rhs) {
     this->x -= rhs.x;
     this->y -= rhs.y;
     this->z -= rhs.z;
     return *this;
   }
+  //overload +=
+  VECTOR3& operator+= (const VECTOR3& rhs) {
+    this->x += rhs.x;
+    this->y += rhs.y;
+    this->z += rhs.z;
+    return *this;
+  }
+
+  //overload +=
+  VECTOR3& operator+= (const int& rhs) {
+    this->x += rhs;
+    this->y += rhs;
+    this->z += rhs;
+    return *this;
+  }
   
   //overload /=
-  POINT& operator/= (const int& rhs) {
+  VECTOR3& operator/= (const int& rhs) {
     this->x /= rhs;
     this->y /= rhs;
     this->z /= rhs;
     return *this;
   }
 
-  long& operator[] (const int& index)
+  int32_t& operator[] (const int& index)
   {
       return index == 0 ? x : index == 1 ? y : z;
   }
@@ -427,9 +468,27 @@ struct POINT {
     z = -z;
   }
 
+  
+
 };
 
-void blendXY(CRGB crgb_object[], const POINT& point, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255) {
+VECTOR3 abs(const VECTOR3& v) {
+    VECTOR3 temp;
+    temp.x = abs(v.x);
+    temp.y = abs(v.y);
+    temp.z = abs(v.z);
+    return temp;
+  }
+
+struct Y_BUF {
+  VECTOR3 position;
+  VECTOR3 normal;
+  VECTOR3 rgb;
+};
+Y_BUF y_buffer2[MATRIX_HEIGHT][2];
+
+
+void blendXY(CRGB crgb_object[], const VECTOR3& point, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255) {
   CRGB rgb;
   hsv2rgb_rainbow(CHSV(hue,sat,val),rgb);
   blendXY(crgb_object, point.x, point.y, rgb);
@@ -444,7 +503,7 @@ struct alpha_pixel {
     uint16_t cnt = 0;
 };
 
-void blendXY_RGBA(alpha_pixel ap[], const long& xpos, const long& ypos, const uint8_t& r, const uint8_t& g, const uint8_t& b, const uint8_t& a) {
+void blendXY_RGBA(alpha_pixel ap[], const int32_t& xpos, const int32_t& ypos, const uint8_t& r, const uint8_t& g, const uint8_t& b, const uint8_t& a) {
   
   //find the base x and y positions
   //add 2 pixels before division to avoid rounding errors at 0 (between -1 and 0)
@@ -511,9 +570,9 @@ template <typename T> int sgn(const T& val) {
     return (T(0) < val) - (val < T(0));
 }
 
-void swap_coords(long& x1, long& y1, long& x2, long& y2, long& dist) {
-  long tempx = x1;
-  long tempy = y1;
+void swap_coords(int32_t& x1, int32_t& y1, int32_t& x2, int32_t& y2, int32_t& dist) {
+  int32_t tempx = x1;
+  int32_t tempy = y1;
   x1 = x2;
   y1 = y2;
   x2 = tempx;
@@ -521,15 +580,15 @@ void swap_coords(long& x1, long& y1, long& x2, long& y2, long& dist) {
   dist = -dist;
 }
 
-void draw_line_ybuffer(const long& x1i, const long& y1i, const long& x2i, const long& y2i) {
-  long x1 = (x1i+128)/256;
-  long y1 = (y1i+128)/256;
-  long x2 = (x2i+128)/256;
-  long y2 = (y2i+128)/256;
-  long x_dist = x2-x1;
-  long y_dist = y2-y1;
-  long ax_dist = abs(x_dist);
-  long ay_dist = abs(y_dist);
+void draw_line_ybuffer(const int32_t& x1i, const int32_t& y1i, const int32_t& x2i, const int32_t& y2i) {
+  int32_t x1 = (x1i+128)/256;
+  int32_t y1 = (y1i+128)/256;
+  int32_t x2 = (x2i+128)/256;
+  int32_t y2 = (y2i+128)/256;
+  int32_t x_dist = x2-x1;
+  int32_t y_dist = y2-y1;
+  int32_t ax_dist = abs(x_dist);
+  int32_t ay_dist = abs(y_dist);
   uint32_t err = 0;
 
   if (ax_dist > ay_dist) {
@@ -537,7 +596,7 @@ void draw_line_ybuffer(const long& x1i, const long& y1i, const long& x2i, const 
     if (x1 > x2) {
       swap_coords(x1,y1,x2,y2,y_dist);
     }
-    long step = sgn(y_dist);
+    int32_t step = sgn(y_dist);
     while (x1 <= x2) {
       if (y1 >= 0 && y1 < MATRIX_HEIGHT) {
         y_buffer_min = _min(y1,y_buffer_min);
@@ -558,7 +617,7 @@ void draw_line_ybuffer(const long& x1i, const long& y1i, const long& x2i, const 
     if (y1 > y2) {
       swap_coords(x1,y1,x2,y2,x_dist);
     }
-    long step = sgn(x_dist);
+    int32_t step = sgn(x_dist);
     while (y1 <= y2) {
       if (y1 >= 0 && y1 < MATRIX_HEIGHT) {
         y_buffer_min = _min(y1,y_buffer_min);
@@ -579,136 +638,171 @@ void draw_line_ybuffer(const long& x1i, const long& y1i, const long& x2i, const 
 
 }
 
-void draw_line_ybuffer(POINT& a, POINT& b) {
+void draw_line_ybuffer(VECTOR3& a, VECTOR3& b) {
   draw_line_ybuffer(a.x, a.y, b.x, b.y);
 }
 
-void draw_line_ybuffer2(long x1, long y1, const long& x2, const long& y2) {
-  long x_dist = x2-x1;
-  long y_dist = y2-y1;
-  long ax_dist = abs(x_dist);
-  long ay_dist = abs(y_dist);
-  int x_step = 256;
-  int y_step = 256;
-  int steps;
 
-  bool x_add = false;
-  bool y_add = false;
-  
-  if (ax_dist > ay_dist) {
-    //step in x direction
-    if (x_dist == 0) {
-      return;
+
+void swap_coords(VECTOR3& a, VECTOR3& a_norm, VECTOR3& a_rgb, VECTOR3& b, VECTOR3& b_norm, VECTOR3& b_rgb, VECTOR3& dist) {
+  VECTOR3 temp = a;
+  VECTOR3 temp_norm = a_norm;
+  VECTOR3 temp_rgb = a_rgb;
+  a = b;
+  a_norm = b_norm;
+  a_rgb = b_rgb;
+  b = temp;
+  b_norm = temp_norm;
+  b_rgb = temp_rgb;
+  dist.x = -dist.x;
+  dist.y = -dist.y;
+  dist.z = -dist.z;
+}
+
+
+
+
+
+void draw_line_ybuffer(VECTOR3 a, VECTOR3 a_norm, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 b_norm, VECTOR3 b_rgb) {
+
+  a += 128;
+  b += 128;
+  a /= 256;
+  b /= 256;
+  VECTOR3 dist = b-a;
+  VECTOR3 a_dist = abs(dist);
+
+  VECTOR3 dist_rgb = b_rgb-a_rgb;
+  VECTOR3 a_dist_rgb = abs(dist_rgb);
+
+  VECTOR3 err(0,0,0);
+  VECTOR3 step(0,0,0);
+  VECTOR3 err_rgb(0,0,0);
+  VECTOR3 step_rgb(0,0,0);
+
+
+  if (a_dist.x > a_dist.y) {
+    //draw horizontally
+    if (a.x > b.x) {
+      swap_coords(a,a_norm,a_rgb,b,b_norm,b_rgb,dist);
+      dist_rgb.x = -dist_rgb.x;
+      dist_rgb.y = -dist_rgb.y;
+      dist_rgb.z = -dist_rgb.z;
     }
-    y_add = 1;
-    steps = ax_dist/256+1;
-    x_step *= x_dist/ax_dist;
-    y_step = (y_dist*256)/ax_dist;
-    
+    step.y = sgn(dist.y);
+    step.z = sgn(dist.z);
+    step_rgb.x = sgn(dist_rgb.x);
+    step_rgb.y = sgn(dist_rgb.y);
+    step_rgb.z = sgn(dist_rgb.z);
+    while (a.x <= b.x) {
+      if (a.y >= 0 && a.y < MATRIX_HEIGHT) {
+        y_buffer_min = _min(a.y,y_buffer_min);
+        y_buffer_max = _max(a.y,y_buffer_max);
+        //TODO: take into account a.z when a.x is equal, if necessary
+        if (a.x < y_buffer2[a.y][0].position.x) {
+          y_buffer2[a.y][0].position = a;
+          y_buffer2[a.y][0].rgb = a_rgb;
+        }
+        if (a.x > y_buffer2[a.y][1].position.x) {
+          y_buffer2[a.y][1].position = a;
+          y_buffer2[a.y][1].rgb = a_rgb;
+        }
+      }
+      //drawXY(leds,x1,y1,0,0,255);
+      a.x++;
+
+      err_rgb.y += a_dist_rgb.y;
+      while (err_rgb.y >= a_dist.x) {
+        a_rgb.y += step_rgb.y;
+        err_rgb.y -= a_dist.x;
+      }
+      err_rgb.x += a_dist_rgb.x;
+      while (err_rgb.x >= a_dist.x) {
+        a_rgb.x += step_rgb.x;
+        err_rgb.x -= a_dist.x;
+      }
+      err_rgb.z += a_dist_rgb.z;
+      while (err_rgb.z >= a_dist.x) {
+        a_rgb.z += step_rgb.z;
+        err_rgb.z -= a_dist.x;
+      }
+
+      err.y += a_dist.y;
+      if (err.y >= a_dist.x) {
+        a.y += step.y;
+        err.y -= a_dist.x;
+      }
+      err.z += a_dist.z;
+      if (err.z >= a_dist.x) {
+        a.z += step.z;
+        err.z -= a_dist.x;
+      }
+    }
   } else {
-    //step in y direction
-    if (y_dist == 0) {
-      return;
+    //draw vertically
+    if (a.y > b.y) {
+      swap_coords(a,a_norm,a_rgb,b,b_norm,b_rgb,dist);
+      dist_rgb.x = -dist_rgb.x;
+      dist_rgb.y = -dist_rgb.y;
+      dist_rgb.z = -dist_rgb.z;
     }
-    x_add = 1;
-    steps = ay_dist/256+1;
-    x_step = (x_dist*256)/ay_dist;
-    y_step *= y_dist/ay_dist;
+    step.x = sgn(dist.x);
+    step.z = sgn(dist.z);
+    step_rgb.x = sgn(dist_rgb.x);
+    step_rgb.y = sgn(dist_rgb.y);
+    step_rgb.z = sgn(dist_rgb.z);
+    while (a.y <= b.y) {
+      if (a.y >= 0 && a.y < MATRIX_HEIGHT) {
+        y_buffer_min = _min(a.y,y_buffer_min);
+        y_buffer_max = _max(a.y,y_buffer_max);
+        if (a.x < y_buffer2[a.y][0].position.x) {
+          y_buffer2[a.y][0].position = a;
+          y_buffer2[a.y][0].rgb = a_rgb;
+        }
+        if (a.x > y_buffer2[a.y][1].position.x) {
+          y_buffer2[a.y][1].position = a;
+          y_buffer2[a.y][1].rgb = a_rgb;
+        }
+      }
+      //drawXY(leds,x1,y1,0,0,255);
+      a.y++;
+
+      err_rgb.y += a_dist_rgb.y;
+      while (err_rgb.y >= a_dist.y) {
+        a_rgb.y += step_rgb.y;
+        err_rgb.y -= a_dist.y;
+      }
+      err_rgb.x += a_dist_rgb.x;
+      while (err_rgb.x >= a_dist.y) {
+        a_rgb.x += step_rgb.x;
+        err_rgb.x -= a_dist.y;
+      }
+      err_rgb.z += a_dist_rgb.z;
+      while (err_rgb.z >= a_dist.y) {
+        a_rgb.z += step_rgb.z;
+        err_rgb.z -= a_dist.y;
+      }
+
+      err.x += a_dist.x;
+      if (err.x >= a_dist.y) {
+        a.x += step.x;
+        err.x -= a_dist.y;
+      }
+      err.z += a_dist.z;
+      if (err.z >= a_dist.y) {
+        a.z += step.z;
+        err.z -= a_dist.y;
+      }
+    }
   }
 
-
-  while (steps > 0) {
-    int x = x1/256;
-    int y = y1/256;
-    if (y >= 0 && y < MATRIX_HEIGHT) {
-      y_buffer[y][0] = _min(y_buffer[y][0], x);
-      y_buffer[y][1] = _max(y_buffer[y][1], x);
-    }
-    x+=x_add;
-    y+=y_add;
-    if (y >= 0 && y < MATRIX_HEIGHT) {
-      y_buffer[y][0] = _min(y_buffer[y][0], x);
-      y_buffer[y][1] = _max(y_buffer[y][1], x);
-    }
-    //drawXYZ(crgb_object, x, y, -10000);
-    //drawXYZ(crgb_object, x+x_add, y+y_add, -10000);
-    x1+=x_step;
-    y1+=y_step;
-    steps--;
-  }
 
 }
-
-void draw_line_fine2(CRGB crgb_object[], long x1, long y1, long x2, long y2, CRGB& rgb, const uint8_t& val = 255) {
-  x1+=65536;
-  y1+=65536;
-  x2+=65536;
-  y2+=65536;
-  long x_dist = x2-x1;
-  long y_dist = y2-y1;
-  long ax_dist = abs(x_dist);
-  long ay_dist = abs(y_dist);
-  int x_step = 256;
-  int y_step = 256;
-  int steps;
-
-  bool x_add = false;
-  bool y_add = false;
-  
-  if (ax_dist > ay_dist) {
-    //step in x direction
-    if (x_dist == 0) {
-      return;
-    }
-    y_add = 1;
-    steps = ax_dist/256+1;
-    x_step *= x_dist/ax_dist;
-    y_step = (y_dist*256)/ax_dist;
-    
-  } else {
-    //step in y direction
-    if (y_dist == 0) {
-      return;
-    }
-    x_add = 1;
-    steps = ay_dist/256+1;
-    x_step = (x_dist*256)/ay_dist;
-    y_step *= y_dist/ay_dist;
-  }
-
-
-  while (steps >= 0) {
-    int x = x1/256;
-    int y = y1/256;
-    uint8_t level2;
-    if (x_add) {
-      level2 = x1%256;
-    } else {
-      level2 = y1%256;
-    }
-    x+=x_add;
-    y+=y_add;
-    drawXYZ2(crgb_object, x-256, y-256, -10000,rgb,255-level2);
-    drawXYZ2(crgb_object, x-256+x_add, y-256+y_add, -10000,rgb,level2);
-    x1+=x_step;
-    y1+=y_step;
-    steps--;
-  }
-
-}
-
-void draw_line_fine2(CRGB crgb_object[], const long& x1, const long& y1, const long& x2, const long& y2, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255) {
-  CRGB rgb = CHSV(hue,sat,255);
-  draw_line_fine2(crgb_object, x1, y1, x2, y2, rgb, val);
-}
-
-
-
 
 //DRAW LINE FINE
 
 
-void draw_line_fine(CRGB crgb_object[], long x1, long y1, long x2, long y2, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false) {
+void draw_line_fine(CRGB crgb_object[], int32_t x1, int32_t y1, int32_t x2, int32_t y2, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false) {
   
   //avoid vertical and horizontal lines by fudging a bit
   if (x1 == x2 ) {
@@ -783,8 +877,8 @@ void draw_line_fine(CRGB crgb_object[], long x1, long y1, long x2, long y2, CRGB
   
   }
 
-  long x_dist = x2 - x1;
-  long y_dist = y2 - y1;
+  int32_t x_dist = x2 - x1;
+  int32_t y_dist = y2 - y1;
   float x_step = (1.f*x_dist)/(1.f*y_dist);
   float y_step = (1.f*y_dist)/(1.f*x_dist);
   if (abs(x1 - x2) > abs(y1 - y2)) {
@@ -874,12 +968,12 @@ void draw_line_fine(CRGB crgb_object[], long x1, long y1, long x2, long y2, CRGB
 
 } //draw_line_fine()
 
-void draw_line_fine(CRGB crgb_object[], const long& x1, const long& y1, const long& x2, const long& y2, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const int& z_depth = -10000, const uint8_t& val2 = 255, const bool& trim = false) {
+void draw_line_fine(CRGB crgb_object[], const int32_t& x1, const int32_t& y1, const int32_t& x2, const int32_t& y2, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const int& z_depth = -10000, const uint8_t& val2 = 255, const bool& trim = false) {
   CRGB rgb = CHSV(hue,sat,255);
   draw_line_fine(crgb_object, x1, y1, x2, y2, rgb, z_depth, val, val2, trim);
 }
 
-void draw_line_fine(CRGB crgb_object[], const POINT& a, const POINT& b, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false) {
+void draw_line_fine(CRGB crgb_object[], const VECTOR3& a, const VECTOR3& b, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false) {
   draw_line_fine(crgb_object, a.x, a.y, b.x, b.y, rgb, z_depth, val, val2, trim);
 }
 
@@ -887,7 +981,7 @@ void draw_line_fine(CRGB crgb_object[], const POINT& a, const POINT& b, CRGB& rg
 
 //draw a curve by simultaneously shortening and rotating the line segment vectors
 
-void matt_curve(long coordinate_array[][2], const size_t& len, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const bool& flipXY = false, const bool& closedShape = false, const bool& extraSmooth = false) {
+void matt_curve(int32_t coordinate_array[][2], const size_t& len, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const bool& flipXY = false, const bool& closedShape = false, const bool& extraSmooth = false) {
 
   //a variable to store the angle for segment 2 from the previous pass (which will become segment 1 of the current pass)
   //we must blend the curves together to make one smooth continuous curve
@@ -917,14 +1011,14 @@ void matt_curve(long coordinate_array[][2], const size_t& len, const uint8_t& hu
 
     //calculate three points at a time (in other words: two line segments)
 
-    long& x0 = coordinate_array[i0][0];
-    long& y0 = coordinate_array[i0][1];
+    int32_t& x0 = coordinate_array[i0][0];
+    int32_t& y0 = coordinate_array[i0][1];
        //segment 1 between these points
-    long& x1 = coordinate_array[i1][0];
-    long& y1 = coordinate_array[i1][1];
+    int32_t& x1 = coordinate_array[i1][0];
+    int32_t& y1 = coordinate_array[i1][1];
        //segment 2 between these points
-    long& x2 = coordinate_array[i2][0];
-    long& y2 = coordinate_array[i2][1];
+    int32_t& x2 = coordinate_array[i2][0];
+    int32_t& y2 = coordinate_array[i2][1];
 
     //angle of first segment
     float a0  = atan2(x1 - x0, y1 - y0);
@@ -1190,7 +1284,7 @@ void matt_curve(long coordinate_array[][2], const size_t& len, const uint8_t& hu
 
 //draw a curve by simultaneously shortening and rotating the line segment vectors
 
-void matt_curve8(CRGB crgb_object[], long coordinate_array[][2], const size_t& len, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const bool& flipXY = false, const bool& closedShape = false, const bool& extraSmooth = false, const uint8_t& percentage = 255, const uint8_t& step_size = 32) {
+void matt_curve8(CRGB crgb_object[], int32_t coordinate_array[][2], const size_t& len, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const bool& flipXY = false, const bool& closedShape = false, const bool& extraSmooth = false, const uint8_t& percentage = 255, const uint8_t& step_size = 32) {
   CRGB rgb = CHSV(hue, sat, val);
   //draw simple lines for step size of 255
   if (step_size == 255) {
@@ -1234,14 +1328,14 @@ void matt_curve8(CRGB crgb_object[], long coordinate_array[][2], const size_t& l
 
     //calculate three points at a time (in other words: two line segments)
 
-    long& x0 = coordinate_array[i0][0];
-    long& y0 = coordinate_array[i0][1];
+    int32_t& x0 = coordinate_array[i0][0];
+    int32_t& y0 = coordinate_array[i0][1];
        //segment 1 between these points
-    long& x1 = coordinate_array[i1][0];
-    long& y1 = coordinate_array[i1][1];
+    int32_t& x1 = coordinate_array[i1][0];
+    int32_t& y1 = coordinate_array[i1][1];
        //segment 2 between these points
-    long& x2 = coordinate_array[i2][0];
-    long& y2 = coordinate_array[i2][1];
+    int32_t& x2 = coordinate_array[i2][0];
+    int32_t& y2 = coordinate_array[i2][1];
 
     //angle of first segment
     float a0f  = atan2(x1 - x0, y1 - y0);
@@ -1272,10 +1366,10 @@ void matt_curve8(CRGB crgb_object[], long coordinate_array[][2], const size_t& l
 
     //time from 0-256 (8-bit equivalent of 0.0-1.0)
     int stp = 0; 
-    long last_x;
-    long last_y;
-    long last_xb;
-    long last_yb;
+    int32_t last_x;
+    int32_t last_y;
+    int32_t last_xb;
+    int32_t last_yb;
 
     //modify the curve for smaller angles
     //180 degrees = full linear curve
@@ -1475,7 +1569,7 @@ void matt_curve8(CRGB crgb_object[], long coordinate_array[][2], const size_t& l
 } //matt_curve8_base
 
 
-void matt_curve8(long coordinate_array[][2], const size_t& len, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const bool& flipXY = false, const bool& closedShape = false, const bool& extraSmooth = false, const uint8_t& percentage = 255, const uint8_t& step_size = 32) {
+void matt_curve8(int32_t coordinate_array[][2], const size_t& len, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const bool& flipXY = false, const bool& closedShape = false, const bool& extraSmooth = false, const uint8_t& percentage = 255, const uint8_t& step_size = 32) {
 
   matt_curve8(leds, coordinate_array, len, hue, sat, val, flipXY, closedShape, extraSmooth, percentage, step_size);
 
@@ -1495,7 +1589,7 @@ void reset_circle_angles() {
   }
 }
 
-void draw_circle_fine(const long& x, const long& y, const long& r, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const int& ballnum = -1, const uint8_t& step_size = 16) {
+void draw_circle_fine(const int32_t& x, const int32_t& y, const int32_t& r, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const int& ballnum = -1, const uint8_t& step_size = 16) {
   
   if(step_size == 255) {
     blendXY(leds, x, y, hue, sat, val);
@@ -1503,16 +1597,16 @@ void draw_circle_fine(const long& x, const long& y, const long& r, const uint8_t
   }
 
   int t0 = 0;
-  long xl2;
-  long yl2;
+  int32_t xl2;
+  int32_t yl2;
   while (t0 <= 256) {
     uint8_t t = t0;
-    long radius = r;
+    int32_t radius = r;
     if(ballnum > -1) {
       radius = r*circle_angles[ballnum][t/step_size]/256;
     }
-    long xl = ((cos8(t)-128)*radius)/128;
-    long yl = ((sin8(t)-128)*radius)/128;
+    int32_t xl = ((cos8(t)-128)*radius)/128;
+    int32_t yl = ((sin8(t)-128)*radius)/128;
     xl += x;
     yl += y;
     if (t0 > 0) {

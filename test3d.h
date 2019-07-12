@@ -52,14 +52,14 @@ class TEST3D: public LIGHT_SKETCH {
 
     bool do_not_update = 0;
 
-    long square[4][3] = {
+    int32_t square[4][3] = {
       { -3 * 256, -4 * 256, 0},
       { -3 * 256, 4 * 256, 0},
       {3 * 256, 4 * 256, 0},
       {3 * 256, -4 * 256, 0}
     };
 
-    long spiral[12][3] = {
+    int32_t spiral[12][3] = {
       { -8 * 256L, 0, 0},
       {0, 8 * 256L, -8 * 256L},
       {8 * 256L, 16 * 256L, 0},
@@ -73,7 +73,7 @@ class TEST3D: public LIGHT_SKETCH {
       {8 * 256L, 80 * 256L, 0},
       {0, 88 * 256L, 8 * 256L}
     };
-    long square_curvetest[4][3] = {
+    int32_t square_curvetest[4][3] = {
       { -18 * 256L, -18 * 256L, 0},
       { 18 * 256L, -18 * 256L, 0},
       { 18 * 256L, 18 * 256L, 0},
@@ -81,29 +81,29 @@ class TEST3D: public LIGHT_SKETCH {
     };
 
 
-    long linex[2][3] = {
+    int32_t linex[2][3] = {
       {0, 0, 0},
       {8 * 256, 0, 0}
     };
 
-    long liney[2][3] = {
+    int32_t liney[2][3] = {
       {0, 0, 0},
       {0, 8 * 256, 0}
     };
 
 
-    long linez[2][3] = {
+    int32_t linez[2][3] = {
       {0, 0, 0},
       {0, 0, 8 * 256}
     };
     //
-    long square2[4][3];
+    int32_t square2[4][3];
 
-    void rotate(long in[3], long out[3]) {
+    void rotate(int32_t in[3], int32_t out[3]) {
       matrix.rotate(in, out);
     }
 
-    void rotate(POINT& p) {
+    void rotate(VECTOR3& p) {
       matrix.rotate(p);
     }
 
@@ -191,7 +191,7 @@ class TEST3D: public LIGHT_SKETCH {
   }
 
 
-    unsigned long update_time = millis();
+    int32_t update_time = millis();
 
   public:
     void next_effect() {
@@ -440,12 +440,12 @@ class TEST3D: public LIGHT_SKETCH {
       if(fs) {
         fs->age = 0;
         fs->x = 0;
-        long p[3] = {(MATRIX_WIDTH*256)/2,0,0};
+        int32_t p[3] = {(MATRIX_WIDTH*256)/2,0,0};
         matrix.reverse_perspective(p);
         fs->y = p[1]; //start "on the ground"
         fs->z = 0;
         uint8_t r = random(105);
-        fs->vy = (r*r)/105+200; //random launch velocity (burst height), weighted toward lower bursts
+        fs->vy = r+200; //random launch velocity (burst height), weighted toward lower bursts
         uint8_t r2 = (105-r)/6;
         fs->vx = random(-(r2+10),(r2+10)); //random side-to-side velocity
         //fs->vy = 300;
@@ -698,7 +698,7 @@ class TEST3D: public LIGHT_SKETCH {
           uint8_t s = _max(_min(cp->age,pa->s),0);
           
           //create a three-dimensional structure that will be rotated
-          POINT p(cp->x*2,cp->y*2,cp->z*2);
+          VECTOR3 p(cp->x*2,cp->y*2,cp->z*2);
 
           //rotate all particles using our orientation matrix
           rotate(p);
@@ -719,7 +719,7 @@ class TEST3D: public LIGHT_SKETCH {
     #define GRID_SIZE 20
     CHSV grid_hsv[GRID_SIZE*2+1][GRID_SIZE*2+1];
 
-    void grid_hsv_v(const int& x, const int& y, long& var, int& cnt) {
+    void grid_hsv_v(const int& x, const int& y, int32_t& var, int& cnt) {
       if (x >= 0 && x < GRID_SIZE*2+1 && y >= 0 && y < GRID_SIZE*2+1) {
         var += grid_hsv[x][y].v;
         cnt++;
@@ -800,12 +800,12 @@ class TEST3D: public LIGHT_SKETCH {
             handle_spiral();
             break;
           case BOX:
-            draw_cube(POINT(0,cube_size,0),15*256,15*256,15*256);
-            draw_cube(POINT(0,-cube_size,0),15*256,15*256,15*256);
-            draw_cube(POINT(cube_size,0,0),15*256,15*256,15*256);
-            draw_cube(POINT(-cube_size,0,0),15*256,15*256,15*256);
-            draw_cube(POINT(0,0,cube_size),15*256,15*256,15*256);
-            draw_cube(POINT(0,0,-cube_size),15*256,15*256,15*256);
+            draw_cube(VECTOR3(0,cube_size,0),15*256,15*256,15*256);
+            draw_cube(VECTOR3(0,-cube_size,0),15*256,15*256,15*256);
+            draw_cube(VECTOR3(cube_size,0,0),15*256,15*256,15*256);
+            draw_cube(VECTOR3(-cube_size,0,0),15*256,15*256,15*256);
+            draw_cube(VECTOR3(0,0,cube_size),15*256,15*256,15*256);
+            draw_cube(VECTOR3(0,0,-cube_size),15*256,15*256,15*256);
             cube_step +=4;
             rotation_alpha += 1;
             rotation_beta += .77;
@@ -845,8 +845,8 @@ void handle_test_object() {
             draw_line_fine(leds, square2[i][0] + 3 * 256, square2[i][1] + 50 * 256, square2[(i + 1) % 4][0] + 3 * 256, square2[(i + 1) % 4][1] + 50 * 256);
           }
 
-          long r0[3];
-          long r1[3];
+          int32_t r0[3];
+          int32_t r1[3];
           rotate(linex[0], r0);
           rotate(linex[1], r1);
 
@@ -1037,9 +1037,9 @@ void handle_grid() {
           static float step1 = 0;
 
 
-          long p0[3];
-          long p1[3];
-          long pt[3]; //temporary storage
+          int32_t p0[3];
+          int32_t p1[3];
+          int32_t pt[3]; //temporary storage
 
 
           //horizontal lines
@@ -1224,12 +1224,12 @@ void handle_snow() {
               cp->vz = random(-255, 256);
             }
 
-            long p[3] = {
+            int32_t p[3] = {
               cp->x,
               cp->y,
               cp->z
             };
-            long p0[3];
+            int32_t p0[3];
 
             rotate(p, p0);
 
@@ -1250,11 +1250,11 @@ void handle_snow() {
 void handle_spiral() {
 
           //SPIRAL
-          long coords[12][2];
+          int32_t coords[12][2];
           for (int i = 0; i < 12; i++) {
 
 
-            long p[3];
+            int32_t p[3];
             static float taco = 1;
             static float taco_dir = .0000;
             taco += taco_dir;
@@ -1267,8 +1267,8 @@ void handle_spiral() {
             p[0] = spiral[i][0]*2;
             p[1] = spiral[i][1]*taco;
             p[2] = spiral[i][2]*2;
-            //long* p = square_curvetest[i];
-            long p0[3];
+            //int32_t* p = square_curvetest[i];
+            int32_t p0[3];
 
             rotate(p, p0);
 
@@ -1293,7 +1293,7 @@ void handle_spiral() {
 
 } //handle_spiral();
 
-void draw_quad(POINT& a, POINT& b, POINT& c, POINT& d, const POINT& orig, POINT& norm, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255) {
+void draw_quad(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& d, const VECTOR3& orig, VECTOR3& norm, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255) {
   
   //optimization:
   //identify clockwise/counterclockwise orientation
@@ -1306,7 +1306,7 @@ void draw_quad(POINT& a, POINT& b, POINT& c, POINT& d, const POINT& orig, POINT&
     draw_line_ybuffer(c, d);
     draw_line_ybuffer(d, a);
 
-    long z_depth = orig.z+norm.z; 
+    int32_t z_depth = orig.z+norm.z; 
 
     matrix.rotate_x(norm,32);
     matrix.rotate_y(norm,32);
@@ -1345,14 +1345,14 @@ void draw_quad(POINT& a, POINT& b, POINT& c, POINT& d, const POINT& orig, POINT&
 } //draw_quad()
 
 
-void draw_cube(const POINT& p, const long& width, const long& height, const long& depth) {
+void draw_cube(const VECTOR3& p, const int32_t& width, const int32_t& height, const int32_t& depth) {
 
-  POINT norm_right(255,0,0);
-  POINT norm_left(-255,0,0);
-  POINT norm_top(0,255,0);
-  POINT norm_bottom(0,-255,0);
-  POINT norm_front(0,0,255);
-  POINT norm_back(0,0,-255);
+  VECTOR3 norm_right(255,0,0);
+  VECTOR3 norm_left(-255,0,0);
+  VECTOR3 norm_top(0,255,0);
+  VECTOR3 norm_bottom(0,-255,0);
+  VECTOR3 norm_front(0,0,255);
+  VECTOR3 norm_back(0,0,-255);
 
   matrix.rotate(norm_right);
   matrix.rotate(norm_left);
@@ -1361,17 +1361,17 @@ void draw_cube(const POINT& p, const long& width, const long& height, const long
   matrix.rotate(norm_front);
   matrix.rotate(norm_back);
 
-  POINT points[] = {
+  VECTOR3 points[] = {
     
-    POINT(p.x+width,p.y+height,p.z+depth), //top right front
-    POINT(p.x+width,p.y+height,p.z-depth), //top right back
-    POINT(p.x-width,p.y+height,p.z-depth), //top left  back
-    POINT(p.x-width,p.y+height,p.z+depth), //top left  front
+    VECTOR3(p.x+width,p.y+height,p.z+depth), //top right front
+    VECTOR3(p.x+width,p.y+height,p.z-depth), //top right back
+    VECTOR3(p.x-width,p.y+height,p.z-depth), //top left  back
+    VECTOR3(p.x-width,p.y+height,p.z+depth), //top left  front
     
-    POINT(p.x+width,p.y-height,p.z+depth), //bottom right front
-    POINT(p.x+width,p.y-height,p.z-depth), //bottom right back
-    POINT(p.x-width,p.y-height,p.z-depth), //bottom left  back
-    POINT(p.x-width,p.y-height,p.z+depth)  //bottom left  back
+    VECTOR3(p.x+width,p.y-height,p.z+depth), //bottom right front
+    VECTOR3(p.x+width,p.y-height,p.z-depth), //bottom right back
+    VECTOR3(p.x-width,p.y-height,p.z-depth), //bottom left  back
+    VECTOR3(p.x-width,p.y-height,p.z+depth)  //bottom left  back
 
   };
 
@@ -1386,7 +1386,7 @@ void draw_cube(const POINT& p, const long& width, const long& height, const long
 
   }
 
-  POINT newp = p;
+  VECTOR3 newp = p;
   matrix.rotate(newp);
 
   draw_quad(points[0],points[4],points[5],points[1],newp,norm_right,212,0,255);  //right
@@ -1412,17 +1412,17 @@ void handle_tunnel() {
   #define TUNNEL_DETAIL 32
   for (int i = 0; i < TUNNEL_DETAIL+1; i++) {
     //wavy
-    //long v0[3] = {0, 20*256L-2*256L*i, -150*256L};
-    //long v1[3] = {-3*256L+6*sin8(stp+i*20), 17*256L-4*256L*i, 210*256L};
-    static long old_v1[3];
+    //int32_t v0[3] = {0, 20*256L-2*256L*i, -150*256L};
+    //int32_t v1[3] = {-3*256L+6*sin8(stp+i*20), 17*256L-4*256L*i, 210*256L};
+    static int32_t old_v1[3];
     //tunnel thing
     //float val = (36.f * sin8(stp3)) / 256.f;
-    long c = static_cast<long>(cos16(stp + i * (65536L/TUNNEL_DETAIL)));
-    long s = static_cast<long>(sin16(stp + i * (65536L/TUNNEL_DETAIL)));
-    long v0[3] = {c/4, s/4, -10000 * 256L};
-    long v1[3] = {c, s, 120 * 256L};
-    long p0[3];
-    long p1[3];
+    int32_t c = static_cast<int32_t>(cos16(stp + i * (65536L/TUNNEL_DETAIL)));
+    int32_t s = static_cast<int32_t>(sin16(stp + i * (65536L/TUNNEL_DETAIL)));
+    int32_t v0[3] = {c/4, s/4, -10000 * 256L};
+    int32_t v1[3] = {c, s, 120 * 256L};
+    int32_t p0[3];
+    int32_t p1[3];
 
     rotate(v0, p0);
     rotate(v1, p1);
@@ -1443,7 +1443,7 @@ void handle_tunnel() {
         draw_line_fine(leds, p0[0], p0[1], p1[0], p1[1], hue, 255, 16, -10000, 255, true);
       }
     }
-    //draw_line_fine(CRGB crgb_object[], long x1, long y1, long x2, long y2, uint8_t hue = 0, uint8_t sat = 255, uint8_t val = 255, int z_depth = -10000, uint8_t val2 = 255)
+    //draw_line_fine(CRGB crgb_object[], int32_t x1, int32_t y1, int32_t x2, int32_t y2, uint8_t hue = 0, uint8_t sat = 255, uint8_t val = 255, int z_depth = -10000, uint8_t val2 = 255)
 
     #define NUM_CIRCLES_TEST3D 4
     if ( i > 0 ) {

@@ -28,20 +28,22 @@ class CURVY: public LIGHT_SKETCH {
 
     BUBBLE bubbles[20];
 
-    long my_points[NUM_THINGS][NUM_POINTS][2];
+    int32_t my_points[NUM_THINGS][NUM_POINTS][2];
     uint32_t loop_time = millis();
-    #define FISH_POINTS 7
-    POINT fish_points[FISH_POINTS] =
+    #define FISH_POINTS 10
+    VECTOR3 fish_points[FISH_POINTS] =
     {
       //{-32,0}, //tail center
-      {-64,32,0}, //tail tip bottom
+      {-72,32,0}, //tail tip bottom
       {-16,0,0}, //tail meets body
       {32,-32,0}, //body top
       {64,0,0}, //nose
       {32,32,0}, //body top
       {-16,0,0}, //tail meets body
       {-64,-32,0}, //tail tip bottom
-      //{-32,0} //tail center
+      {24, 0, -12}, //body left
+      {24, 0, 12}, //body right
+      {-40,0, 0} //tail center
     };
 
     struct FISH {
@@ -53,11 +55,11 @@ class CURVY: public LIGHT_SKETCH {
       int16_t wiggle = 0;
       int16_t speed = 0;
       int16_t add_speed = 0;
-      long target_x = 0;
-      long target_y = 0;
-      long target_z = 0;
-      long age = millis();
-      long new_target_age = 0;
+      int32_t target_x = 0;
+      int32_t target_y = 0;
+      int32_t target_z = 0;
+      int32_t age = millis();
+      int32_t new_target_age = 0;
       uint8_t hue = 0;
       uint8_t sat = 0;
 
@@ -89,7 +91,7 @@ class CURVY: public LIGHT_SKETCH {
     };
 
 
-    //POINT points[NUM_POINTS];
+    //VECTOR3 points[NUM_POINTS];
 
   public:
 
@@ -149,6 +151,30 @@ class CURVY: public LIGHT_SKETCH {
 
 
       if (millis()-16 > loop_time) {
+
+    
+        // VECTOR3 a(-25*256,0,0);
+        // VECTOR3 b(25*256,-5*256,0);
+        // VECTOR3 c(0,50*256,0);
+        // VECTOR3 norm(0,255,0);
+        // VECTOR3 a_rgb(0,0,255);
+        // VECTOR3 b_rgb(0,255,0);
+        // VECTOR3 c_rgb(255,0,0);
+
+        // matrix.rotate(a);
+        // matrix.rotate(b);
+        // matrix.rotate(c);
+        // matrix.scale_z(a);
+        // matrix.scale_z(b);
+        // matrix.scale_z(c);
+        // matrix.perspective(a);
+        // matrix.perspective(b);
+        // matrix.perspective(c);
+
+        // draw_triangle(a, b, c, norm, norm, norm, a_rgb, b_rgb, c_rgb);
+     
+
+        
 
         loop_time = millis();
 
@@ -243,7 +269,7 @@ class CURVY: public LIGHT_SKETCH {
         jelly.step2 = 32;
 
         //reset to a position that is just off the side of the screen
-        long p[3];
+        int32_t p[3];
         p[0] = MATRIX_WIDTH*256;
         p[1] = random(MATRIX_HEIGHT*160) + MATRIX_HEIGHT*32;
         p[2] = random(400);
@@ -294,7 +320,7 @@ class CURVY: public LIGHT_SKETCH {
 
 
       //a unit vector representing the jelly's velocity
-      long v[3] = {0,256,0};
+      int32_t v[3] = {0,256,0};
 
       //rotate the unit vector to figure out how far the jelly should move in each direction
       matrix.rotate_z(v,jelly.az);
@@ -320,25 +346,25 @@ class CURVY: public LIGHT_SKETCH {
 void draw_jelly(JELLY& jelly) {
 
       jelly.on_screen = false;
-      long jelly_lines[NUM_JELLY_SEGMENTS/2][5][2];
+      int32_t jelly_lines[NUM_JELLY_SEGMENTS/2][5][2];
       
-      long ring_points[NUM_JELLY_SEGMENTS][2];
+      int32_t ring_points[NUM_JELLY_SEGMENTS][2];
 
       //a jellyfish consists of a segment rotated around an axis (the center of the jellyfish)
       //each segment is made up of three points
-      long jelly_points[3][3] = {
+      int32_t jelly_points[3][3] = {
         {256,75*84,0},
         {70*48,50*84,0},
         {100*48,0,0}
       };
 
       //animate midpoint
-      long jp1x = jelly_points[1][0] + sin8(jelly.step2)*12;
-      long jp1y = jelly_points[1][1] + cos8(jelly.step2)*8;
+      int32_t jp1x = jelly_points[1][0] + sin8(jelly.step2)*12;
+      int32_t jp1y = jelly_points[1][1] + cos8(jelly.step2)*8;
 
       //animate tips
-      long jp2x = jelly_points[2][0] + sin8(jelly.step)*18;
-      long jp2y = jelly_points[2][1] + cos8(jelly.step)*18;
+      int32_t jp2x = jelly_points[2][0] + sin8(jelly.step)*18;
+      int32_t jp2y = jelly_points[2][1] + cos8(jelly.step)*18;
 
       //process each segment of the jellyfish, like slices of pizza
       for (int i = 0; i < NUM_JELLY_SEGMENTS; i++) {
@@ -351,9 +377,9 @@ void draw_jelly(JELLY& jelly) {
         int x_r = ( (fmix32(i+NUM_JELLY_SEGMENTS) % 256) - 128 );
         int x_r2 = ( (fmix32(i+NUM_JELLY_SEGMENTS) % 512) - 256 );
 
-        long p0[3];
-        long p1[3];
-        long p2[3];
+        int32_t p0[3];
+        int32_t p1[3];
+        int32_t p2[3];
 
         //build the jellyfish by rotating around y-axis:
         //rotate x coord
@@ -499,7 +525,7 @@ void draw_jelly(JELLY& jelly) {
     void handle_tentacles(JELLY& jelly) {
       tentacle_segment (*tentacles)[NUM_TENTACLE_SEGMENTS] = jelly.tentacles;
       for (int i = 0; i < NUM_JELLY_SEGMENTS; i++) {
-        long tentacle_points[NUM_TENTACLE_SEGMENTS][2];
+        int32_t tentacle_points[NUM_TENTACLE_SEGMENTS][2];
         for (int j = 0; j < NUM_TENTACLE_SEGMENTS; j++) {
 
           //apply physics to all but the first point (which is affixed to the jelly)
@@ -667,10 +693,10 @@ void draw_jelly(JELLY& jelly) {
     void draw_tentacles(JELLY& jelly) {
       tentacle_segment (*tentacles)[NUM_TENTACLE_SEGMENTS] = jelly.tentacles;
       for (int i = 0; i < NUM_JELLY_SEGMENTS; i++) {
-        long tentacle_points[NUM_TENTACLE_SEGMENTS][2];
+        int32_t tentacle_points[NUM_TENTACLE_SEGMENTS][2];
         for (int j = 0; j < NUM_TENTACLE_SEGMENTS; j++) {
 
-          long p[3];
+          int32_t p[3];
           p[0] = tentacles[i][j].x;
           p[1] = tentacles[i][j].y;
           p[2] = tentacles[i][j].z;
@@ -761,9 +787,9 @@ void draw_jelly(JELLY& jelly) {
           fish.new_target_age = millis() + (15 + random(30))*1000;
         }
         
-        long a_thing = (fish.x - fish.target_x)/256;
-        long b_thing = (fish.z - fish.target_z)/256;
-        long c_length = sqrt(a_thing*a_thing + b_thing*b_thing); //this is the distance between the target and the fish's y-axis
+        int32_t a_thing = (fish.x - fish.target_x)/256;
+        int32_t b_thing = (fish.z - fish.target_z)/256;
+        int32_t c_length = sqrt(a_thing*a_thing + b_thing*b_thing); //this is the distance between the target and the fish's y-axis
 
         //target angle around z-axis (the angle between y-axis and target)
         uint8_t target_az = -(atan2(c_length - fish.x/256, (fish.target_y - fish.y)/256)*255)/(2*PI)+64;
@@ -784,13 +810,13 @@ void draw_jelly(JELLY& jelly) {
 
         //update fish's position by rotating a unit vector {1,0,0} and using the resulting x,y,z components as speed
         {
-          long p[3];
+          int32_t p[3];
 
-          long z = 0;
+          int32_t z = 0;
 
           //rotate around z-axis:
           //rotate x
-          long x = ( 16*( cos8(fish.az) - 128 ) )/128;
+          int32_t x = ( 16*( cos8(fish.az) - 128 ) )/128;
           //rotate y
           p[1] = ( 16*( sin8(fish.az) - 128 ) )/128;
 
@@ -815,9 +841,9 @@ void draw_jelly(JELLY& jelly) {
     } //update_fish()
 
 
-    void normal(POINT& a, POINT& b, POINT& c, POINT& norm) {
-        POINT u(b.x-a.x, b.y-a.y, b.z-a.z);
-        POINT v(c.x-a.x, c.y-a.y, c.z-a.z);
+    void normal(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& norm) {
+        VECTOR3 u(b.x-a.x, b.y-a.y, b.z-a.z);
+        VECTOR3 v(c.x-a.x, c.y-a.y, c.z-a.z);
         //std::cout << " u: " << u.x << ", " << u.y << ", " << u.z << "\n";
         //std::cout << " v: " << v.x << ", " << v.y << ", " << v.z << "\n";
         norm.x = u.y*v.z - u.z*v.y;
@@ -826,7 +852,7 @@ void draw_jelly(JELLY& jelly) {
         //std::cout << " n: " << norm.x << ", " << norm.y << ", " << norm.z << "\n";
         norm /= 1024;
         //std::cout << "n2: " << norm.x << ", " << norm.y << ", " << norm.z << "\n";
-        long length = sqrt(norm.x*norm.x+norm.y*norm.y+norm.z*norm.z);
+        int32_t length = sqrt(norm.x*norm.x+norm.y*norm.y+norm.z*norm.z);
         //std::cout << " l: " << length << "\n";
         if (length != 0) {
           norm.x = (norm.x*255)/length;
@@ -838,15 +864,16 @@ void draw_jelly(JELLY& jelly) {
           norm.z = 0;
         }
         //matrix.rotate_y(norm,16);
+        matrix.rotate_x(norm,-24);
     }
 
-    void draw_triangle(POINT& a, POINT& b, POINT& c, POINT& orig, POINT& norm, uint8_t& hue, uint8_t& sat, uint8_t& val) {
+    void draw_triangle(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& orig, VECTOR3& norm, uint8_t& hue, uint8_t& sat, uint8_t& val) {
       
       draw_line_ybuffer(a, b);
       draw_line_ybuffer(b, c);
       draw_line_ybuffer(c, a);
 
-      long z_depth = orig.z+norm.z; 
+      int32_t z_depth = orig.z+norm.z;
 
 
       //matrix.rotate_x(norm,32);
@@ -861,10 +888,10 @@ void draw_jelly(JELLY& jelly) {
 
       CRGB rgb = CHSV(hue,sat,_min(_max((bri*val)/256,0),255));
 
-
-      draw_line_fine(leds, a, b, rgb, z_depth);
-      draw_line_fine(leds, b, c, rgb, z_depth);
-      draw_line_fine(leds, c, a, rgb, z_depth);
+      draw_line_fine(leds, a, b, rgb, z_depth, 255, 255, true);
+      draw_line_fine(leds, b, c, rgb, z_depth, 255, 255, true);
+      draw_line_fine(leds, c, a, rgb, z_depth, 255, 255, true);
+      
       rgb = CHSV(hue,sat,_min(_max((bri*val)/256,0),255));
       //CRGB rgb(0,0,0);
       //CRGB rgb2 = CHSV(hue,sat,val);
@@ -889,53 +916,107 @@ void draw_jelly(JELLY& jelly) {
       y_buffer_min = MATRIX_HEIGHT-1;
 
     
-    } //void draw_triangle(POINT& a, POINT& b, POINT& c, POINT& orig, POINT& norm, uint8_t& hue, uint8_t& sat, uint8_t& val)
+    } //void draw_triangle(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& orig, VECTOR3& norm, uint8_t& hue, uint8_t& sat, uint8_t& val)
+
+
+
+    void draw_triangle(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& a_norm, VECTOR3& b_norm, VECTOR3& c_norm, VECTOR3& a_rgb, VECTOR3& b_rgb, VECTOR3& c_rgb) {
+      
+      draw_line_ybuffer(a, a_norm, a_rgb, b, b_norm, b_rgb);
+      draw_line_ybuffer(b, b_norm, b_rgb, c, c_norm, c_rgb);
+      draw_line_ybuffer(c, c_norm, c_rgb, a, a_norm, a_rgb);
+
+
+
+      //CRGB rgb(a_rgb.x,a_rgb.y,a_rgb.z);
+
+      //draw_line_fine(leds, a, b, rgb, a.z, 255, 255, true);
+      //draw_line_fine(leds, b, c, rgb, a.z, 255, 255, true);
+      //draw_line_fine(leds, c, a, rgb, a.z, 255, 255, true);
+      
+      //fill between the pixels of our lines
+      for (int y = y_buffer_min; y <= y_buffer_max; y++) {
+          if (y_buffer2[y][0].position.x <= y_buffer2[y][1].position.x) {
+
+            CRGB rgb (y_buffer2[y][0].rgb.x,y_buffer2[y][0].rgb.y,y_buffer2[y][0].rgb.z);
+            CRGB rgb2 (y_buffer2[y][1].rgb.x,y_buffer2[y][1].rgb.y,y_buffer2[y][1].rgb.z);
+          for (int x = y_buffer2[y][0].position.x; x <= y_buffer2[y][1].position.x; x++) {
+            //CRGB rgb (y_buffer2[y][0].rgb.x,y_buffer2[y][0].rgb.y,y_buffer2[y][0].rgb.z);
+            //drawXYZ(leds, x, y, y_buffer2[y][0].position.z, rgb);
+          }
+
+          drawXYZ(leds, y_buffer2[y][0].position.x, y_buffer2[y][0].position.y, y_buffer2[y][0].position.z, rgb);
+          drawXYZ(leds, y_buffer2[y][1].position.x, y_buffer2[y][1].position.y, y_buffer2[y][1].position.z, rgb2);
+
+        }
+        //clear the buffer to be used for filling the triangle
+        y_buffer2[y][0].position.x = MATRIX_WIDTH*256;
+        y_buffer2[y][1].position.x = -1;
+      
+      }
+
+      y_buffer_max = 0;
+      y_buffer_min = MATRIX_HEIGHT-1;
+
+    
+    } //void draw_triangle(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& orig, VECTOR3& norm, uint8_t& hue, uint8_t& sat, uint8_t& val)
 
 
 
 
-    void draw_triangle(POINT& a, POINT& b, POINT& c, uint8_t& hue, uint8_t& sat, uint8_t& val) {
+
+
+
+
+
+    void draw_triangle(VECTOR3& a, VECTOR3& b, VECTOR3& c, uint8_t& hue, uint8_t& sat, uint8_t& val, const bool& two_sided = true) {
       
       //optimization:
       //identify clockwise/counterclockwise orientation
       //draw in only one orientation (facing toward the camera)
       int orientation = (b.y-a.y)*(c.x-b.x) - (c.y-b.y)*(b.x-a.x);
       
-      POINT norm;
       
-      normal(a,b,c,norm);
 
       if ( orientation < 0 ) {
-        draw_triangle(a,b,c,a,norm,hue,sat,val);
+        VECTOR3 norm;
+        normal(a,b,c,norm);
+        VECTOR3 orig;
+        orig = (a+b+c)/3;
+        draw_triangle(a,b,c,orig,norm,hue,sat,val);
         return;
       }
 
-      norm.invert();
-      draw_triangle(a,c,b,a,norm,hue,sat,val);
-      
+      if (two_sided) {
+        VECTOR3 norm;
+        normal(a,c,b,norm);
+        VECTOR3 orig;
+        orig = (a+b+c)/3;
+        draw_triangle(a,c,b,orig,norm,hue,sat,val);
+      }
 
-    } //void draw_triangle(POINT& a, POINT& b, POINT& c, uint8_t& hue, uint8_t& sat, uint8_t& val)
+    } //void draw_triangle(VECTOR3& a, VECTOR3& b, VECTOR3& c, uint8_t& hue, uint8_t& sat, uint8_t& val)
 
 
 
 
     void draw_fish(FISH& fish) {
 
-      POINT points_3d[FISH_POINTS];
-      POINT points_2d[FISH_POINTS];
+      VECTOR3 points_3d[FISH_POINTS];
+      VECTOR3 points_2d[FISH_POINTS];
       int32_t detail_z = 0;
       int32_t on_screen = false;
       for (int i = 0; i < FISH_POINTS; i++) {
-        POINT* p = &points_3d[i];
+        VECTOR3* p = &points_3d[i];
 
         //scale z to add wiggly swimming motion
-        long z = (inoise8(fish_points[i].x*2+fish.wiggle*8, 0, 0)-128)*16;
+        int32_t z = fish_points[i].z*64 + (inoise8(fish_points[i].x*2+fish.wiggle*8, 0, 0)-128)*16;
 
         //rotate around z-axis:
         //rotate x
         uint8_t sin_az = sin8(fish.az);
         uint8_t cos_az = cos8(fish.az);
-        long x = ( fish_points[i].x*64*( cos_az - 128 ) - fish_points[i].y*48*( sin_az - 128 )  )/128;
+        int32_t x = ( fish_points[i].x*64*( cos_az - 128 ) - fish_points[i].y*48*( sin_az - 128 )  )/128;
         //rotate y
         p->y = ( fish_points[i].x*64*( sin_az - 128 )  + fish_points[i].y*48*( cos_az - 128 )  )/128;
 
@@ -970,12 +1051,15 @@ void draw_jelly(JELLY& jelly) {
       //draw the fish if it is on the screen
       if (on_screen) {
 
-        uint8_t a = 0;
+        uint8_t a = 0; 
         uint8_t b = 1;
         uint8_t c = 2;
         uint8_t d = 3;
         uint8_t e = 4;
         uint8_t g = 6;
+        uint8_t h = 7; //body left
+        uint8_t i = 8; //body right
+        uint8_t j = 9; //tail center
 
         uint8_t detail = 255;
         //lower the level of detail when farther away
@@ -986,18 +1070,29 @@ void draw_jelly(JELLY& jelly) {
         // bri = _max(_min(bri,255),0);
         uint8_t bri = 200;
 
-        draw_triangle(points_2d[a],points_2d[b],points_2d[g],fish.hue,fish.sat,bri);
+        draw_triangle(points_2d[a],points_2d[b],points_2d[j],fish.hue,fish.sat,bri);
+        draw_triangle(points_2d[b],points_2d[g],points_2d[j],fish.hue,fish.sat,bri);
 
-        draw_triangle(points_2d[b],points_2d[c],points_2d[e],fish.hue,fish.sat,bri);
+        //draw_triangle(points_2d[b],points_2d[c],points_2d[e],fish.hue,fish.sat,bri);
 
-        draw_triangle(points_2d[c],points_2d[d],points_2d[e],fish.hue,fish.sat,bri);
+        //draw_triangle(points_2d[c],points_2d[d],points_2d[e],fish.hue,fish.sat,bri);
+        
+        draw_triangle(points_2d[c],points_2d[b],points_2d[i],fish.hue,fish.sat,bri,false);
+        draw_triangle(points_2d[d],points_2d[c],points_2d[i],fish.hue,fish.sat,bri,false);
+        draw_triangle(points_2d[e],points_2d[d],points_2d[i],fish.hue,fish.sat,bri,false);
+        draw_triangle(points_2d[b],points_2d[e],points_2d[i],fish.hue,fish.sat,bri,false);
+
+        draw_triangle(points_2d[b],points_2d[c],points_2d[h],fish.hue,fish.sat,bri,false);
+        draw_triangle(points_2d[c],points_2d[d],points_2d[h],fish.hue,fish.sat,bri,false);
+        draw_triangle(points_2d[d],points_2d[e],points_2d[h],fish.hue,fish.sat,bri,false);
+        draw_triangle(points_2d[e],points_2d[b],points_2d[h],fish.hue,fish.sat,bri,false);
         //matt_curve8(points,FISH_POINTS,fish.hue,fish.sat,bri,false,false,true,255,detail);
       }
             // //fish debug, lines between fish and target
-            // long v0[3] = {fish.x,fish.y,fish.z};
-            // long v1[3] = {fish.target_x, fish.target_y, fish.target_z};
-            // long p0[3];
-            // long p1[3];
+            // int32_t v0[3] = {fish.x,fish.y,fish.z};
+            // int32_t v1[3] = {fish.target_x, fish.target_y, fish.target_z};
+            // int32_t p0[3];
+            // int32_t p1[3];
 
             // matrix.rotate(v0, p0);
             // matrix.rotate(v1, p1);

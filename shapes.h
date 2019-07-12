@@ -12,17 +12,17 @@ class SHAPES: public LIGHT_SKETCH {
 
     class CIRCLE {
       public:
-        long y;
+        int32_t y;
         uint8_t stp;
     };
 
 
   private:
     uint8_t amp = 64;
-    long x1;
-    long y1;
-    long x2;
-    long y2;
+    int32_t x1;
+    int32_t y1;
+    int32_t x2;
+    int32_t y2;
     uint8_t angle = 0;
     uint8_t angle_speed = 30;
     uint8_t current_variation = 2;
@@ -99,7 +99,7 @@ class SHAPES: public LIGHT_SKETCH {
     void test_curve() {
 
       //for (int i = 0; i < 3; i++) {
-        long my_points[5][2];
+        int32_t my_points[5][2];
 
         my_points[0][0] = MATRIX_WIDTH*198;
         my_points[0][1] = 5*256;

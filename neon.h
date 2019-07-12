@@ -16,20 +16,20 @@ class NEON: public LIGHT_SKETCH {
 
 
   private:
-    long x;
-    long y;
+    int32_t x;
+    int32_t y;
     uint8_t b;
     int w;
     uint8_t gb;
     uint8_t spd;
-    long x0;
-    long y0;
-    long x1;
-    long y1;
-    long x2;
-    long y2;
-    long x3;
-    long my_points[NUM_POINTS_NEON][2];
+    int32_t x0;
+    int32_t y0;
+    int32_t x1;
+    int32_t y1;
+    int32_t x2;
+    int32_t y2;
+    int32_t x3;
+    int32_t my_points[NUM_POINTS_NEON][2];
 
 
 
@@ -87,7 +87,7 @@ class NEON: public LIGHT_SKETCH {
             distx += random(101) - 50;
           }
 
-          long newx = my_points[i][0] + distx;
+          int32_t newx = my_points[i][0] + distx;
 
           //calculate moving average to get smoother movement
           //newx = my_my_points[i][0] + (newx - my_my_points[i][0]) / 2;
@@ -102,11 +102,11 @@ class NEON: public LIGHT_SKETCH {
 
 
           //vertical movement
-          long disty = 0;
+          int32_t disty = 0;
           for (int s = 0; s < 10; s++) {
             disty += random(101) - 50;
           }
-          long newy = my_points[i][1] + disty;
+          int32_t newy = my_points[i][1] + disty;
           //calculate moving average to get smoother movement
           //newy = my_newy + (newy - my_newy) / 2;
 

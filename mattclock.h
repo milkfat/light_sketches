@@ -293,13 +293,13 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
     void draw_3d(const int& x0, const int& y0, const int& z0, const int& x1, const int& y1, const int& z1, const uint8_t& hue = 0, const uint8_t& sat = 255, const uint8_t& val = 255) {
 
-      long p[3];
+      int32_t p[3];
       
       p[0] = x0;
       p[1] = y0;
       p[2] = z0;
 
-      long p0[3];
+      int32_t p0[3];
       
       matrix.rotate(p,p0);
 
@@ -307,7 +307,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
       p[1] = y1;
       p[2] = z1;
 
-      long p1[3];
+      int32_t p1[3];
 
       matrix.rotate(p,p1);
 
@@ -364,13 +364,13 @@ class MATTCLOCK: public LIGHT_SKETCH {
           x1b += adjust;
           int z1b = (x1b_asdf*cos16(d1*256))/32768;
 
-          long p[3];
+          int32_t p[3];
 
           p[0] = x+x0b;
           p[1] = y-y0;
           p[2] = z+z0b;
 
-          long p0[3];
+          int32_t p0[3];
 
           matrix.rotate(p, p0);
 
@@ -378,7 +378,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
           p[1] = y-y1;
           p[2] = z+z1b;
 
-          long p1[3];
+          int32_t p1[3];
 
           matrix.rotate(p, p1);
 
@@ -613,7 +613,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
             cposx += (SEGMENT_LENGTH-SEGMENT_SPACING)*cx;
           } else {
             //draw a 3d colon
-            long p[3];
+            int32_t p[3];
       
             int x = (cposx+SEGMENT_SPACING+2)*256;
             int y = (MATRIX_HEIGHT-1-cposy)*256;
@@ -844,13 +844,13 @@ class MATTCLOCK: public LIGHT_SKETCH {
         current_digit = old_digit;
       }
 
-      long wire_digit[6][2];
+      int32_t wire_digit[6][2];
 
       if ( current_digit >= 0 && current_digit <= 9 ) {
         
         for (int i = 0; i < 6; i++) {
 
-          long p[3];
+          int32_t p[3];
 
 
 
@@ -876,7 +876,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
           p[1] = y-p[1];
           p[2] = 0;
 
-          long p0[3];
+          int32_t p0[3];
 
           matrix.rotate(p, p0);
 
