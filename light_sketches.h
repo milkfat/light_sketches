@@ -205,6 +205,9 @@ class LIGHT_SKETCHES {
           y_buffer[i] = new int[2]; //stores the min/max X values per Y so that we can fill between them
           y_buffer[i][0] = MATRIX_WIDTH + 1;
           y_buffer[i][1] = -1;
+          y_buffer2[i][0].position.x = MATRIX_WIDTH*256;
+          y_buffer2[i][1].position.x = -1;
+
         }
 
 

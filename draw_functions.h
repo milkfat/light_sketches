@@ -7,6 +7,9 @@
 #ifndef _max
 #define _max(a,b) ((a)>(b)?(a):(b))
 #endif
+#ifndef _clamp8
+#define _clamp8(a) _min(_max(a,0),255)
+#endif
 
 
 //make the heightmap one pixel wider in each dimension to avoid surface normal aberations along the edges 
@@ -55,7 +58,7 @@ class Float16Compressor
 
     public:
 
-        static uint16_t compress(float value)
+        static uint16_t compress(const float& value)
         {
             Bits v, s;
             v.f = value;
@@ -73,7 +76,7 @@ class Float16Compressor
             return v.ui | sign;
         }
 
-        static float decompress(uint16_t value)
+        static float decompress(const uint16_t& value)
         {
             Bits v;
             v.ui = value;
@@ -162,6 +165,27 @@ uint8_t ease8Out (uint8_t stp) {
   stp = 255 - stp;
   stp = stp*stp/255;
   return 255 - stp;
+}
+
+uint8_t gamma8_e[256];
+uint8_t gamma8_d[256];
+
+uint8_t gamma8_encode(const uint8_t& value) {
+  return gamma8_e[value];
+}
+
+uint8_t gamma8_decode(const uint8_t& value) {
+  return gamma8_d[value];
+}
+
+CRGB gamma8_encode(const CRGB& value) {
+  CRGB rgb( gamma8_e[value.r], gamma8_e[value.g], gamma8_e[value.b] );
+  return rgb;
+}
+
+CRGB gamma8_decode(const CRGB& value) {
+  CRGB rgb( gamma8_d[value.r], gamma8_d[value.g], gamma8_d[value.b] );
+  return rgb;
 }
 
 //object to track cursor positions
@@ -277,17 +301,20 @@ void drawXY_blend(CRGB crgb_object[], const int& x, const int& y, const uint8_t&
 
 }
 
-void drawXYZ(CRGB crgb_object[], const int32_t& x, const int32_t& y, const int32_t& z, CRGB& rgb) {
+void drawXYZ(CRGB crgb_object[], const int32_t& x, const int32_t& y, const int32_t& z, CRGB& rgb, const bool& gamma = false) {
   
-  if (y >= 0 && y < MATRIX_HEIGHT) {
+  if (y >= 0 && y < MATRIX_HEIGHT && x >= 0 && x < MATRIX_WIDTH) {
 
-    if (x >= 0 && x < MATRIX_WIDTH) {
+    if (z > z_buffer[x][y]) {
 
-      if (z > z_buffer[x][y]) {
+      z_buffer[x][y] = z; 
 
-        z_buffer[x][y] = z; 
-        crgb_object[XY(x,y)] = rgb;
+      if (gamma) {
+        crgb_object[XY(x,y)] = gamma8_decode(rgb);
+        return;
       }
+
+      crgb_object[XY(x,y)] = rgb;
 
     }
 
@@ -408,12 +435,28 @@ struct VECTOR3 {
     p.z = z + p_in.z; 
     return p; 
   } 
-  
+
   VECTOR3 operator - (VECTOR3 const &p_in) { 
     VECTOR3 p; 
     p.x = x - p_in.x; 
     p.y = y - p_in.y; 
     p.z = z - p_in.z; 
+    return p; 
+  } 
+  
+  VECTOR3 operator - (VECTOR3 const &p_in) const { 
+    VECTOR3 p; 
+    p.x = x - p_in.x; 
+    p.y = y - p_in.y; 
+    p.z = z - p_in.z; 
+    return p; 
+  } 
+
+  VECTOR3 operator * (int const &num) { 
+    VECTOR3 p; 
+    p.x = x * num; 
+    p.y = y * num; 
+    p.z = z * num; 
     return p; 
   } 
 
@@ -468,7 +511,22 @@ struct VECTOR3 {
     z = -z;
   }
 
-  
+  VECTOR3 unit() {
+
+    VECTOR3 norm;
+    int32_t length = sqrt(x*x+y*y+z*z);
+    if (length != 0) {
+      norm.x = (x*255)/length;
+      norm.y = (y*255)/length;
+      norm.z = (z*255)/length;
+    } else {
+      norm.x = 0;
+      norm.y = 0;
+      norm.z = 0;
+    }
+    return norm;
+
+  }
 
 };
 
@@ -482,10 +540,15 @@ VECTOR3 abs(const VECTOR3& v) {
 
 struct Y_BUF {
   VECTOR3 position;
-  VECTOR3 normal;
-  VECTOR3 rgb;
+  VECTOR3 ratio;
 };
 Y_BUF y_buffer2[MATRIX_HEIGHT][2];
+
+
+CRGB gamma8_decode(const VECTOR3& value) {
+  CRGB rgb( gamma8_d[_clamp8(value.x)], gamma8_d[_clamp8(value.y)], gamma8_d[_clamp8(value.z)] );
+  return rgb;
+}
 
 
 void blendXY(CRGB crgb_object[], const VECTOR3& point, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255) {
@@ -644,15 +707,12 @@ void draw_line_ybuffer(VECTOR3& a, VECTOR3& b) {
 
 
 
-void swap_coords(VECTOR3& a, VECTOR3& a_norm, VECTOR3& a_rgb, VECTOR3& b, VECTOR3& b_norm, VECTOR3& b_rgb, VECTOR3& dist) {
+void swap_coords(VECTOR3& a, VECTOR3& a_rgb, VECTOR3& b, VECTOR3& b_rgb, VECTOR3& dist) {
   VECTOR3 temp = a;
-  VECTOR3 temp_norm = a_norm;
   VECTOR3 temp_rgb = a_rgb;
   a = b;
-  a_norm = b_norm;
   a_rgb = b_rgb;
   b = temp;
-  b_norm = temp_norm;
   b_rgb = temp_rgb;
   dist.x = -dist.x;
   dist.y = -dist.y;
@@ -660,10 +720,31 @@ void swap_coords(VECTOR3& a, VECTOR3& a_norm, VECTOR3& a_rgb, VECTOR3& b, VECTOR
 }
 
 
+void iterate(VECTOR3& a, const VECTOR3& step, const VECTOR3& dist, VECTOR3& err, const int32_t& target_dist ) {
 
+  if (target_dist > 0) {
 
+    err += dist;
+    while (err.x >= target_dist) {
+      a.x += step.x;
+      err.x -= target_dist;
+    }
 
-void draw_line_ybuffer(VECTOR3 a, VECTOR3 a_norm, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 b_norm, VECTOR3 b_rgb) {
+    while (err.y >= target_dist) {
+      a.y += step.y;
+      err.y -= target_dist;
+    }
+
+    while (err.z >= target_dist) {
+      a.z += step.z;
+      err.z -= target_dist;
+    }
+
+  }
+
+}
+
+void draw_line_ybuffer(VECTOR3 a, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 b_rgb) {
 
   a += 128;
   b += 128;
@@ -677,6 +758,7 @@ void draw_line_ybuffer(VECTOR3 a, VECTOR3 a_norm, VECTOR3 a_rgb, VECTOR3 b, VECT
 
   VECTOR3 err(0,0,0);
   VECTOR3 step(0,0,0);
+
   VECTOR3 err_rgb(0,0,0);
   VECTOR3 step_rgb(0,0,0);
 
@@ -684,7 +766,7 @@ void draw_line_ybuffer(VECTOR3 a, VECTOR3 a_norm, VECTOR3 a_rgb, VECTOR3 b, VECT
   if (a_dist.x > a_dist.y) {
     //draw horizontally
     if (a.x > b.x) {
-      swap_coords(a,a_norm,a_rgb,b,b_norm,b_rgb,dist);
+      swap_coords(a,a_rgb,b,b_rgb,dist);
       dist_rgb.x = -dist_rgb.x;
       dist_rgb.y = -dist_rgb.y;
       dist_rgb.z = -dist_rgb.z;
@@ -701,47 +783,25 @@ void draw_line_ybuffer(VECTOR3 a, VECTOR3 a_norm, VECTOR3 a_rgb, VECTOR3 b, VECT
         //TODO: take into account a.z when a.x is equal, if necessary
         if (a.x < y_buffer2[a.y][0].position.x) {
           y_buffer2[a.y][0].position = a;
-          y_buffer2[a.y][0].rgb = a_rgb;
+          y_buffer2[a.y][0].ratio = a_rgb;
         }
         if (a.x > y_buffer2[a.y][1].position.x) {
           y_buffer2[a.y][1].position = a;
-          y_buffer2[a.y][1].rgb = a_rgb;
+          y_buffer2[a.y][1].ratio = a_rgb;
         }
       }
-      //drawXY(leds,x1,y1,0,0,255);
+      //drawXY(leds,a.x,a.y,0,0,255);
       a.x++;
+      
+      iterate(a, step, a_dist, err, a_dist.x);
+      
+      iterate(a_rgb, step_rgb, a_dist_rgb, err_rgb, a_dist.x);
 
-      err_rgb.y += a_dist_rgb.y;
-      while (err_rgb.y >= a_dist.x) {
-        a_rgb.y += step_rgb.y;
-        err_rgb.y -= a_dist.x;
-      }
-      err_rgb.x += a_dist_rgb.x;
-      while (err_rgb.x >= a_dist.x) {
-        a_rgb.x += step_rgb.x;
-        err_rgb.x -= a_dist.x;
-      }
-      err_rgb.z += a_dist_rgb.z;
-      while (err_rgb.z >= a_dist.x) {
-        a_rgb.z += step_rgb.z;
-        err_rgb.z -= a_dist.x;
-      }
-
-      err.y += a_dist.y;
-      if (err.y >= a_dist.x) {
-        a.y += step.y;
-        err.y -= a_dist.x;
-      }
-      err.z += a_dist.z;
-      if (err.z >= a_dist.x) {
-        a.z += step.z;
-        err.z -= a_dist.x;
-      }
     }
   } else {
     //draw vertically
     if (a.y > b.y) {
-      swap_coords(a,a_norm,a_rgb,b,b_norm,b_rgb,dist);
+      swap_coords(a,a_rgb,b,b_rgb,dist);
       dist_rgb.x = -dist_rgb.x;
       dist_rgb.y = -dist_rgb.y;
       dist_rgb.z = -dist_rgb.z;
@@ -757,42 +817,22 @@ void draw_line_ybuffer(VECTOR3 a, VECTOR3 a_norm, VECTOR3 a_rgb, VECTOR3 b, VECT
         y_buffer_max = _max(a.y,y_buffer_max);
         if (a.x < y_buffer2[a.y][0].position.x) {
           y_buffer2[a.y][0].position = a;
-          y_buffer2[a.y][0].rgb = a_rgb;
+          y_buffer2[a.y][0].ratio = a_rgb;
         }
         if (a.x > y_buffer2[a.y][1].position.x) {
           y_buffer2[a.y][1].position = a;
-          y_buffer2[a.y][1].rgb = a_rgb;
+          y_buffer2[a.y][1].ratio = a_rgb;
         }
       }
-      //drawXY(leds,x1,y1,0,0,255);
+      //drawXY(leds,a.x,a.y,0,0,255);
+
       a.y++;
 
-      err_rgb.y += a_dist_rgb.y;
-      while (err_rgb.y >= a_dist.y) {
-        a_rgb.y += step_rgb.y;
-        err_rgb.y -= a_dist.y;
-      }
-      err_rgb.x += a_dist_rgb.x;
-      while (err_rgb.x >= a_dist.y) {
-        a_rgb.x += step_rgb.x;
-        err_rgb.x -= a_dist.y;
-      }
-      err_rgb.z += a_dist_rgb.z;
-      while (err_rgb.z >= a_dist.y) {
-        a_rgb.z += step_rgb.z;
-        err_rgb.z -= a_dist.y;
-      }
+      iterate(a, step, a_dist, err, a_dist.y);
 
-      err.x += a_dist.x;
-      if (err.x >= a_dist.y) {
-        a.x += step.x;
-        err.x -= a_dist.y;
-      }
-      err.z += a_dist.z;
-      if (err.z >= a_dist.y) {
-        a.z += step.z;
-        err.z -= a_dist.y;
-      }
+      iterate(a_rgb, step_rgb, a_dist_rgb, err_rgb, a_dist.y);
+
+
     }
   }
 
@@ -1761,396 +1801,57 @@ uint32_t fmix32 ( uint32_t h )
   return h;
 }
 
+//create a datatype that uses 16 bits to store an 18-bit integer (-131072 to 131068)
+typedef class cint18
+{
+  private:
+      int16_t val = 0;
 
+  public:
 
-uint16_t matt_compress(int32_t val) {
-    uint32_t aval = abs(val);
-    uint32_t sign = ((uint32_t)val >> 31) << 10;
-		uint shift = 0;
-    uint shift1 = 0;
-		uint shift2 = 0;
-    uint offset = 0;
-    uint offset2 = 0;
-    if (aval >= 64) {  //precision of 1
-      offset = 64;
-      shift1++;
-      if (aval >= 128) { //precision of 1
-        shift++;
-        if (aval >= 256) { //precision of 2
-          shift++;
-          if (aval >= 512) { //precision of 4
-            shift++;
-            if (aval >= 1024) { //precision of 16
-              shift++;
-              if (aval >= 2048) { //precision of 32
-                shift++;
-                if (aval >= 4096) { //precision of 32
-                  offset2 = (aval-2048)/2048;
-                  if (aval >= 16384) { //precision of 256
-                    shift2+=4;
-                    shift+=3;
-                    offset2 = 0;
-                    if (aval >= 32786) { //precision of 512
-                      shift++;
-                      if (aval >= 65536) { //precision of 1024
-                        shift++;
-                        if (aval >= 131071) { //max value
-                          aval = 131071;
-                        }
-                      }
-                    }
-                  } else {
-                    shift2 += offset2;
-                  }
-                }
-              }
-            }
-          }
-        }
+      cint18() {
       }
-    }
 
-    uint tshift = shift+shift1+shift2;
-		uint cval = ( ( (aval - offset2*2048) >> shift ) - offset );
-    uint16_t creturn = (tshift << 6) | cval | sign;
-    return creturn; 
-	}
-
-
-int32_t matt_decompress(uint16_t val) {
-  bool sign = (val >> 10);
-  val &= 0b01111111111;
-  int32_t shift = val >> 6;
-  int32_t cval = val & 0b0000111111;
-  int32_t rval = 0;
-  if (shift == 0) {
-    rval = cval;
-  } else if (shift < 7) {
-    rval = cval + 64;
-    rval <<= (shift-1);
-  } else if (shift > 12) {
-    rval = cval + 64;
-    rval <<= (shift-5);
-  } else {
-    rval = cval + 64;
-    rval <<= (6-1);
-    rval += 2048*(shift-6);
-  }
-  return (sign) ? -rval : rval;
-}
-
-uint16_t matt_compress8(int32_t val) {
-    uint32_t aval = abs(val);
-    uint32_t sign = ((uint32_t)val >> 31) << 7;
-		uint shift = 0;
-    uint div = 4;
-    if (aval >= 32) {
-      shift++;
-      aval -= 32;
-      div = 4;
-      if (aval >= 32) {
-        shift++;
-        aval -= 32;
-        div = 8;
-        if(aval >= 64) {
-          shift++;
-          aval -= 64;
-          div = 16;
-          if(aval >= 128) {
-            shift++;
-            aval -= 128;
-            div = 32;
-            if(aval >= 256) {
-              shift++;
-              aval -= 256;
-              div = 64;
-              if(aval >= 512) {
-                shift++;
-                aval -= 512;
-                div = 128;
-                if(aval >= 1024) {
-                  shift++;
-                  aval -= 1024;
-                  div = 256;
-                  if(aval >= 2048) {
-                    shift++;
-                    aval -= 2048;
-                    if (aval >= 2048) {
-                      shift++;
-                      aval -= 2048;
-                      if (aval >= 2048) {
-                        shift++;
-                        aval -= 2048;
-                        if (aval >= 2048) {
-                          shift++;
-                          aval -= 2048;
-                          if(aval >= 2048) {
-                            shift++;
-                            aval -= 2048;
-                            div = 4096;
-                            if(aval > 32768) {
-                              shift++;
-                              aval -= 32768;
-                              if(aval > 32768) {
-                                shift++;
-                                aval -= 32768;
-                                if(aval > 32768) {
-                                  shift++;
-                                  aval -= 32768;
-                                  if(aval >= 32768) {
-                                    aval = 32767;
-                                  }
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
+      #define CINT18_MULT 4
+      
+      //conversion to int
+      operator int() {
+          return val*CINT18_MULT;
       }
-    } 
 
-		uint cval = aval / div;
-    uint8_t creturn = (shift << 3) | cval | sign;
-    return creturn; 
-	}
+      //conversion from int
+      cint18(const int& n) {
+          val = n/CINT18_MULT;
+      }
 
-int32_t matt_decompress8(uint8_t val) {
-  bool sign = (val >> 7);
-  val &= 0b01111111;
-  int32_t shift = val >> 3;
-  int32_t cval = val & 0b00000111;
-  int32_t rval = 0;
-  if (shift == 0) {
-    rval = cval*4;
-  } else if (shift < 8) {
-    rval = cval << (shift+1);
-    rval += 32 << (shift-1);
-  } else if (shift < 12) {
-    rval = 4096 + cval*256 + (shift-8)*2048;
-  } else {
-    rval += 12288 + cval*4096 + (shift-12)*32768;
-  }
-  return (sign) ? -rval : rval;
-}
+      //conversion from float
+      cint18(const float& n) {
+          val = n/CINT18_MULT;
+      }
 
-    
-  //create a datatype that uses 11 bits to store numbers from -131072 to 131072
-  typedef class cint
-  {
-    private:
-        uint16_t val;
+        //overload +=
+        void operator+= (const int& rhs) {
+          val = val + rhs/CINT18_MULT;
+        }
 
-    public:
-        
-        //conversion to int
-        operator int() {
-            return matt_decompress(val);
+        //overload -=
+        void operator-= (const int& rhs) {
+          val = val - rhs/CINT18_MULT;
         }
 
 
-        //conversion from int
-        cint(int n) {
-            val = matt_compress(n);
-        }
-
-        //conversion from float
-        cint(float n) {
-            val = matt_compress(n);
+        //overload *=
+        void operator*= (const int& rhs) {
+          val = val * rhs;
         }
 
 
-         //overload +=
-         void operator+= (int rhs) {
-            val = matt_compress(matt_decompress(val) + rhs);
-         }
-
-
-         //overload -=
-         void operator-= (int rhs) {
-            val = matt_compress(matt_decompress(val) - rhs);
-         }
-
-
-         //overload *=
-         void operator*= (int rhs) {
-            val = matt_compress(matt_decompress(val) * rhs);
-         }
-
-
-         //overload /=
-         void operator/= (int rhs) {
-            val = matt_compress(matt_decompress(val) / rhs);
-         }
-
-
-         //overload +=
-         void operator+= (float rhs) {
-            val = matt_compress(matt_decompress(val) + rhs);
-         }
-
-
-         //overload -=
-         void operator-= (float rhs) {
-            val = matt_compress(matt_decompress(val) - rhs);
-         }
-
-
-         //overload *=
-         void operator*= (float rhs) {
-            val = matt_compress(matt_decompress(val) * rhs);
-         }
-
-
-         //overload /=
-         void operator/= (float rhs) {
-            val = matt_compress(matt_decompress(val) / rhs);
-         }
-
-
-   } cint;
-
-   //create a datatype that uses 8 bits to store numbers from -139264 to 139264
-  typedef class cint8
-  {
-    private:
-        uint8_t val;
-
-    public:
-        
-        //conversion to int
-        operator int() {
-            return matt_decompress8(val);
+        //overload /=
+        void operator/= (const int& rhs) {
+          val = val / rhs;
         }
 
 
-        //conversion from int
-        cint8(int n) {
-            val = matt_compress8(n);
-        }
+} cint18;
 
-        //conversion from float
-        cint8(float n) {
-            val = matt_compress8(n);
-        }
-
-
-         //overload +=
-         void operator+= (int rhs) {
-            val = matt_compress8(matt_decompress8(val) + rhs);
-         }
-
-
-         //overload -=
-         void operator-= (int rhs) {
-            val = matt_compress8(matt_decompress8(val) - rhs);
-         }
-
-
-         //overload *=
-         void operator*= (int rhs) {
-            val = matt_compress8(matt_decompress8(val) * rhs);
-         }
-
-
-         //overload /=
-         void operator/= (int rhs) {
-            val = matt_compress8(matt_decompress8(val) / rhs);
-         }
-
-
-         //overload +=
-         void operator+= (float rhs) {
-            val = matt_compress8(matt_decompress8(val) + rhs);
-         }
-
-
-         //overload -=
-         void operator-= (float rhs) {
-            val = matt_compress8(matt_decompress8(val) - rhs);
-         }
-
-
-         //overload *=
-         void operator*= (float rhs) {
-            val = matt_compress8(matt_decompress8(val) * rhs);
-         }
-
-
-         //overload /=
-         void operator/= (float rhs) {
-            val = matt_compress8(matt_decompress8(val) / rhs);
-         }
-
-
-   } cint8;
-
-  //create a datatype that uses 16 bits to store an 18-bit integer (-131072 to 131068)
-  typedef class cint18
-  {
-    private:
-        int16_t val = 0;
-
-    public:
-
-        cint18() {
-        }
-
-        #define CINT18_MULT 4
-        
-        //conversion to int
-        operator int() {
-            return val*CINT18_MULT;
-        }
-
-        //conversion from int
-        cint18(const int& n) {
-            val = n/CINT18_MULT;
-        }
-
-        //conversion from float
-        cint18(const float& n) {
-            val = n/CINT18_MULT;
-        }
-
-         //overload +=
-         void operator+= (const int& rhs) {
-            val = val + rhs/CINT18_MULT;
-         }
-
-         //overload -=
-         void operator-= (const int& rhs) {
-            val = val - rhs/CINT18_MULT;
-         }
-
-
-         //overload *=
-         void operator*= (const int& rhs) {
-            val = val * rhs;
-         }
-
-
-         //overload /=
-         void operator/= (const int& rhs) {
-            val = val / rhs;
-         }
-
-
-  } cint18;
-
-  uint8_t gamma8_e[256];
-  uint8_t gamma8_d[256];
-
-  uint8_t gamma8_encode(const uint8_t& value) {
-    return gamma8_e[value];
-  }
-
-  uint8_t gamma8_decode(const uint8_t& value) {
-    return gamma8_d[value];
-  }
+  

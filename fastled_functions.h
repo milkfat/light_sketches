@@ -155,6 +155,10 @@ typedef class clampedByte
             return val;
         }
         
+        operator const uint8_t&() const {
+            return val;
+        }
+        
 
 
         //default uninitialized

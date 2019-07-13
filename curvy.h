@@ -36,7 +36,7 @@ class CURVY: public LIGHT_SKETCH {
       //{-32,0}, //tail center
       {-72,32,0}, //tail tip bottom
       {-16,0,0}, //tail meets body
-      {32,-32,0}, //body top
+      {32,-32,0}, //body bottom
       {64,0,0}, //nose
       {32,32,0}, //body top
       {-16,0,0}, //tail meets body
@@ -66,8 +66,8 @@ class CURVY: public LIGHT_SKETCH {
       void new_target() {
           target_x = random(64*256) - 32*256;
           //target_x = 0;
-          target_y = random(500*256) - 250*256;
-          target_z = random(400*256) - 300*256;
+          target_y = random(200*256) - 200*256;
+          target_z = 300*256;
           //target_z = 0;
           add_speed = random(20000)+10000;
       }
@@ -153,14 +153,21 @@ class CURVY: public LIGHT_SKETCH {
       if (millis()-16 > loop_time) {
 
     
-        // VECTOR3 a(-25*256,0,0);
-        // VECTOR3 b(25*256,-5*256,0);
-        // VECTOR3 c(0,50*256,0);
-        // VECTOR3 norm(0,255,0);
-        // VECTOR3 a_rgb(0,0,255);
-        // VECTOR3 b_rgb(0,255,0);
-        // VECTOR3 c_rgb(255,0,0);
+        // static uint8_t rott = 0;
+        // static uint8_t rott2 = 0;
+        // //rott+=2;
+        // rott2++;
 
+
+        // VECTOR3 a(25*256,150*256,0);
+        // VECTOR3 b(-25*256,150*256,0);
+        // VECTOR3 c(0,-25*256,0);
+        // matrix.rotate_z(a,rott);
+        // matrix.rotate_z(b,rott);
+        // matrix.rotate_z(c,rott);
+        // matrix.rotate_x(a,rott2);
+        // matrix.rotate_x(b,rott2);
+        // matrix.rotate_x(c,rott2);
         // matrix.rotate(a);
         // matrix.rotate(b);
         // matrix.rotate(c);
@@ -171,7 +178,28 @@ class CURVY: public LIGHT_SKETCH {
         // matrix.perspective(b);
         // matrix.perspective(c);
 
-        // draw_triangle(a, b, c, norm, norm, norm, a_rgb, b_rgb, c_rgb);
+
+        // VECTOR3 norm_a(0,250,250);
+        // VECTOR3 norm_b(0, 250,250);
+        // VECTOR3 norm_c(0,-250,250);
+        // //VECTOR3 norm_a(0,0,255);
+        // //VECTOR3 norm_b(0,0,255);
+        // //VECTOR3 norm_c(0,0,255);
+        // matrix.rotate_z(norm_a,rott);
+        // matrix.rotate_z(norm_b,rott);
+        // matrix.rotate_z(norm_c,rott);
+        // matrix.rotate_x(norm_a,rott2);
+        // matrix.rotate_x(norm_b,rott2);
+        // matrix.rotate_x(norm_c,rott2);
+        // matrix.rotate(norm_a);
+        // matrix.rotate(norm_b);
+        // matrix.rotate(norm_c);
+        // //matrix.rotate_x(norm_a,24);
+        // //matrix.rotate_x(norm_b,24);
+        // //matrix.rotate_x(norm_c,24);
+        
+
+        // draw_triangle(a, b, c, norm_a, norm_b, norm_c);
      
 
         
@@ -840,8 +868,9 @@ void draw_jelly(JELLY& jelly) {
       }
     } //update_fish()
 
-
-    void normal(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& norm) {
+    //return a unit vector representing the surface normal of triangle a,b,c
+    VECTOR3 normal(VECTOR3& a, VECTOR3& b, VECTOR3& c) {
+        VECTOR3 norm;
         VECTOR3 u(b.x-a.x, b.y-a.y, b.z-a.z);
         VECTOR3 v(c.x-a.x, c.y-a.y, c.z-a.z);
         //std::cout << " u: " << u.x << ", " << u.y << ", " << u.z << "\n";
@@ -863,10 +892,11 @@ void draw_jelly(JELLY& jelly) {
           norm.y = 0;
           norm.z = 0;
         }
-        //matrix.rotate_y(norm,16);
         matrix.rotate_x(norm,-24);
+        return norm;
     }
 
+    //draw a flat shaded triangle
     void draw_triangle(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& orig, VECTOR3& norm, uint8_t& hue, uint8_t& sat, uint8_t& val) {
       
       draw_line_ybuffer(a, b);
@@ -888,9 +918,9 @@ void draw_jelly(JELLY& jelly) {
 
       CRGB rgb = CHSV(hue,sat,_min(_max((bri*val)/256,0),255));
 
-      draw_line_fine(leds, a, b, rgb, z_depth, 255, 255, true);
-      draw_line_fine(leds, b, c, rgb, z_depth, 255, 255, true);
-      draw_line_fine(leds, c, a, rgb, z_depth, 255, 255, true);
+      //draw_line_fine(leds, a, b, rgb, z_depth, 255, 255, true);
+      //draw_line_fine(leds, b, c, rgb, z_depth, 255, 255, true);
+      //draw_line_fine(leds, c, a, rgb, z_depth, 255, 255, true);
       
       rgb = CHSV(hue,sat,_min(_max((bri*val)/256,0),255));
       //CRGB rgb(0,0,0);
@@ -920,46 +950,91 @@ void draw_jelly(JELLY& jelly) {
 
 
 
-    void draw_triangle(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& a_norm, VECTOR3& b_norm, VECTOR3& c_norm, VECTOR3& a_rgb, VECTOR3& b_rgb, VECTOR3& c_rgb) {
+
+
+    //draw a triangle and calculate x,y,z as well as the ratio of a-b-c for each pixel
+    void draw_triangle(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& norm_a, VECTOR3& norm_b, VECTOR3& norm_c, const CRGB& rgb = CRGB(255,255,255)) {
+
+      int orientation = (b.y-a.y)*(c.x-b.x) - (c.y-b.y)*(b.x-a.x);
       
-      draw_line_ybuffer(a, a_norm, a_rgb, b, b_norm, b_rgb);
-      draw_line_ybuffer(b, b_norm, b_rgb, c, c_norm, c_rgb);
-      draw_line_ybuffer(c, c_norm, c_rgb, a, a_norm, a_rgb);
+      if ( orientation < 0 ) {
+
+        VECTOR3 a_val(255,0,0);
+        VECTOR3 b_val(0,255,0);
+        VECTOR3 c_val(0,0,255);
+
+        draw_line_ybuffer(a, a_val, b, b_val);
+        draw_line_ybuffer(b, b_val, c, c_val);
+        draw_line_ybuffer(c, c_val, a, a_val);
+
+        // CRGB rgb(a_norm.x,a_norm.y,a_norm.z);
+
+        // draw_line_fine(leds, a, b, rgb, a.z, 255, 255, true);
+        // draw_line_fine(leds, b, c, rgb, a.z, 255, 255, true);
+        // draw_line_fine(leds, c, a, rgb, a.z, 255, 255, true);
+        
+        //fill between the pixels of our lines
+        for (int y = y_buffer_min; y <= y_buffer_max; y++) {
+
+            int32_t dist_x = y_buffer2[y][1].position.x - y_buffer2[y][0].position.x;
+
+          if (dist_x >= 0) {
 
 
+            VECTOR3 * ratio  = &y_buffer2[y][0].ratio;
+            VECTOR3 * ratio2 = &y_buffer2[y][1].ratio;
+            // std::cout << "a: " << ratio->x << ", " << ratio->y << ", " << ratio->z << "\n";
+            // std::cout << "b: " << ratio2->x << ", " << ratio2->y << ", " << ratio2->z << "\n\n";
 
-      //CRGB rgb(a_rgb.x,a_rgb.y,a_rgb.z);
+            VECTOR3 err_ratio(0,0,0);
 
-      //draw_line_fine(leds, a, b, rgb, a.z, 255, 255, true);
-      //draw_line_fine(leds, b, c, rgb, a.z, 255, 255, true);
-      //draw_line_fine(leds, c, a, rgb, a.z, 255, 255, true);
-      
-      //fill between the pixels of our lines
-      for (int y = y_buffer_min; y <= y_buffer_max; y++) {
-          if (y_buffer2[y][0].position.x <= y_buffer2[y][1].position.x) {
+            VECTOR3 dist_ratio = *ratio2 - *ratio;
+            VECTOR3 a_dist_ratio = abs(dist_ratio);
+            VECTOR3 step_ratio( sgn(dist_ratio.x), sgn(dist_ratio.y), sgn(dist_ratio.z) );
 
-            CRGB rgb (y_buffer2[y][0].rgb.x,y_buffer2[y][0].rgb.y,y_buffer2[y][0].rgb.z);
-            CRGB rgb2 (y_buffer2[y][1].rgb.x,y_buffer2[y][1].rgb.y,y_buffer2[y][1].rgb.z);
-          for (int x = y_buffer2[y][0].position.x; x <= y_buffer2[y][1].position.x; x++) {
-            //CRGB rgb (y_buffer2[y][0].rgb.x,y_buffer2[y][0].rgb.y,y_buffer2[y][0].rgb.z);
-            //drawXYZ(leds, x, y, y_buffer2[y][0].position.z, rgb);
+            int32_t x = y_buffer2[y][0].position.x;
+
+            while (x <= y_buffer2[y][1].position.x) {
+
+              VECTOR3 norm = ( (norm_a*ratio->x)/255 + (norm_b*ratio->y)/255 + (norm_c*ratio->z)/255 ).unit();
+
+              CRGB new_rgb;
+              //new_rgb.r = _max((ratio->x*norm.z)/255,0);
+              //new_rgb.g = _max((ratio->y*norm.z)/255,0);
+              //new_rgb.b = _max((ratio->z*norm.z)/255,0);
+              new_rgb.r = _max((norm.z*rgb.r*6)/(8*256),0)+64;
+              new_rgb.g = _max((norm.z*rgb.g*6)/(8*256),0)+64;
+              new_rgb.b = _max((norm.z*rgb.b*6)/(8*256),0)+64;
+
+              drawXYZ(leds, x, y, y_buffer2[y][0].position.z, new_rgb,true); //gamma
+
+              x++;
+            
+              if (dist_x > 0) {
+
+                iterate(*ratio,step_ratio,a_dist_ratio,err_ratio,dist_x);
+              
+              }
+
+            }
+            // CRGB rgb(  y_buffer2[y][0].ratio.x, y_buffer2[y][0].ratio.y, y_buffer2[y][0].ratio.z );
+            // CRGB rgb2( y_buffer2[y][1].ratio.x, y_buffer2[y][1].ratio.y, y_buffer2[y][1].ratio.z );
+            // drawXYZ(leds, y_buffer2[y][0].position.x, y_buffer2[y][0].position.y, y_buffer2[y][0].position.z, rgb, true);
+            // drawXYZ(leds, y_buffer2[y][1].position.x, y_buffer2[y][1].position.y, y_buffer2[y][1].position.z, rgb2, true);
+
           }
-
-          drawXYZ(leds, y_buffer2[y][0].position.x, y_buffer2[y][0].position.y, y_buffer2[y][0].position.z, rgb);
-          drawXYZ(leds, y_buffer2[y][1].position.x, y_buffer2[y][1].position.y, y_buffer2[y][1].position.z, rgb2);
-
+          //clear the buffer to be used for filling the triangle
+          y_buffer2[y][0].position.x = MATRIX_WIDTH*256;
+          y_buffer2[y][1].position.x = -1;
+        
         }
-        //clear the buffer to be used for filling the triangle
-        y_buffer2[y][0].position.x = MATRIX_WIDTH*256;
-        y_buffer2[y][1].position.x = -1;
-      
+
+        y_buffer_max = 0;
+        y_buffer_min = MATRIX_HEIGHT-1;
+
       }
-
-      y_buffer_max = 0;
-      y_buffer_min = MATRIX_HEIGHT-1;
-
     
-    } //void draw_triangle(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& orig, VECTOR3& norm, uint8_t& hue, uint8_t& sat, uint8_t& val)
+    } //void draw_triangle()
 
 
 
@@ -979,8 +1054,7 @@ void draw_jelly(JELLY& jelly) {
       
 
       if ( orientation < 0 ) {
-        VECTOR3 norm;
-        normal(a,b,c,norm);
+        VECTOR3 norm = normal(a,b,c);
         VECTOR3 orig;
         orig = (a+b+c)/3;
         draw_triangle(a,b,c,orig,norm,hue,sat,val);
@@ -988,8 +1062,7 @@ void draw_jelly(JELLY& jelly) {
       }
 
       if (two_sided) {
-        VECTOR3 norm;
-        normal(a,c,b,norm);
+        VECTOR3 norm = normal(b,a,c);
         VECTOR3 orig;
         orig = (a+b+c)/3;
         draw_triangle(a,c,b,orig,norm,hue,sat,val);
@@ -1010,32 +1083,23 @@ void draw_jelly(JELLY& jelly) {
         VECTOR3* p = &points_3d[i];
 
         //scale z to add wiggly swimming motion
-        int32_t z = fish_points[i].z*64 + (inoise8(fish_points[i].x*2+fish.wiggle*8, 0, 0)-128)*16;
-
+        p->x = fish_points[i].x*32*2;
+        p->y = fish_points[i].y*24*2;
+        p->z = fish_points[i].z*32*2 + (inoise8(fish_points[i].x*2+fish.wiggle*8, 0, 0)-128)*16;
         //rotate around z-axis:
-        //rotate x
-        uint8_t sin_az = sin8(fish.az);
-        uint8_t cos_az = cos8(fish.az);
-        int32_t x = ( fish_points[i].x*64*( cos_az - 128 ) - fish_points[i].y*48*( sin_az - 128 )  )/128;
-        //rotate y
-        p->y = ( fish_points[i].x*64*( sin_az - 128 )  + fish_points[i].y*48*( cos_az - 128 )  )/128;
-
+        matrix.rotate_z(*p, fish.az);
 
         //rotate around y-axis:
-        //rotate x
-        uint8_t sin_ay = sin8(fish.ay);
-        uint8_t cos_ay = cos8(fish.ay);
-        p->x = ( x*( cos_ay - 128 ) - z*( sin_ay - 128 )  )/128;
-        //rotate z
-        p->z = ( x*( sin_ay - 128 ) + z*( cos_ay - 128 )  )/128;
+        matrix.rotate_y(*p, fish.ay);
 
         //translate fish to position        
         p->x += fish.x;
         p->y += fish.y;
         p->z += fish.z;
+        p->z = -p->z;
         matrix.rotate(*p);
 
-        matrix.scale_z(*p);
+        //matrix.scale_z(*p);
         
         detail_z = p->z;
 
@@ -1051,12 +1115,13 @@ void draw_jelly(JELLY& jelly) {
       //draw the fish if it is on the screen
       if (on_screen) {
 
-        uint8_t a = 0; 
-        uint8_t b = 1;
-        uint8_t c = 2;
-        uint8_t d = 3;
-        uint8_t e = 4;
-        uint8_t g = 6;
+        uint8_t a = 0; //tail bottom
+        uint8_t b = 1; //body meets tail
+        uint8_t c = 2; //body bottom
+        uint8_t d = 3; //nose
+        uint8_t e = 4; //body top
+                       //body meets tail
+        uint8_t g = 6; //tail top
         uint8_t h = 7; //body left
         uint8_t i = 8; //body right
         uint8_t j = 9; //tail center
@@ -1070,22 +1135,70 @@ void draw_jelly(JELLY& jelly) {
         // bri = _max(_min(bri,255),0);
         uint8_t bri = 200;
 
-        draw_triangle(points_2d[a],points_2d[b],points_2d[j],fish.hue,fish.sat,bri);
-        draw_triangle(points_2d[b],points_2d[g],points_2d[j],fish.hue,fish.sat,bri);
+        //draw_triangle(points_2d[a],points_2d[b],points_2d[j],fish.hue,fish.sat,bri);
+        //draw_triangle(points_2d[b],points_2d[g],points_2d[j],fish.hue,fish.sat,bri);
+        VECTOR3 right(0,0,-255);
+        matrix.rotate_z(right, fish.az);
+        matrix.rotate_y(right, fish.ay);
+        matrix.rotate(right);
+        matrix.rotate_x(right,-24);
+        VECTOR3 left(0,0,255);
+        matrix.rotate_z(left, fish.az);
+        matrix.rotate_y(left, fish.ay);
+        matrix.rotate(left);
+        matrix.rotate_x(left,-24);
+        VECTOR3 up(0,-255,0);
+        matrix.rotate_z(up, fish.az);
+        matrix.rotate_y(up, fish.ay);
+        matrix.rotate(up);
+        matrix.rotate_x(up,-24);
+        VECTOR3 down(0,255,0);
+        matrix.rotate_z(down, fish.az);
+        matrix.rotate_y(down, fish.ay);
+        matrix.rotate(down);
+        matrix.rotate_x(down,-24);
+        VECTOR3 front(-255,0,0);
+        matrix.rotate_z(front, fish.az);
+        matrix.rotate_y(front, fish.ay);
+        matrix.rotate(front);
+        matrix.rotate_x(front,-24);
+        VECTOR3 back(255,0,0);
+        matrix.rotate_z(back, fish.az);
+        matrix.rotate_y(back, fish.ay);
+        matrix.rotate(back);
+        matrix.rotate_x(right,-24);
 
-        //draw_triangle(points_2d[b],points_2d[c],points_2d[e],fish.hue,fish.sat,bri);
+        CRGB rgb = CHSV(fish.hue,fish.sat,bri);
 
-        //draw_triangle(points_2d[c],points_2d[d],points_2d[e],fish.hue,fish.sat,bri);
+        VECTOR3 tnorm = normal(points_2d[a],points_2d[b],points_2d[j]);
+        VECTOR3 tnorm2 = normal(points_2d[b],points_2d[g],points_2d[j]);
+        VECTOR3 atnorm = normal(points_2d[b],points_2d[a],points_2d[j]);
+        VECTOR3 atnorm2 = normal(points_2d[g],points_2d[b],points_2d[j]);
+        draw_triangle( points_2d[a],points_2d[b],points_2d[j],tnorm,right,right,rgb );
+        draw_triangle( points_2d[b],points_2d[g],points_2d[j],right,tnorm2,right,rgb );
+        draw_triangle( points_2d[b],points_2d[a],points_2d[j],left,atnorm,left,rgb );
+        draw_triangle( points_2d[g],points_2d[b],points_2d[j],atnorm2,left,left,rgb );
+
         
-        draw_triangle(points_2d[c],points_2d[b],points_2d[i],fish.hue,fish.sat,bri,false);
-        draw_triangle(points_2d[d],points_2d[c],points_2d[i],fish.hue,fish.sat,bri,false);
-        draw_triangle(points_2d[e],points_2d[d],points_2d[i],fish.hue,fish.sat,bri,false);
-        draw_triangle(points_2d[b],points_2d[e],points_2d[i],fish.hue,fish.sat,bri,false);
+        // draw_triangle(points_2d[c],points_2d[b],points_2d[i],fish.hue,fish.sat,bri,false);
+        // draw_triangle(points_2d[d],points_2d[c],points_2d[i],fish.hue,fish.sat,bri,false);
+        // draw_triangle(points_2d[e],points_2d[d],points_2d[i],fish.hue,fish.sat,bri,false);
+        // draw_triangle(points_2d[b],points_2d[e],points_2d[i],fish.hue,fish.sat,bri,false);
 
-        draw_triangle(points_2d[b],points_2d[c],points_2d[h],fish.hue,fish.sat,bri,false);
-        draw_triangle(points_2d[c],points_2d[d],points_2d[h],fish.hue,fish.sat,bri,false);
-        draw_triangle(points_2d[d],points_2d[e],points_2d[h],fish.hue,fish.sat,bri,false);
-        draw_triangle(points_2d[e],points_2d[b],points_2d[h],fish.hue,fish.sat,bri,false);
+        draw_triangle(points_2d[c],points_2d[b],points_2d[i],down,back,right,rgb);
+        draw_triangle(points_2d[d],points_2d[c],points_2d[i],front,down,right,rgb);
+        draw_triangle(points_2d[e],points_2d[d],points_2d[i],up,front,right,rgb);
+        draw_triangle(points_2d[b],points_2d[e],points_2d[i],back,up,right,rgb);
+
+        // draw_triangle(points_2d[b],points_2d[c],points_2d[h],fish.hue,fish.sat,bri,false);
+        // draw_triangle(points_2d[c],points_2d[d],points_2d[h],fish.hue,fish.sat,bri,false);
+        // draw_triangle(points_2d[d],points_2d[e],points_2d[h],fish.hue,fish.sat,bri,false);
+        // draw_triangle(points_2d[e],points_2d[b],points_2d[h],fish.hue,fish.sat,bri,false);
+
+        draw_triangle(points_2d[b],points_2d[c],points_2d[h],back,down,left,rgb);
+        draw_triangle(points_2d[c],points_2d[d],points_2d[h],down,front,left,rgb);
+        draw_triangle(points_2d[d],points_2d[e],points_2d[h],front,up,left,rgb);
+        draw_triangle(points_2d[e],points_2d[b],points_2d[h],up,back,left,rgb);
         //matt_curve8(points,FISH_POINTS,fish.hue,fish.sat,bri,false,false,true,255,detail);
       }
             // //fish debug, lines between fish and target
