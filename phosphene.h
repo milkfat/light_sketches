@@ -1,65 +1,57 @@
-#define HALF_SIZE
-
 
 class PHOSPHENE: public LIGHT_SKETCH {
   public:
         PHOSPHENE () {setup();}
     ~PHOSPHENE () {}
-    
-    #ifdef HALF_SIZE
-    #define GRID_DIVISOR 2
-    #else
-    #define GRID_DIVISOR 1
-    #endif
 
-    #define SIZE_X (MATRIX_WIDTH/GRID_DIVISOR)
-    #define SIZE_Y (MATRIX_HEIGHT/GRID_DIVISOR)
+    #define SIZE_X (MATRIX_WIDTH)
+    #define SIZE_Y (MATRIX_HEIGHT)
 
 
     #define FPS 60 // frames per second setting
 
-    uint16_t pixels[SIZE_Y][SIZE_X];
-    uint16_t delta[SIZE_Y][SIZE_X];
+    int16_t pixels[SIZE_Y][SIZE_X];
+    int16_t delta[SIZE_Y][SIZE_X];
 
 
-    void setVal(const uint32_t& x, const uint32_t& y, const float& val) {
-        float old = getVal(x,y);
-        pixels[y][x] = FC.compress(val);
-        delta[y][x] = FC.compress(val-old);
+    inline void setVal(const uint32_t& x, const uint32_t& y, const int16_t& val) {
+        int16_t old = getVal(x,y);
+        pixels[y][x] = val;
+        delta[y][x] = val-old;
     }
 
-    float getVal(const uint32_t& x,const uint32_t& y) {
-        return FC.decompress(pixels[y][x]);
-    }
-
-
-    float getDel(const uint32_t& x, const uint32_t& y) {
-        return FC.decompress(delta[y][x]);
+    inline int16_t getVal(const uint32_t& x,const uint32_t& y) {
+        return pixels[y][x];
     }
 
 
-    #define ADVANCE 0.1f
+    inline int16_t getDel(const uint32_t& x, const uint32_t& y) {
+        return delta[y][x];
+    }
+
+
+    #define PHOSPHENE_ADVANCE 1638
 
     
-    void processPix(const uint32_t& x, const uint32_t& y) {
+    inline void processPix(const uint32_t& x, const uint32_t& y) {
         // get block values
-        float vals = 0;
-        float vals_cnt = 0;
-        float dels = 0;
+        int32_t vals = 0;
+        int32_t vals_cnt = 0;
+        int32_t dels = 0;
 
         for (int iy = 0; iy < 3; iy++) {
-            float ty = y+iy-1;
+            int32_t ty = y+iy-1;
             if ( ty < 0 || ty >= SIZE_Y ) {
                 continue;
             }
             for (int ix = 0; ix < 3; ix++) {
-                float tx = x+ix-1;
+                int32_t tx = x+ix-1;
                 if ( tx < 0 || tx >= SIZE_X) {
                     continue;
                 }
                 vals += getVal(tx, ty);
-                float tempDel = getDel(tx, ty);
-                dels += tempDel * fabs(tempDel);
+                int32_t tempDel = getDel(tx, ty);
+                dels += tempDel * abs(tempDel);
                 vals_cnt++;
             }
         }
@@ -67,10 +59,10 @@ class PHOSPHENE: public LIGHT_SKETCH {
         // compute shit
 
 
-        float me = getVal(x, y);
-        float avg = (vals*1.f)/(vals_cnt*1.f);
+        int32_t me = getVal(x, y);
+        int32_t avg = vals/vals_cnt;
 
-        float ddd = dels;
+        int32_t ddd = dels;
 
         
         if ( ddd < 0 ) {
@@ -80,27 +72,27 @@ class PHOSPHENE: public LIGHT_SKETCH {
         }
 
         
-        float out;
+        int32_t out;
         
-        if ( me > 1 ) {
+        if ( me > 16383 ) {
             //if over this, then drop off
-            out = 0.5f;
-        } else if ( me < 0.3f ) {
+            out = 8192;
+        } else if ( me < 4916 ) {
             //if less than this, then start advancing (stop dropping off)
-            out = me + ADVANCE;
+            out = me + PHOSPHENE_ADVANCE;
         } else {
-            if ( ddd > 0.f ) {
+            if ( ddd > 0 ) {
                 //grow faster as neighbors grow faster
-                out = me + ddd*.37f;
-            } else if (ddd < -.15f) {
+                out = me + (ddd*37)/100;
+            } else if (ddd < -2456) {
                 //drop off as neighbors drop off
-                out = me + ddd*.9f;
+                out = me + (ddd*9)/10;
             } else {
-                out = me + ADVANCE;
+                out = me + PHOSPHENE_ADVANCE;
             }
         }
         //try not to get too far away from neighbors
-        out = (3.f*out + avg)/4.f;
+        out = (3*out + avg)/4;
         //update value
         setVal(x, y, out);
         
@@ -123,7 +115,7 @@ class PHOSPHENE: public LIGHT_SKETCH {
             for (int x = 0; x < SIZE_X; x++) {
                 pixels[y][x] = 0;
                 delta[y][x] = 0;
-                setVal(x, y, random(255)/455.f);
+                setVal(x, y, random(16384));
             }
         }        
     }
@@ -142,52 +134,21 @@ class PHOSPHENE: public LIGHT_SKETCH {
                 curIdx++;
             }
 
-            //interpolate between pixels 
            
 
 
             for (int x = 0; x < SIZE_X; x++) {
                 for (int y = 0; y < SIZE_Y; y++) {
                     
-
-                    float bri = FC.decompress(pixels[y][x]);
-                    CRGB rgb = CHSV(96,255,_min(_max(bri*255,0),255));
-                    #ifdef HALF_SIZE
-                    leds[XY(x*2,y*2)] = rgb;
-                    rgb.r /= 2;
-                    rgb.g /= 2;
-                    rgb.b /= 2;
-                    leds[XY(x*2-1,y*2)] += rgb;
-                    leds[XY(x*2,y*2-1)] += rgb;
-                    leds[XY(x*2,y*2+1)] += rgb;
-                    leds[XY(x*2+1,y*2)] += rgb;
-                    rgb.r /= 2;
-                    rgb.g /= 2;
-                    rgb.b /= 2;
-                    leds[XY(x*2-1,y*2-1)] += rgb;
-                    leds[XY(x*2-1,y*2+1)] += rgb;
-                    leds[XY(x*2+1,y*2-1)] += rgb;
-                    leds[XY(x*2+1,y*2+1)] += rgb;
-                    #else
+                    uint32_t bri = _min(_max(pixels[y][x],0),16833); //raw brightness 0-16833
+                    bri >>= 6; //divide by 64, 0-255
+                    bri = (bri*bri) >> 8; //divide by 256, more contrast, 0-255
+                    CRGB rgb = CHSV(96,255,bri);
                     leds[XY(x,y)] += rgb;
-                    #endif
 
                
                 }
             }
-/*            
-            for (int x = 0; x < MATRIX_WIDTH; x++) {
-                for (int y = 0; y < MATRIX_HEIGHT; y++) {
-                    
-
-                    float bri = FC.decompress(pixels[y][x]);
-                    
-                    leds[XY(x,y)].g = _min(_max(bri*255,0),255);
-
-               
-                }
-            }
-*/
 
             LED_show();
             LED_black();
