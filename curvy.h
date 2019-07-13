@@ -64,15 +64,15 @@ class CURVY: public LIGHT_SKETCH {
       uint8_t sat = 0;
 
       void new_target() {
-          target_x = random(64*256) - 32*256;
+          target_x = random(100*256) - 50*256;
           //target_x = 0;
-          target_y = random(200*256) - 200*256;
-          target_z = 300*256;
+          target_y = random(200*256) - 100*256;
+          target_z = random(-100*256, 100*256);
           //target_z = 0;
           add_speed = random(20000)+10000;
       }
     };
-    #define NUM_FISH 25
+    #define NUM_FISH 15
     FISH fishies[NUM_FISH];
 
     //some jellyfish tentacles
@@ -698,9 +698,9 @@ void draw_jelly(JELLY& jelly) {
               //b->vy -= 4;
 
               //drag
-              b->vx *= .98;
-              b->vy *= .98;
-              b->vz *= .98;
+              b->vx = (b->vx*98)/100;
+              b->vy = (b->vy*98)/100;
+              b->vz = (b->vz*98)/100;
 
 
             }
@@ -869,7 +869,7 @@ void draw_jelly(JELLY& jelly) {
     } //update_fish()
 
     //return a unit vector representing the surface normal of triangle a,b,c
-    VECTOR3 normal(VECTOR3& a, VECTOR3& b, VECTOR3& c) {
+    static VECTOR3 inline __attribute__((always_inline)) normal(VECTOR3& a, VECTOR3& b, VECTOR3& c) {
         VECTOR3 norm;
         VECTOR3 u(b.x-a.x, b.y-a.y, b.z-a.z);
         VECTOR3 v(c.x-a.x, c.y-a.y, c.z-a.z);
@@ -959,9 +959,9 @@ void draw_jelly(JELLY& jelly) {
       
       if ( orientation < 0 ) {
 
-        VECTOR3 a_val(255,0,0);
-        VECTOR3 b_val(0,255,0);
-        VECTOR3 c_val(0,0,255);
+        static const VECTOR3 a_val(255,0,0);
+        static const VECTOR3 b_val(0,255,0);
+        static const VECTOR3 c_val(0,0,255);
 
         draw_line_ybuffer(a, a_val, b, b_val);
         draw_line_ybuffer(b, b_val, c, c_val);
@@ -999,12 +999,14 @@ void draw_jelly(JELLY& jelly) {
               VECTOR3 norm = ( (norm_a*ratio->x)/255 + (norm_b*ratio->y)/255 + (norm_c*ratio->z)/255 ).unit();
 
               CRGB new_rgb;
+
               //new_rgb.r = _max((ratio->x*norm.z)/255,0);
               //new_rgb.g = _max((ratio->y*norm.z)/255,0);
               //new_rgb.b = _max((ratio->z*norm.z)/255,0);
-              new_rgb.r = _max((norm.z*rgb.r*6)/(8*256),0)+64;
-              new_rgb.g = _max((norm.z*rgb.g*6)/(8*256),0)+64;
-              new_rgb.b = _max((norm.z*rgb.b*6)/(8*256),0)+64;
+
+              new_rgb.r = _max((norm.z*rgb.r*7)/(8*256),0)+32;
+              new_rgb.g = _max((norm.z*rgb.g*7)/(8*256),0)+32;
+              new_rgb.b = _max((norm.z*rgb.b*7)/(8*256),0)+32;
 
               drawXYZ(leds, x, y, y_buffer2[y][0].position.z, new_rgb,true); //gamma
 
@@ -1083,9 +1085,9 @@ void draw_jelly(JELLY& jelly) {
         VECTOR3* p = &points_3d[i];
 
         //scale z to add wiggly swimming motion
-        p->x = fish_points[i].x*32*2;
-        p->y = fish_points[i].y*24*2;
-        p->z = fish_points[i].z*32*2 + (inoise8(fish_points[i].x*2+fish.wiggle*8, 0, 0)-128)*16;
+        p->x = fish_points[i].x*64;
+        p->y = fish_points[i].y*48;
+        p->z = fish_points[i].z*64 + (inoise8(fish_points[i].x*2+fish.wiggle*8, 0, 0)-128)*16;
         //rotate around z-axis:
         matrix.rotate_z(*p, fish.az);
 
@@ -1172,8 +1174,8 @@ void draw_jelly(JELLY& jelly) {
 
         VECTOR3 tnorm = normal(points_2d[a],points_2d[b],points_2d[j]);
         VECTOR3 tnorm2 = normal(points_2d[b],points_2d[g],points_2d[j]);
-        VECTOR3 atnorm = normal(points_2d[b],points_2d[a],points_2d[j]);
-        VECTOR3 atnorm2 = normal(points_2d[g],points_2d[b],points_2d[j]);
+        VECTOR3 atnorm = tnorm*-1;
+        VECTOR3 atnorm2 = tnorm2*-1;
         draw_triangle( points_2d[a],points_2d[b],points_2d[j],tnorm,right,right,rgb );
         draw_triangle( points_2d[b],points_2d[g],points_2d[j],right,tnorm2,right,rgb );
         draw_triangle( points_2d[b],points_2d[a],points_2d[j],left,atnorm,left,rgb );
