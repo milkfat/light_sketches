@@ -3,7 +3,7 @@
 //this class uses malloc for the grid, because it gets HUGE with large displays
 //128x32 uses ~213KB
 //should probaby optimize that somehow
-#define FIRE_GRID_WIDTH (MATRIX_WIDTH/2)
+#define FIRE_GRID_WIDTH (MATRIX_WIDTH)
 #define FIRE_GRID_HEIGHT (MATRIX_HEIGHT)
 
 #define FIRE_GRID_VELOCITY_MIN -120000
