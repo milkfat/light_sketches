@@ -114,7 +114,7 @@ CRGB * temp_canvas; //object for teh drawing
 
 //CRGB debug_canvas[HEIGHTMAP_WIDTH*HEIGHTMAP_HEIGHT]; //object for teh drawing
 //int height_map[HEIGHTMAP_WIDTH][HEIGHTMAP_HEIGHT];
-int16_t * height_map[HEIGHTMAP_WIDTH];
+int16_t * height_map[HEIGHTMAP_HEIGHT];
 
 
 //uint8_t led_mask[NUM_LEDS];
@@ -140,6 +140,9 @@ int growing = 0;
 
 #define PI 355/113.f
 
+static inline __attribute__ ((always_inline)) uint PI_m (const uint num) {
+    return (num*355)/113;
+};
 static inline __attribute__ ((always_inline)) int PI_m (const int num) {
     return (num*355)/113;
 };
@@ -1663,67 +1666,72 @@ static inline __attribute__ ((always_inline)) void draw_circle_fine(const int32_
 
 static inline __attribute__ ((always_inline)) void height_map_to_LED(const int& threshold = -128*256, const int& light_x = 100, const int& light_y = 100, const int& spec_x = 15, const int& spec_y = 15) {
   //write our computed values to the screen
-  for (int x = 0; x < MATRIX_WIDTH; x++) {
-    for (int y = 0; y < MATRIX_HEIGHT; y++) {
+  uint16_t led = 0;
+  for (uint16_t y = 0; y < MATRIX_HEIGHT; y++) {
+    for (uint16_t x = 0; x < MATRIX_WIDTH; x++) {
       //height map coordinates
       //our height map is 1 pixel wider in each dimension than the screen
       int x2 = x+1;
       int y2 = y+1;
-      if (height_map[x2][y2] >= threshold) {
+      if (height_map[y2][x2] >= threshold) {
         //attempt to find the approximate surface normal
 
         
         //horizontal pixel difference
-        int u = height_map[x2+1][y2] - height_map[x2-1][y2]; //between -128*32 and 127*32
+        int u = height_map[y2][x2+1] - height_map[y2][x2-1]; //between -128*32 and 127*32
   
         //vertical pixel difference
-        int v = height_map[x2][y2+1] - height_map[x2][y2-1]; //between -128*32 and 127*32
+        int v = height_map[y2+1][x2] - height_map[y2-1][x2]; //between -128*32 and 127*32
         
         
         //find the brightness based on a specific difference (angle)
         //0-255; 0 = full bright; 255 = off;
-        int u_norm = abs(-light_x*32 - u)/24;
-        int v_norm = abs(-light_y*32 - v)/24;
+        uint16_t u_norm = abs(-light_x*32 - u)/24;
+        uint16_t v_norm = abs(-light_y*32 - v)/24;
 
         if (1==1) {
           //change angle of light to be more extreme at top
-          v_norm = abs(-(light_y-(y/16))*32 - v)/24;
+          v_norm = abs(-(light_y-(y >> 4))*32 - v)/24;
         }
         //specular highlights
-        int su_norm = abs(-spec_x*32 - u);
-        int sv_norm = abs(-spec_y*32 - v);
+        uint16_t su_norm = abs(-spec_x*32 - u);
+        uint16_t sv_norm = abs(-spec_y*32 - v);
         
 
         //0 = off; 255 = full bright
-        u_norm = 255.f - u_norm;
-        v_norm = 255.f - v_norm;
+        u_norm = _max(255 - u_norm,0);
+        v_norm = _max(255 - v_norm,0);
 
         su_norm = 255 - _min(su_norm, 255);
         sv_norm = 255 - _min(sv_norm, 255);
         
         
         //combine the vertical and horizontal components to find our final brightness for this pixel
-        int norm = (u_norm*v_norm)/256;
+        uint16_t norm = (u_norm*v_norm)>>8;
   
         //specular highlights
-        int snorm = (su_norm*sv_norm)/256L;
+        uint16_t snorm = (su_norm*sv_norm)>>8;
 
-        int val = _max(_min(norm, 255), 20);
+        uint16_t val = _max(_min(norm, 255), 10);
 
-        if (1==1) {
-          //light fades by distance
-          //val = (val*(sq(255-y)/256L))/256L;
-          val = (val*(255-y))/256L;
-        }
         
-        leds[XY(x,y)] = CHSV(default_color, default_saturation, val);
-  
+        //light fades by distance
+        //val = (val*(sq(255-y)/256L))/256L;
+        val = (val*(255-y))>>8;
+        
+        leds[led].r = val;
+
+        snorm = _max(_min(snorm, 255), 0)>>2;
+
         //specular highlights
-        leds[XY(x,y)] += CHSV(48, 64, _max(_min(snorm, 255), 0)/4);
+        leds[led].r += snorm;
+        leds[led].g += snorm;
+        leds[led].b += snorm;
         
 
         
       }
+      led++;
     }
   }
 }
@@ -1779,9 +1787,9 @@ static inline __attribute__ ((always_inline)) void LED_black() {
 
 static inline __attribute__ ((always_inline)) void reset_heightmap() {
 
-  for (int x = 0; x < MATRIX_WIDTH; x++) {
-    for (int y = 0; y < MATRIX_HEIGHT; y++) {
-      height_map[x][y] = 0;
+  for (int y = 0; y < MATRIX_HEIGHT; y++) {
+    for (int x = 0; x < MATRIX_WIDTH; x++) {
+      height_map[y][x] = 0;
     }
   }
 

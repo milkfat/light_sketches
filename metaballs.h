@@ -1,6 +1,6 @@
 //METABALLS
-#define NUM_METABALLS 30
-#define METABALLS_QUARTER_RES
+#define NUM_METABALLS 100
+//#define METABALLS_QUARTER_RES
 
 #ifdef METABALLS_QUARTER_RES
 #define METABALL_MATRIX_HEIGHT (MATRIX_HEIGHT/2)
@@ -32,16 +32,16 @@ class METABALLS: public LIGHT_SKETCH {
       int32_t y = 0;
       int vx = 0;
       int vy = 0;
-      int r = 1;
+      uint16_t r = 1;
+      uint32_t r2 = 1;
       int32_t m = 1;
     };
 
     BALL balls[NUM_METABALLS];
     
     void lava_lamp_setup() {
-      num_balls = 15;
       for (int i = 0; i < num_balls; i++) {
-        balls[i].x = random(2*255, (METABALL_MATRIX_WIDTH-3)*255);
+        balls[i].x = METABALL_MATRIX_WIDTH*128;
         balls[i].y = random(10*255, (METABALL_MATRIX_HEIGHT-11)*255);
         balls[i].vx = random(3);
         if (random(2) == 0) {
@@ -53,10 +53,15 @@ class METABALLS: public LIGHT_SKETCH {
           balls[i].vy += 5;
           balls[i].vy *= -1;
         }
-        balls[i].r = random(8*256,13*256);   
+        balls[i].r = random(15*256,20*256); 
+        if (i > 15) {
+          balls[i].r = 4*256;
+        }
+        balls[i].r2 = balls[i].r*balls[i].r;   
         //balls[i].r = 30*256-1;        
-        balls[i].m = PI_m(sq(balls[i].r));
+        balls[i].m = PI_m(balls[i].r2);
       }
+      num_balls = 15;
     }
     uint32_t frame_time = millis();
 
@@ -70,7 +75,7 @@ class METABALLS: public LIGHT_SKETCH {
       }
 
       if (current_variation == 1) {
-        num_balls = 15;
+        num_balls = 25;
       }
       
     }
@@ -82,7 +87,7 @@ class METABALLS: public LIGHT_SKETCH {
       long tv = 0;
       while (td < METABALL_MATRIX_HEIGHT*256L) {
         td += tv;
-        tv += 32;
+        tv += 16;
       }
       launch_speed = tv;
       
@@ -123,7 +128,7 @@ class METABALLS: public LIGHT_SKETCH {
         //reset our height map
         for (int x = 0; x < METABALL_HEIGHTMAP_WIDTH; x++) {
           for (int y = 0; y < METABALL_HEIGHTMAP_HEIGHT; y++) {
-            height_map[x][y] = 0;
+            height_map[y][x] = 0;
           }
         }
         
@@ -140,14 +145,17 @@ class METABALLS: public LIGHT_SKETCH {
               int16_t yd = balls[i].y - balls[j].y;
     
               //distance between balls
-              int32_t d = sq(xd) + sq(yd);
+              int16_t d = xd*xd + yd*yd;
+              
               //combined radius
-              int32_t d2 = sq(balls[i].r/2) + sq(balls[j].r/2);
+              int16_t ir_temp = balls[i].r/2;
+              int16_t jr_temp = balls[j].r/2;
+              int16_t d2 = ir_temp*ir_temp + jr_temp*jr_temp;
               
               //check to see if distance is less than radius
               if( d < d2 && d2 != 0 ) {
-                d = sqrt(d);
-                d2 = sqrt(d2);
+                d = sqrt16(d);
+                d2 = sqrt16(d2);
                 
                 //closeness of balls as a byte (0-255)
                 //0 = farthest
@@ -206,15 +214,16 @@ class METABALLS: public LIGHT_SKETCH {
             balls[i].y += (balls[i].vy*dt)/16;
             
             //gravity
-            balls[i].vy -= (8*dt)/16;
+            balls[i].vy -= (dt);
 
             //spray balls up
             if (balls[i].y < -5*255 || balls[i].x < -5*255 || balls[i].x > (METABALL_MATRIX_WIDTH+5)*255L) {
               balls[i].y = -2*255;
               balls[i].x = METABALL_MATRIX_WIDTH*128;
-              balls[i].vy = random(launch_speed/4, launch_speed/2);
-              balls[i].vx = random(100) - 50;
-              balls[i].r = random(7*255,8*255);
+              balls[i].vy = random(launch_speed/2, launch_speed);
+              balls[i].vx = random(200) - 100;
+              balls[i].r = random(7*255,18*255);
+              balls[i].r2 = balls[i].r*balls[i].r;
             }
             
           }
@@ -228,42 +237,46 @@ class METABALLS: public LIGHT_SKETCH {
           //draw all balls on the temporary canvas (apparently this is called an isosurface)
           //find the distance of all LEDs within the bounding square of each ball
 
-          
-          
-          for (int x = _max((balls[i].x - balls[i].r)/256,0); x < _min((balls[i].x + balls[i].r)/256+1,METABALL_MATRIX_WIDTH+1); x++) {
-            for (int y = _max((balls[i].y - balls[i].r)/256,0); y < _min((balls[i].y + balls[i].r)/256+1,METABALL_MATRIX_HEIGHT+1); y++) {
-              if (x >= 0 && x < METABALL_HEIGHTMAP_WIDTH && y >= 0 && y < METABALL_HEIGHTMAP_HEIGHT) {
-                int d = sq(x*256L - balls[i].x)+sq(y*256L - balls[i].y);
-                //make sure the distance is within our radius
-                if (d <= sq(balls[i].r)) {
-                  //led radius
-                  d = sqrt(d);
+          uint32_t y_min = _max((balls[i].y - balls[i].r)/256,0);
+          uint32_t y_max = _min((balls[i].y + balls[i].r)/256+1,METABALL_MATRIX_HEIGHT+1);
+          uint32_t x_min = _max((balls[i].x - balls[i].r)/256,0);
+          uint32_t x_max = _min((balls[i].x + balls[i].r)/256+1,METABALL_MATRIX_WIDTH+1);
 
-                  int d2;
+          for (uint32_t y = y_min; y < y_max; y++) {
+            for (uint32_t x = x_min; x < x_max; x++) {
+              if (x >= 0 && x < METABALL_HEIGHTMAP_WIDTH && y >= 0 && y < METABALL_HEIGHTMAP_HEIGHT) {
+
+                //bring d into range of uint16_t so that we can use FastLED's sqrt16() function
+                int16_t x_temp = ((x*8) - balls[i].x/32);
+                int16_t y_temp = ((y*8) - balls[i].y/32);
+                uint16_t d = x_temp*x_temp+y_temp*y_temp;
+                
+                //make sure the distance is within our radius
+                if (d <= balls[i].r2/(32*32)) {
+                  
+                  //led radius
+                  d = sqrt16(d);
+                  d*=32; 
+
+                  uint16_t d2;
                   
                   //add threshold information to canvas using inverse square
                   if ( x < METABALL_MATRIX_WIDTH && y < METABALL_MATRIX_HEIGHT ) {
                     //convert to byte 0-255
-                    d2 = (d*256)/balls[i].r;
+                    d2 = (d<<8)/balls[i].r;
                     //inverse (farther away is dimmer), this is linear
                     d2 = 255-d2;
                     //square
-                    d2 = (d2*d2)/256;
+                    d2 = (d2*d2)>>8;
                     //add to temporary canvas
                     int led = XY(x, y);
-                    int t = temp_canvas[led].r + d2;
-                    if (t <= 255) {
-                      temp_canvas[led].r = t;
-                    } else {
-                      temp_canvas[led].r = 255;
-                    }
+                    temp_canvas[led].r = _min(temp_canvas[led].r + d2,255);
+                    
                     //temp_canvas[XY(x, y)].r = _min(temp_canvas[XY(x, y)].r + d2,255); //slower?
                   }
 
                   //add heights to heightmap using cosine
-                  d2 = (d*128)/balls[i].r;
-                  d2 = cos8(d2);
-                  height_map[x][y] += d2;
+                  height_map[y][x] += cos8( (d*128)/balls[i].r );
                   
                 }
               
@@ -280,19 +293,7 @@ class METABALLS: public LIGHT_SKETCH {
 
 
 
-        /*
-        //move our isosurface to the LEDs
-        //using a threshold value
-        //using some of the shading from the isosurface for antialiasing
-        for(int i = 0; i < NUM_LEDS; i++) {
-          if(temp_canvas[i].r > 96) {
-            //leds[i].r = _max(_min((temp_canvas[i].r - 128)*2, 255), 0);
-            leds[i] = CHSV(0,255, _max(_min((temp_canvas[i].r - 96)*3, 255), 0) );
-          }
-          
-          temp_canvas[i] = CRGB::Black;
-        }
-        */
+        
         static uint8_t light_x = 0;
         static uint8_t light_y = 0;
         
@@ -303,16 +304,16 @@ class METABALLS: public LIGHT_SKETCH {
         
         
         //scale our heightmap
-        for (int x = 0; x < METABALL_HEIGHTMAP_WIDTH; x++) {
-          for (int y = 0; y < METABALL_HEIGHTMAP_HEIGHT; y++) {
+        for (int y = 0; y < METABALL_HEIGHTMAP_HEIGHT; y++) {
+          for (int x = 0; x < METABALL_HEIGHTMAP_WIDTH; x++) {
             //use an approximate logarithmic scale
-            if (height_map[x][y] > 255) {
-              int scale = (height_map[x][y]*100) / 256;
-              int val = height_map[x][y] - 255;
-              height_map[x][y] = 255 + (val*100)/scale;  
+            if (height_map[y][x] > 255) {
+              int scale = (height_map[y][x]*100) / 256;
+              int val = height_map[y][x] - 255;
+              height_map[y][x] = 255 + (val*100)/scale;  
             }
             //multiply scale
-            height_map[x][y] *= 32;  
+            height_map[y][x] *= 32;  
           }
         }
       
@@ -320,183 +321,29 @@ class METABALLS: public LIGHT_SKETCH {
         height_map_to_LED(96*64+1, 0, -130);
 
         
-        
-        //add opacity values to LEDs (for soft edges)
-        for (int x = 0; x < METABALL_MATRIX_WIDTH; x++) {
-          for (int y = 0; y < METABALL_MATRIX_HEIGHT; y++) {
-            int i = XY(x,y);
-            uint8_t opacity = 0;
-            if (temp_canvas[i].r > 96) {
-              opacity = _max(_min((temp_canvas[i].r - 96)*6, 255), 0);
-              led_mask2[i] = opacity;
-              height_map[x+1][y+1] = (height_map[x+1][y+1]*opacity)/255;
-              leds[i].nscale8(opacity);
-            } else {
-              leds[i] = CRGB::Black;
-              height_map[x+1][y+1] = 0;
-              led_mask2[i]=0;
-            }
-            temp_canvas[i] = CRGB::Black;
-          }    
-        }
 
       //uint32_t debug_time2 = micros();
-        #ifdef METABALLS_QUARTER_RES
-        for (int y = MATRIX_HEIGHT-1; y >= 0; y--) {
-          for (int x = MATRIX_WIDTH-1; x >= 0; x--) {
-            
-            int led = XY(x,y);
-
-
-            //
-            //  c      d
-            //   3  4
-            //  a1  2  b
-            //
-
-            uint16_t red = 0; 
-            uint16_t green = 0;
-            uint16_t blue = 0;
-
-
-            int a = XY(x>>1,y>>1);
-            red += leds[a].r;
-            green += leds[a].g;
-            blue += leds[a].b;
-            uint8_t total = 1;
-
-            if (x%2) {
-              
-              int b = XY((x+1)>>1,y>>1);
-              red += leds[b].r;
-              green += leds[b].g;
-              blue += leds[b].b;
-              total++;
-            }
-
-            if (y%2) {
-
-              int c = XY(x>>1,(y+1)>>1);
-              red += leds[c].r;
-              green += leds[c].g;
-              blue += leds[c].b;
-              total++;
-
-              if (x%2) {
-
-                int d = XY((x+1)>>1,(y+1)>>1);
-                red += leds[d].r;
-                green += leds[d].g;
-                blue += leds[d].b;
-                total++;
-
-              }
-            }
-
-            leds[led].r = red/total;
-            leds[led].g = green/total;
-            leds[led].b = blue/total;
-
-          }
-        }
-        /* 
-        //move leds to fill the grid
-        for (int y = METABALL_MATRIX_HEIGHT-0; y >=0; y--) {
-          for (int x = METABALL_MATRIX_WIDTH-1; x >= 0; x--) {
-            int red = 0;
-            int green = 0;
-            int blue = 0;
-
-            int led = XY(x*2,y*2);
-
-            int a = XY(x,y);
-
-            red += leds[a].r;
-            green += leds[a].g;
-            blue += leds[a].b;
-  
-            leds[led].r = red;
-            leds[led].g = green;
-            leds[led].b = blue;
-          }
-        }
-
         
-        //fill in vertical and horizontal
-        for (int y = 0; y <= MATRIX_HEIGHT-1; y++) {
-          for (int x = 0; x <= MATRIX_HEIGHT-1; x++) {
-            if (!(x%2 == y%2)) {
-              int red = 0;
-              int green = 0;
-              int blue = 0;
-
-              int led = XY(x,y);
-
-              int a = -1;
-              int b = -1;
-
-              if (y%2) {
-                a = XY(x,y+1);
-                b = XY(x,y-1);  
-              }
-
-              if (x%2) {
-                a = XY(x+1,y);
-                b = XY(x-1,y);
-              }
-
-              red = leds[a].r;
-              green = leds[a].g;
-              blue = leds[a].b;
-
-              red += leds[b].r;
-              green += leds[b].g;
-              blue += leds[b].b;
-              
-              leds[led].r = red>>1;
-              leds[led].g = green>>1;
-              leds[led].b = blue>>1;
+        //add opacity values to LEDs (for soft edges)
+        uint16_t led = 0;
+        for (int y = 0; y < METABALL_MATRIX_HEIGHT; y++) {
+          for (int x = 0; x < METABALL_MATRIX_WIDTH; x++) {
+            uint8_t opacity = 0;
+            if (temp_canvas[led].r > 96) {
+              opacity = _max(_min((temp_canvas[led].r - 96)*6, 255), 0);
+              led_mask2[led] = opacity;
+              height_map[y+1][x+1] = (height_map[y+1][x+1]*opacity)/255;
+              leds[led].nscale8(opacity);
+            } else {
+              leds[led] = CRGB::Black;
+              height_map[y+1][x+1] = 0;
+              led_mask2[led]=0;
             }
-          }
+            temp_canvas[led] = CRGB::Black;
+            led++;
+          }    
         }
-
-        //fill in the rest
-        for (int y = 1; y <= MATRIX_HEIGHT-2; y+=2) {
-          for (int x = 1; x <= MATRIX_HEIGHT-2; x+=2) {
-            int red = 0;
-            int green = 0;
-            int blue = 0;
-
-            int led = XY(x,y);
-
-            int a = XY(x+1,y);
-            int b = XY(x-1,y);
-            int c = XY(x,y+1);
-            int d = XY(x,y-1);
-
-            red += leds[a].r;
-            green += leds[a].g;
-            blue += leds[a].b;
-
-            red += leds[b].r;
-            green += leds[b].g;
-            blue += leds[b].b;
-
-            red += leds[c].r;
-            green += leds[c].g;
-            blue += leds[c].b;
-
-            red += leds[d].r;
-            green += leds[d].g;
-            blue += leds[d].b;
-
-            leds[led].r = red>>2;
-            leds[led].g = green>>2;
-            leds[led].b = blue>>2;
-          }
-        }
-        */
-        #endif
+        
       //debug_micros1 += micros() - debug_time2;
         
         

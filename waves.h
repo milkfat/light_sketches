@@ -15,7 +15,7 @@ class WAVES: public LIGHT_SKETCH {
         uint8_t cnt = 0;
     };
 
-    pixel grid[HEIGHTMAP_WIDTH][HEIGHTMAP_HEIGHT];
+    pixel grid[HEIGHTMAP_HEIGHT][HEIGHTMAP_WIDTH];
 
   public:
     void next_effect() {
@@ -62,13 +62,13 @@ class WAVES: public LIGHT_SKETCH {
             if ( y < (HEIGHTMAP_HEIGHT - 1) ) {
               //top right
               if ( x > 0 ) {
-                force += grid[x - 1][y + 1].height - grid[x][y].height;
+                force += grid[y + 1][x - 1].height - grid[y][x].height;
               }
               //top
-              force += grid[x][y + 1].height - grid[x][y].height;
+              force += grid[y + 1][x].height - grid[y][x].height;
               //top left
               if ( x < (HEIGHTMAP_WIDTH - 1) ) {
-                force += grid[x + 1][y + 1].height - grid[x][y].height;
+                force += grid[y + 1][x + 1].height - grid[y][x].height;
               }
             }
 
@@ -76,46 +76,46 @@ class WAVES: public LIGHT_SKETCH {
             if ( y > 0 ) {
               //bottom left
               if ( x > 0 ) {
-                force += grid[x - 1][y - 1].height - grid[x][y].height;
+                force += grid[y - 1][x - 1].height - grid[y][x].height;
               }
               //bottom
-              force += grid[x][y - 1].height - grid[x][y].height;
+              force += grid[y - 1][x].height - grid[y][x].height;
               //bottom right
               if ( x < (HEIGHTMAP_WIDTH - 1) ) {
-                force += grid[x + 1][y - 1].height - grid[x][y].height;
+                force += grid[y - 1][x + 1].height - grid[y][x].height;
               }
             }
 
 
             //left
             if ( x > 0 ) {
-              force += grid[x - 1][y].height - grid[x][y].height;
+              force += grid[y][x - 1].height - grid[y][x].height;
             }
             //right
             if ( x < (HEIGHTMAP_WIDTH - 1) ) {
-              force += grid[x + 1][y].height - grid[x][y].height;
+              force += grid[y][x + 1].height - grid[y][x].height;
             }
 
             //centering force
             if (tap && x == rx && y == ry) {
-              force += -30000 - grid[x][y].height;
+              force += -30000 - grid[y][x].height;
             } else if (tap && abs(x - rx) <= 1 && abs(y - ry) <= 1) {
-              force += -10000 - grid[x][y].height;
+              force += -10000 - grid[y][x].height;
             } else {
-              force += 0 - grid[x][y].height / 4;
+              force += 0 - grid[y][x].height / 4;
             }
 
             for (uint8_t i = 0; i < NUM_POINTERS; i++) {
               if (pointers[i].down && abs(x - pointers[i].x) <= 1 && abs(y - pointers[i].y) <= 1) {
-                force += -100 * pointers[i].pressure - grid[x][y].height;
+                force += -100 * pointers[i].pressure - grid[y][x].height;
               }
             }
 
             //dampen
-            grid[x][y].spd *= .99;
+            grid[y][x].spd *= .99;
 
             //add force
-            grid[x][y].spd = grid[x][y].spd + force / 20;
+            grid[y][x].spd = grid[y][x].spd + force / 20;
 
           }
         }
@@ -123,11 +123,11 @@ class WAVES: public LIGHT_SKETCH {
         //update heights
         for (int x = 0; x < HEIGHTMAP_WIDTH; x++) {
           for (int y = 0; y < HEIGHTMAP_HEIGHT; y++) {
-            grid[x][y].height = _min(_max(grid[x][y].height + grid[x][y].spd, -32768), 32767);
+            grid[y][x].height = _min(_max(grid[y][x].height + grid[y][x].spd, -32768), 32767);
 
             //draw LED
             //drawXY(leds, x, y, 160, 255, _min(_max(grid[x][y].height*2, -128),127)+128);
-            height_map[x][y] = grid[x][y].height;
+            height_map[y][x] = grid[y][x].height;
           }
         }
 
