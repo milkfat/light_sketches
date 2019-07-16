@@ -64,10 +64,10 @@ class CURVY: public LIGHT_SKETCH {
       uint8_t sat = 0;
 
       void new_target() {
-          target_x = random(100*256) - 50*256;
+          target_x = random(70*256) - 35*256;
           //target_x = 0;
           target_y = random(200*256) - 100*256;
-          target_z = random(-100*256, 100*256);
+          target_z = random(-100*256, 300*256);
           //target_z = 0;
           add_speed = random(20000)+10000;
       }
@@ -136,7 +136,7 @@ class CURVY: public LIGHT_SKETCH {
         fishies[i].speed = random(10)+3;
         fishies[i].age = millis();
         fishies[i].hue = random(256);
-        fishies[i].sat = random(128,256);
+        fishies[i].sat = random(0,256);
       }
 
     }
@@ -208,17 +208,23 @@ class CURVY: public LIGHT_SKETCH {
 
         
         LED_show();
-        LED_black();
+        //LED_black();
+        reset_z_buffer();
 
-        handle_bubbles();
+        for (uint16_t i = 0; i < NUM_LEDS; i++) {
+          leds[i].r = 0;
+          leds[i].g = 20;
+          leds[i].b = 25;
+        }
+        //handle_bubbles();
 
-        handle_jellies();
+        //handle_jellies();
 
         handle_fish();
 
         draw_grass();
-
         draw_water();
+
 
       }
 
@@ -869,7 +875,7 @@ void draw_jelly(JELLY& jelly) {
     } //update_fish()
 
     //return a unit vector representing the surface normal of triangle a,b,c
-    static VECTOR3 inline __attribute__((always_inline)) normal(VECTOR3& a, VECTOR3& b, VECTOR3& c) {
+    static VECTOR3 inline __attribute__((always_inline)) normal(const VECTOR3& a, const VECTOR3& b, const VECTOR3& c) {
         VECTOR3 norm;
         VECTOR3 u(b.x-a.x, b.y-a.y, b.z-a.z);
         VECTOR3 v(c.x-a.x, c.y-a.y, c.z-a.z);
@@ -897,7 +903,7 @@ void draw_jelly(JELLY& jelly) {
     }
 
     //draw a flat shaded triangle
-    void draw_triangle(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& orig, VECTOR3& norm, uint8_t& hue, uint8_t& sat, uint8_t& val) {
+    void draw_triangle_flat(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& orig, VECTOR3& norm, uint8_t& hue, uint8_t& sat, uint8_t& val) {
       
       draw_line_ybuffer(a, b);
       draw_line_ybuffer(b, c);
@@ -914,15 +920,14 @@ void draw_jelly(JELLY& jelly) {
 
       bri = 255-bri;
 
-      bri = _min(_max((norm.z*bri*3)/(256*4) + bri/4,bri/4),220);
+      bri = _min(_max(((255-norm.z)*3)/4, 0) + bri/4,220);
 
-      CRGB rgb = CHSV(hue,sat,_min(_max((bri*val)/256,0),255));
+      CRGB rgb = CHSV(hue,sat,(bri*val)/256);
 
       //draw_line_fine(leds, a, b, rgb, z_depth, 255, 255, true);
       //draw_line_fine(leds, b, c, rgb, z_depth, 255, 255, true);
       //draw_line_fine(leds, c, a, rgb, z_depth, 255, 255, true);
       
-      rgb = CHSV(hue,sat,_min(_max((bri*val)/256,0),255));
       //CRGB rgb(0,0,0);
       //CRGB rgb2 = CHSV(hue,sat,val);
       //nblend(rgb, rgb2, bri);
@@ -932,7 +937,7 @@ void draw_jelly(JELLY& jelly) {
           if (y_buffer[y][0] <= y_buffer[y][1]) {
 
           for (int x = y_buffer[y][0]; x <= y_buffer[y][1]; x++) {
-            drawXYZ(leds, x, y, z_depth/16, rgb);
+            drawXYZ(leds, x, y, orig.z, rgb);
           }
 
         }
@@ -946,7 +951,7 @@ void draw_jelly(JELLY& jelly) {
       y_buffer_min = MATRIX_HEIGHT-1;
 
     
-    } //void draw_triangle(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& orig, VECTOR3& norm, uint8_t& hue, uint8_t& sat, uint8_t& val)
+    } //void draw_triangle_flat(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& orig, VECTOR3& norm, uint8_t& hue, uint8_t& sat, uint8_t& val)
 
 
 
@@ -1003,12 +1008,13 @@ void draw_jelly(JELLY& jelly) {
               //new_rgb.r = _max((ratio->x*norm.z)/255,0);
               //new_rgb.g = _max((ratio->y*norm.z)/255,0);
               //new_rgb.b = _max((ratio->z*norm.z)/255,0);
+              uint8_t norm_bri = (_min(_max(norm.z,0),255)*3)/4 + 64;
 
-              new_rgb.r = _max((norm.z*rgb.r*7)/(8*256),0)+32;
-              new_rgb.g = _max((norm.z*rgb.g*7)/(8*256),0)+32;
-              new_rgb.b = _max((norm.z*rgb.b*7)/(8*256),0)+32;
+              new_rgb.r = (norm_bri*rgb.r)/256;
+              new_rgb.g = (norm_bri*rgb.g)/256;
+              new_rgb.b = (norm_bri*rgb.b)/256;
 
-              drawXYZ(leds, x, y, y_buffer2[y][0].position.z, new_rgb,true); //gamma
+              drawXYZ(leds, x, y, y_buffer2[y][0].position.z*256, new_rgb,false); //gamma
 
               x++;
             
@@ -1046,7 +1052,7 @@ void draw_jelly(JELLY& jelly) {
 
 
 
-    void draw_triangle(VECTOR3& a, VECTOR3& b, VECTOR3& c, uint8_t& hue, uint8_t& sat, uint8_t& val, const bool& two_sided = true) {
+    void draw_triangle_flat(VECTOR3& a, VECTOR3& b, VECTOR3& c, uint8_t& hue, uint8_t& sat, uint8_t& val, const bool& two_sided = true) {
       
       //optimization:
       //identify clockwise/counterclockwise orientation
@@ -1059,7 +1065,7 @@ void draw_jelly(JELLY& jelly) {
         VECTOR3 norm = normal(a,b,c);
         VECTOR3 orig;
         orig = (a+b+c)/3;
-        draw_triangle(a,b,c,orig,norm,hue,sat,val);
+        draw_triangle_flat(a,b,c,orig,norm,hue,sat,val);
         return;
       }
 
@@ -1067,10 +1073,10 @@ void draw_jelly(JELLY& jelly) {
         VECTOR3 norm = normal(b,a,c);
         VECTOR3 orig;
         orig = (a+b+c)/3;
-        draw_triangle(a,c,b,orig,norm,hue,sat,val);
+        draw_triangle_flat(a,c,b,orig,norm,hue,sat,val);
       }
 
-    } //void draw_triangle(VECTOR3& a, VECTOR3& b, VECTOR3& c, uint8_t& hue, uint8_t& sat, uint8_t& val)
+    } //void draw_triangle_flat(VECTOR3& a, VECTOR3& b, VECTOR3& c, uint8_t& hue, uint8_t& sat, uint8_t& val)
 
 
 
@@ -1135,7 +1141,7 @@ void draw_jelly(JELLY& jelly) {
         }
         // int bri = detail_z/512+255;
         // bri = _max(_min(bri,255),0);
-        uint8_t bri = 200;
+        uint8_t bri = 222;
 
         //draw_triangle(points_2d[a],points_2d[b],points_2d[j],fish.hue,fish.sat,bri);
         //draw_triangle(points_2d[b],points_2d[g],points_2d[j],fish.hue,fish.sat,bri);
@@ -1176,31 +1182,41 @@ void draw_jelly(JELLY& jelly) {
         VECTOR3 tnorm2 = normal(points_2d[b],points_2d[g],points_2d[j]);
         VECTOR3 atnorm = tnorm*-1;
         VECTOR3 atnorm2 = tnorm2*-1;
-        draw_triangle( points_2d[a],points_2d[b],points_2d[j],tnorm,right,right,rgb );
-        draw_triangle( points_2d[b],points_2d[g],points_2d[j],right,tnorm2,right,rgb );
-        draw_triangle( points_2d[b],points_2d[a],points_2d[j],left,atnorm,left,rgb );
-        draw_triangle( points_2d[g],points_2d[b],points_2d[j],atnorm2,left,left,rgb );
 
+        if (points_2d[a].z > -200*256) {
+
+          draw_triangle( points_2d[a],points_2d[b],points_2d[j],tnorm,right,right,rgb );
+          draw_triangle( points_2d[b],points_2d[g],points_2d[j],right,tnorm2,right,rgb );
+          draw_triangle( points_2d[b],points_2d[a],points_2d[j],left,atnorm,left,rgb );
+          draw_triangle( points_2d[g],points_2d[b],points_2d[j],atnorm2,left,left,rgb );
+          
+          draw_triangle(points_2d[c],points_2d[b],points_2d[i],down,back,right,rgb);
+          draw_triangle(points_2d[d],points_2d[c],points_2d[i],front,down,right,rgb);
+          draw_triangle(points_2d[e],points_2d[d],points_2d[i],up,front,right,rgb);
+          draw_triangle(points_2d[b],points_2d[e],points_2d[i],back,up,right,rgb);
+
+          draw_triangle(points_2d[b],points_2d[c],points_2d[h],back,down,left,rgb);
+          draw_triangle(points_2d[c],points_2d[d],points_2d[h],down,front,left,rgb);
+          draw_triangle(points_2d[d],points_2d[e],points_2d[h],front,up,left,rgb);
+          draw_triangle(points_2d[e],points_2d[b],points_2d[h],up,back,left,rgb);
+
+        } else {
+
+          draw_triangle_flat(points_2d[a],points_2d[b],points_2d[j],fish.hue,fish.sat,bri,true);
+          draw_triangle_flat(points_2d[b],points_2d[g],points_2d[j],fish.hue,fish.sat,bri,true);
+
+          draw_triangle_flat(points_2d[b],points_2d[c],points_2d[h],fish.hue,fish.sat,bri,false);
+          draw_triangle_flat(points_2d[c],points_2d[d],points_2d[h],fish.hue,fish.sat,bri,false);
+          draw_triangle_flat(points_2d[d],points_2d[e],points_2d[h],fish.hue,fish.sat,bri,false);
+          draw_triangle_flat(points_2d[e],points_2d[b],points_2d[h],fish.hue,fish.sat,bri,false);
+
+          draw_triangle_flat(points_2d[c],points_2d[b],points_2d[i],fish.hue,fish.sat,bri,false);
+          draw_triangle_flat(points_2d[d],points_2d[c],points_2d[i],fish.hue,fish.sat,bri,false);
+          draw_triangle_flat(points_2d[e],points_2d[d],points_2d[i],fish.hue,fish.sat,bri,false);
+          draw_triangle_flat(points_2d[b],points_2d[e],points_2d[i],fish.hue,fish.sat,bri,false);
         
-        // draw_triangle(points_2d[c],points_2d[b],points_2d[i],fish.hue,fish.sat,bri,false);
-        // draw_triangle(points_2d[d],points_2d[c],points_2d[i],fish.hue,fish.sat,bri,false);
-        // draw_triangle(points_2d[e],points_2d[d],points_2d[i],fish.hue,fish.sat,bri,false);
-        // draw_triangle(points_2d[b],points_2d[e],points_2d[i],fish.hue,fish.sat,bri,false);
+        }
 
-        draw_triangle(points_2d[c],points_2d[b],points_2d[i],down,back,right,rgb);
-        draw_triangle(points_2d[d],points_2d[c],points_2d[i],front,down,right,rgb);
-        draw_triangle(points_2d[e],points_2d[d],points_2d[i],up,front,right,rgb);
-        draw_triangle(points_2d[b],points_2d[e],points_2d[i],back,up,right,rgb);
-
-        // draw_triangle(points_2d[b],points_2d[c],points_2d[h],fish.hue,fish.sat,bri,false);
-        // draw_triangle(points_2d[c],points_2d[d],points_2d[h],fish.hue,fish.sat,bri,false);
-        // draw_triangle(points_2d[d],points_2d[e],points_2d[h],fish.hue,fish.sat,bri,false);
-        // draw_triangle(points_2d[e],points_2d[b],points_2d[h],fish.hue,fish.sat,bri,false);
-
-        draw_triangle(points_2d[b],points_2d[c],points_2d[h],back,down,left,rgb);
-        draw_triangle(points_2d[c],points_2d[d],points_2d[h],down,front,left,rgb);
-        draw_triangle(points_2d[d],points_2d[e],points_2d[h],front,up,left,rgb);
-        draw_triangle(points_2d[e],points_2d[b],points_2d[h],up,back,left,rgb);
         //matt_curve8(points,FISH_POINTS,fish.hue,fish.sat,bri,false,false,true,255,detail);
       }
             // //fish debug, lines between fish and target
@@ -1252,7 +1268,7 @@ void draw_jelly(JELLY& jelly) {
 
           //draw curve
           //swap X and Y axis if our display width is greater than the height
-          uint8_t b = (i*140)/NUM_THINGS+5;
+          uint8_t b = 140-i*8;
           #if MATRIX_WIDTH > MATRIX_HEIGHT
           matt_curve8(leds, my_points[i], NUM_POINTS, 96, default_saturation, b, true, false, true, b, 255);
           #else
@@ -1282,33 +1298,23 @@ void draw_jelly(JELLY& jelly) {
       screen_section %=4;
       int y_start = (screen_section%2) * MATRIX_HEIGHT/2;
 
-      for (int y = y_start; y < y_start + MATRIX_HEIGHT/2; y++) {
+      for (uint16_t y = y_start; y < y_start + MATRIX_HEIGHT/2; y++) {
         if ( y%2 == screen_section/2 ) {
-          for (int x = 0; x < MATRIX_WIDTH; x++) {
-            uint8_t light = inoise8(x*4+z,y*4,z)/2;
-            uint8_t caustics = inoise8(((x-MATRIX_WIDTH/2)*((y+16)))/6,(y*(y+8))/6,z*2);
-            uint8_t sat = 255;
-            uint8_t bri = light;
-            
-            //convert to 0-127-0
-            if (caustics > 127) {
-              caustics -= 128;
-              caustics = 127-caustics;
-            }
-            caustics *= 2;
-            caustics = (caustics*caustics)/256;
-            caustics = _max(caustics-y,0);
-            caustics /= 8;
-            bri = _min(light+caustics,255);
-            bri = (bri*3)/4;
-            int i = XY(x,y);
-            temp_canvas[i] = CHSV(142, 255, bri);
+          for (uint16_t x = 0; x < MATRIX_WIDTH; x++) {
+            uint8_t bri = inoise8((x<<2)+z,y<<2,z);
+            //uint8_t caustics = inoise8(((x-MATRIX_WIDTH/2)*((y+16)))/6,(y*(y+8))/6,z*2);
+
+            bri>>=3;
+            //CRGB rgb = CHSV(142, 255, 255);
+            temp_canvas[XY(x,y)].b = bri;
           }
         }
       }
-      
-      for (int i = 0; i < NUM_LEDS; i++) {
-          nblend(leds[i], temp_canvas[i], 127);
+
+      for (uint16_t i = 0; i < NUM_LEDS; i++) {
+          //nblend(leds[i], temp_canvas[i], 127);
+          drawXY_blend_gamma(leds, i, CRGB(0,210,255), temp_canvas[i].b);
+          //leds[i] += temp_canvas[i];
       }
 
     }

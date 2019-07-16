@@ -3,7 +3,7 @@
 // #define MATRIX_WIDTH 360
 // #define MATRIX_HEIGHT 250
 
-#define WINDOW_WIDTH 300  
+#define WINDOW_WIDTH 300
 #define WINDOW_HEIGHT 980
 #define MATRIX_WIDTH 32
 #define MATRIX_HEIGHT 192
@@ -77,12 +77,12 @@ void update_matrix() {
 			int r = (int)leds[XY(x,y)].r;
 			int g = (int)leds[XY(x,y)].g;
 			int b = (int)leds[XY(x,y)].b;
-			r = sqrt(r*255);
-			g = sqrt(g*255);
-			b = sqrt(b*255);
-			r = _max(r, MIN_VAL);
-			g = _max(g, MIN_VAL);
-			b = _max(b, MIN_VAL);
+			//r = sqrt(r*255);
+			//g = sqrt(g*255);
+			//b = sqrt(b*255);
+			//r = _max(r, MIN_VAL);
+			//g = _max(g, MIN_VAL);
+			//b = _max(b, MIN_VAL);
             SDL_SetRenderDrawColor(renderer, r, g, b, SDL_ALPHA_OPAQUE);
             //0,0 top left
             
@@ -135,7 +135,7 @@ void update_matrix() {
 				case SDLK_LEFT:  camera_scaler--; break;
 				case SDLK_RIGHT: camera_scaler++; break;
 				case SDLK_UP:    screen_scaler--; break;
-				case SDLK_DOWN:  screen_scaler++; break;
+				case SDLK_DOWN:  screen_scaler++; break; 
 			}
 			break;
 		

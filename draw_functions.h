@@ -172,12 +172,21 @@ static inline __attribute__ ((always_inline)) uint8_t ease8Out (uint8_t stp) {
 
 uint8_t gamma8_e[256];
 uint8_t gamma8_d[256];
+uint16_t gamma16_d[256];
+
+
+static inline __attribute__ ((always_inline)) uint16_t gamma16_decode(const uint8_t& value) {
+  //decode 8-bit gamma 2.2 into 16-bit linear
+  return gamma16_d[value];
+}
 
 static inline __attribute__ ((always_inline)) uint8_t gamma8_encode(const uint8_t& value) {
+  //encode 8-bit linear into 8-bit gamma 2.2
   return gamma8_e[value];
 }
 
 static inline __attribute__ ((always_inline)) uint8_t gamma8_decode(const uint8_t& value) {
+  //decode 8-bit gamma 2.2 into 8-bit linear
   return gamma8_d[value];
 }
 
@@ -304,13 +313,55 @@ static inline __attribute__ ((always_inline)) void drawXY_blend(CRGB crgb_object
 
 }
 
-static inline __attribute__ ((always_inline)) void drawXYZ(CRGB crgb_object[], const int32_t& x, const int32_t& y, const int32_t& z, CRGB& rgb, const bool& gamma = false) {
+static inline __attribute__ ((always_inline)) void drawXY_blend_gamma(CRGB crgb_object[], const uint16_t& led, const CRGB& rgb, const uint8_t& brightness = 255) {
+  
+  //treat RGB values as gamma 2.2
+  //must be decoded, added, then re-encoded
+
+  uint16_t r_from = gamma16_decode(crgb_object[led].r);
+  uint16_t g_from = gamma16_decode(crgb_object[led].g);
+  uint16_t b_from = gamma16_decode(crgb_object[led].b);
+
+  uint16_t r_to = gamma16_decode(rgb.r);
+  uint16_t g_to = gamma16_decode(rgb.g);
+  uint16_t b_to = gamma16_decode(rgb.b);
+
+  crgb_object[led].r = gamma8_encode(((r_to * brightness)+(r_from*(255-brightness))) >> 16);
+  crgb_object[led].g = gamma8_encode(((g_to * brightness)+(g_from*(255-brightness))) >> 16);
+  crgb_object[led].b = gamma8_encode(((b_to * brightness)+(b_from*(255-brightness))) >> 16);
+
+  //nblend(crgb_object[XY(x,y)], rgb, brightness);
+
+}
+
+static inline __attribute__ ((always_inline)) void drawXY_blend_gamma(CRGB crgb_object[], const int& x, const int& y, const CRGB& rgb, const uint8_t& brightness = 255) {
+  
+  //treat RGB values as gamma 2.2
+  //must be decoded, added, then re-encoded
+
+  drawXY_blend_gamma(crgb_object, XY(x,y), rgb, brightness);
+
+}
+
+static inline __attribute__ ((always_inline)) void drawXYZ(CRGB crgb_object[], const int32_t& x, const int32_t& y, const int32_t& z, const CRGB& rgb_in, const bool& gamma = false) {
   
   if (y >= 0 && y < MATRIX_HEIGHT && x >= 0 && x < MATRIX_WIDTH) {
 
-    if (z > z_buffer[x][y]) {
+    if (z/16 > z_buffer[x][y]) {
 
-      z_buffer[x][y] = z; 
+      z_buffer[x][y] = z/16; 
+
+      CRGB rgb = rgb_in;
+      
+      int bri = 100 - z/768;
+      bri = (bri*bri)/256;
+
+      bri = 255-bri;
+
+      rgb.r = (rgb.r*bri)/256;
+      rgb.g = (rgb.g*bri)/256;
+      rgb.b = (rgb.b*bri)/256;
+      
 
       if (gamma) {
         crgb_object[XY(x,y)] = gamma8_decode(rgb);
@@ -355,7 +406,7 @@ static inline __attribute__ ((always_inline)) void drawXYZ2(CRGB crgb_object[], 
 
 static inline __attribute__ ((always_inline)) void drawXYZ2(CRGB crgb_object[], const int& x, const int& y, const int& z, CRGB& rgb, const uint8_t& brightness = 255) {
   
-  drawXY_blend(crgb_object, x, y, rgb, brightness);
+  drawXY_blend_gamma(crgb_object, x, y, rgb, brightness);
 
 }
 
@@ -517,7 +568,7 @@ struct VECTOR3 {
   VECTOR3 inline __attribute__((always_inline))  unit() {
 
     VECTOR3 norm;
-    int32_t length = sqrt(x*x+y*y+z*z);
+    int32_t length = sqrt16(x*x+y*y+z*z);
     if (length != 0) {
       norm.x = (x*255)/length;
       norm.y = (y*255)/length;
@@ -1769,13 +1820,8 @@ static inline __attribute__ ((always_inline)) void LED_show() {
   update_since_text = 1;
 }
 
-static inline __attribute__ ((always_inline)) void LED_black() {
-  
-  //clear the string
-  for (int y = 0; y < MATRIX_HEIGHT; y++) {
-    memset8(&leds[y*MATRIX_WIDTH].r, 0, MATRIX_WIDTH*3);
-  }
-  
+static inline __attribute__ ((always_inline)) void reset_z_buffer() {
+
   //clear the Z buffer
   for (int x = 0; x < MATRIX_WIDTH; x++) {
     for (int y = 0; y < MATRIX_HEIGHT; y++) {
@@ -1784,6 +1830,19 @@ static inline __attribute__ ((always_inline)) void LED_black() {
   }
 
 }
+
+static inline __attribute__ ((always_inline)) void LED_black() {
+  
+  //clear the string
+  for (int y = 0; y < MATRIX_HEIGHT; y++) {
+    memset8(&leds[y*MATRIX_WIDTH].r, 0, MATRIX_WIDTH*3);
+  }
+
+  reset_z_buffer();
+  
+}
+
+
 
 static inline __attribute__ ((always_inline)) void reset_heightmap() {
 
