@@ -22,20 +22,6 @@ class CINCO_DE_MAYO: public LIGHT_SKETCH {
 
     SPRITE sprites[NUM_SPRITES];
 
-
-    void rotate_pixel (alpha_pixel ap[], uint8_t& image_width, uint8_t& image_height, uint8_t& image_x, uint8_t& image_y, uint32_t& x, uint32_t& y, uint8_t& angle, uint8_t& r, uint8_t& g, uint8_t& b, const uint8_t& a = 255) {
-       
-
-        int angle_sin = sin8(angle)-127;
-        int angle_cos = cos8(angle)-127;
-        
-        int32_t u = ( (angle_cos) * (image_x*256-(256*image_width)/2) )/128L - ( (angle_sin) * (image_y*256L-(256*image_height)/2) )/128L;
-        int32_t v = ( (angle_sin) * (image_x*256-(256*image_width)/2) )/128L + ( (angle_cos) * (image_y*256L-(256*image_height)/2) )/128L;
-        
-        blendXY_RGBA(ap, u+x, v+y, r, g, b, a);
-        
-    }
-
     static inline __attribute__ ((always_inline)) void read_image_pixel(uint8_t image[], const uint32_t& image_pos, uint16_t& r, uint16_t& g, uint16_t& b, uint16_t& a, const uint8_t& amount) {
 
         b += (gamma16_decode(image[image_pos])*amount)>>8;
@@ -47,6 +33,9 @@ class CINCO_DE_MAYO: public LIGHT_SKETCH {
 
     //draw an image with bilinear filtering
     void draw_image (const int32_t& x_in, const int32_t& y_in, const int32_t& width, const int32_t& height, const uint8_t& angle) {
+
+        int angle_sin = sin8(angle)-127;
+        int angle_cos = cos8(angle)-127;
         
         int32_t screen_x = x_in/256;
         int32_t image_start_x = -(x_in%256);
@@ -54,23 +43,48 @@ class CINCO_DE_MAYO: public LIGHT_SKETCH {
         int32_t screen_y = y_in/256;
         int32_t image_start_y = -(255-(y_in%256));
 
-        for (int y = 0; y <= 18; y++) {
-            for (int x = 0; x <= 12; x++) {
+        int32_t min_x = 100000;
+        int32_t min_y = 100000;
+        int32_t max_x = -100000;
+        int32_t max_y = -100000;
+
+        int32_t temp_points[4][2];
+        temp_points[0][0] = ( ( (angle_cos) * width*128 - (angle_sin) * height*128 ) / 128 + width*128)/256;
+        temp_points[0][1] = ( ( (angle_sin) * width*128 + (angle_cos) * height*128 ) / 128 + height*128)/256;
+        temp_points[1][0] = ( ( (angle_cos) * -width*128 - (angle_sin) * height*128 ) / 128 + width*128)/256;
+        temp_points[1][1] = ( ( (angle_sin) * -width*128 + (angle_cos) * height*128 ) / 128 + height*128)/256;
+        temp_points[2][0] = ( ( (angle_cos) * width*128 - (angle_sin) * -height*128 ) / 128 + width*128)/256;
+        temp_points[2][1] = ( ( (angle_sin) * width*128 + (angle_cos) * -height*128 ) / 128 + height*128)/256;
+        temp_points[3][0] = ( ( (angle_cos) * -width*128 - (angle_sin) * -height*128 ) / 128 + width*128)/256;
+        temp_points[3][1] = ( ( (angle_sin) * -width*128 + (angle_cos) * -height*128 ) / 128 + height*128)/256;
+
+        for (int i = 0; i < 4; i++) {
+            min_x = _min(min_x, temp_points[i][0]);
+            max_x = _max(max_x, temp_points[i][0]);
+            min_y = _min(min_y, temp_points[i][1]);
+            max_y = _max(max_y, temp_points[i][1]);
+        }
+
+        for (int y = min_y-1; y <= max_y+1; y++) {
+            for (int x = min_x-1; x <= max_x+1; x++) {
 
                 if (screen_x+x >= 0 && screen_x+x < MATRIX_WIDTH && screen_y+y >= 0 && screen_y-y < MATRIX_HEIGHT) {
                     uint16_t b = 0;
                     uint16_t g = 0;
                     uint16_t r = 0;
                     uint16_t a = 0;
-
+        
                     //fine resolution image coordinates
-                    int16_t image_x_fine = image_start_x + x*256;
-                    int16_t image_y_fine = image_start_y + y*256;
+                    int16_t image_x_fine0 = image_start_x + x*256 - 12*128;
+                    int16_t image_y_fine0 = image_start_y + y*256 - 18*128;
+
+                    int16_t image_x_fine = ( (angle_cos) * image_x_fine0 - (angle_sin) * image_y_fine0 ) / 128 + 12*128;
+                    int16_t image_y_fine = ( (angle_sin) * image_x_fine0 + (angle_cos) * image_y_fine0 ) / 128 + 18*128;
 
                     //image coordinates
-                    //add 256 before division to avoid rounding errors at 0
-                    int16_t image_x = (image_x_fine+256)/256 - 1;
-                    int16_t image_y = (image_y_fine+256)/256 - 1;
+                    //avoid rounding errors at 0
+                    int16_t image_x = (image_x_fine+2560)/256 - 10;
+                    int16_t image_y = (image_y_fine+2560)/256 - 10;
 
                     //find the amount top/bottom/left/right
                     uint16_t l_top = (image_y_fine+256)%256;
@@ -163,6 +177,7 @@ class CINCO_DE_MAYO: public LIGHT_SKETCH {
       if (millis() - 16 > t) {
         t = millis();
       
+     uint32_t debug_time2 = micros();
         if (current_effect == 0) {
               static uint8_t cycle = 0;
               cycle+=2;
@@ -231,6 +246,7 @@ class CINCO_DE_MAYO: public LIGHT_SKETCH {
           }
   
           
+     debug_micros1 += micros() - debug_time2;
           LED_show();
           LED_black();
       }
