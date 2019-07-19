@@ -785,6 +785,7 @@ class TEST3D: public LIGHT_SKETCH {
         static uint8_t cube_step = 0;
         uint16_t cube_size = 80*sin8(cube_step)+30*256;
 
+     //uint32_t debug_time2 = micros();
         switch (current_variation)
         {
           case TEST_OBJECT:
@@ -819,6 +820,7 @@ class TEST3D: public LIGHT_SKETCH {
             handle_fireworks();
             break;
         }
+     //debug_micros1 += micros() - debug_time2;
 
         //update the display
         if (!do_not_update) {
@@ -1311,17 +1313,11 @@ void draw_quad(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& d, const VECTOR3& or
     matrix.rotate_x(norm,32);
     matrix.rotate_y(norm,32);
 
-    int bri = 100 - orig.z/256;
-    bri = (bri*bri)/256;
+    
+    uint8_t bri = _min(_max((norm.z*7)/8,0)+32,255);
 
-    bri = 255-bri;
-
-    bri = _min(_max((norm.z*bri)/256,0),220)+10;
-
-    CRGB rgb = CHSV(hue,sat,_min(_max((bri*val)/256,0),255));
-    //CRGB rgb(0,0,0);
-    //CRGB rgb2 = CHSV(hue,sat,val);
-    //nblend(rgb, rgb2, bri);
+    CRGB rgb = CHSV(hue,sat,val);
+    color_scale(rgb, bri);
 
     //fill between the pixels of our lines
     for (int y = y_buffer_min; y <= y_buffer_max; y++) {

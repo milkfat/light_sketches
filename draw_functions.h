@@ -170,9 +170,20 @@ static inline __attribute__ ((always_inline)) uint8_t ease8Out (uint8_t stp) {
   return 255 - stp;
 }
 
-uint8_t gamma8_e[256];
+//gamma 2.2 lookup tables:
+//convert 8-bit linear to 8-bit gamma
+uint8_t gamma8_e[256]; 
+
+//convert 16-bit linear to 8-bit gamma
+//first 256 values only, higher values should be divided by 256 and converted as 8-bit linear
+uint8_t gamma8_e_16_low[256]; 
+
+//decode 8-bit gamma to 8-bit linear
 uint8_t gamma8_d[256];
+
+//decode 8-bit gamma to 16-bit linear
 uint16_t gamma16_d[256];
+
 
 
 static inline __attribute__ ((always_inline)) uint16_t gamma16_decode(const uint8_t& value) {
@@ -183,6 +194,14 @@ static inline __attribute__ ((always_inline)) uint16_t gamma16_decode(const uint
 static inline __attribute__ ((always_inline)) uint8_t gamma8_encode(const uint8_t& value) {
   //encode 8-bit linear into 8-bit gamma 2.2
   return gamma8_e[value];
+}
+
+static inline __attribute__ ((always_inline)) uint8_t gamma16_encode(const uint16_t& value) {
+  //encode 16-bit linear into 8-bit gamma 2.2
+  if (value < 256) {
+    return gamma8_e_16_low[value];
+  }
+  return gamma8_e[value>>8];
 }
 
 static inline __attribute__ ((always_inline)) uint8_t gamma8_decode(const uint8_t& value) {
@@ -198,6 +217,80 @@ static inline __attribute__ ((always_inline)) CRGB gamma8_encode(const CRGB& val
 static inline __attribute__ ((always_inline)) CRGB gamma8_decode(const CRGB& value) {
   CRGB rgb( gamma8_d[value.r], gamma8_d[value.g], gamma8_d[value.b] );
   return rgb;
+}
+
+
+static inline __attribute__ ((always_inline)) uint8_t gamma8_add_linear8(const uint8_t& gval, const uint8_t& lval) {
+  //add an 8-bit linear value to an 8-bit gamma encoded value  
+  return gamma16_encode( _min( ( gamma16_decode(gval) + (lval << 8) ), 65535) );
+  
+}
+
+static inline __attribute__ ((always_inline)) void color_add_linear8(uint8_t& value, const uint8_t& value2) {
+  value = gamma8_add_linear8(value, value2);
+}
+
+static inline __attribute__ ((always_inline)) uint8_t gamma8_add_linear16(const uint8_t& gval, const uint16_t& lval) {
+  //add an 8-bit linear value to an 8-bit gamma encoded value  
+  return gamma16_encode( _min( ( gamma16_decode(gval) + lval ), 65535) );
+  
+}
+
+static inline __attribute__ ((always_inline)) void color_add_linear16(uint8_t& value, const uint16_t& value2) {
+  value = gamma8_add_linear16(value, value2);
+}
+
+static inline __attribute__ ((always_inline)) void color_add_linear8(CRGB& rgb, const CRGB& rgb2) {
+  color_add_linear8(rgb.r, rgb2.r);
+  color_add_linear8(rgb.g, rgb2.g);
+  color_add_linear8(rgb.b, rgb2.b);
+}
+
+static inline __attribute__ ((always_inline)) void color_scale(uint8_t& value, const uint8_t& scaler) {
+
+  value = gamma16_encode(((gamma16_decode(value)*scaler)/255));
+
+}
+
+static inline __attribute__ ((always_inline)) CRGB& color_scale(CRGB& rgb, const uint8_t& scaler) {
+
+  color_scale(rgb.r, scaler);
+  color_scale(rgb.g, scaler);
+  color_scale(rgb.b, scaler);
+  return(rgb);
+
+}
+
+static inline __attribute__ ((always_inline)) void color_add_scaled_linear(CRGB& rgb, const CRGB& rgb2, const uint8_t& scaler) {
+  color_add_linear8(rgb.r, (rgb2.r*scaler)/255);
+  color_add_linear8(rgb.g, (rgb2.g*scaler)/255);
+  color_add_linear8(rgb.b, (rgb2.b*scaler)/255);
+}
+
+static inline __attribute__ ((always_inline)) void color_blend_linear(CRGB& rgb1, const CRGB& rgb2, const uint8_t& brightness = 255) {
+  
+  //treat RGB values as gamma 2.2
+  //must be decoded, added, then re-encoded
+
+  rgb1.r = gamma16_encode( ( (rgb2.r<<8)*brightness + gamma16_decode(rgb1.r)*(255-brightness) ) >> 8);
+  rgb1.g = gamma16_encode( ( (rgb2.g<<8)*brightness + gamma16_decode(rgb1.g)*(255-brightness) ) >> 8);
+  rgb1.b = gamma16_encode( ( (rgb2.b<<8)*brightness + gamma16_decode(rgb1.b)*(255-brightness) ) >> 8);
+
+  //nblend(crgb_object[XY(x,y)], rgb, brightness);
+
+}
+
+static inline __attribute__ ((always_inline)) void color_blend_linear16(CRGB& rgb1, const uint16_t& r, const uint16_t& g, const uint16_t& b, const uint16_t& brightness = 65535) {
+  
+  //treat RGB values as gamma 2.2
+  //must be decoded, added, then re-encoded
+
+  rgb1.r = gamma16_encode( (r*brightness + gamma16_decode(rgb1.r)*(65535-brightness) ) >> 16);
+  rgb1.g = gamma16_encode( (g*brightness + gamma16_decode(rgb1.g)*(65535-brightness) ) >> 16);
+  rgb1.b = gamma16_encode( (b*brightness + gamma16_decode(rgb1.b)*(65535-brightness) ) >> 16);
+
+  //nblend(crgb_object[XY(x,y)], rgb, brightness);
+
 }
 
 //object to track cursor positions
@@ -267,27 +360,29 @@ static inline __attribute__ ((always_inline)) uint32_t XY(const int& x, const in
 }
 
 static inline __attribute__ ((always_inline)) void drawXY_fine(CRGB crgb_object[], const int32_t& xpos, const int32_t& ypos, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255) {
-
-  crgb_object[XY(xpos/256,ypos/256)] += CHSV(hue,sat,val);
+  
+  CRGB rgb = CHSV(hue,sat,255);
+  color_add_scaled_linear(crgb_object[XY(xpos/256,ypos/256)], rgb, val);
 
 }
 
 
 static inline __attribute__ ((always_inline)) void drawXY(CRGB crgb_object[], const int& x, const int& y, const uint8_t& hue, const uint8_t& sat, const uint8_t& val) {
   
-  crgb_object[XY(x,y)] += CHSV(hue,sat,val);
+  CRGB rgb = CHSV(hue,sat,255);
+  color_add_scaled_linear(crgb_object[XY(x,y)], rgb, val);
   
 }
 
 static inline __attribute__ ((always_inline)) void drawXY_fineRGB(CRGB crgb_object[], const int32_t& xpos, const int32_t& ypos, const uint8_t& r, const uint8_t& g, const uint8_t& b) {
 
-  crgb_object[XY(xpos / 256,ypos / 256)] += CRGB(r,g,b);
+  color_add_linear8(crgb_object[XY(xpos / 256,ypos / 256)], CRGB(r,g,b));
 
 }
 
 static inline __attribute__ ((always_inline)) void drawXY_RGB(CRGB crgb_object[], const int& x, const int& y, const uint8_t& r, const uint8_t& g, const uint8_t& b) {
   
-  crgb_object[XY(x,y)] += CRGB(r,g,b);
+  color_add_linear8(crgb_object[XY(x,y)], CRGB(r,g,b));
   
 }
 
@@ -299,36 +394,28 @@ int y_buffer_min = MATRIX_HEIGHT-1;
 //int z_buffer[MATRIX_WIDTH][MATRIX_HEIGHT];
 int16_t * z_buffer[MATRIX_WIDTH];
 
-static inline __attribute__ ((always_inline)) void drawXY_blend(CRGB crgb_object[], const int& x, const int& y, CRGB& rgb, const uint8_t& brightness = 255) {
+// static inline __attribute__ ((always_inline)) void drawXY_blend(CRGB crgb_object[], const int& x, const int& y, CRGB& rgb, const uint8_t& brightness = 255) {
   
-  nblend(crgb_object[XY(x,y)], rgb, brightness);
+//   nblend(crgb_object[XY(x,y)], rgb, brightness);
 
-}
+// }
 
-static inline __attribute__ ((always_inline)) void drawXY_blend(CRGB crgb_object[], const int& x, const int& y, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const uint8_t& brightness = 255) {
+// static inline __attribute__ ((always_inline)) void drawXY_blend(CRGB crgb_object[], const int& x, const int& y, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const uint8_t& brightness = 255) {
   
-  CRGB rgb;
-  rgb = CHSV(hue,sat,val);
-  drawXY_blend(crgb_object, x, y, rgb, brightness);
+//   CRGB rgb;
+//   rgb = CHSV(hue,sat,val);
+//   drawXY_blend(crgb_object, x, y, rgb, brightness);
 
-}
+// }
 
 static inline __attribute__ ((always_inline)) void drawXY_blend_gamma(CRGB crgb_object[], const uint16_t& led, const CRGB& rgb, const uint8_t& brightness = 255) {
   
   //treat RGB values as gamma 2.2
   //must be decoded, added, then re-encoded
 
-  uint16_t r_from = gamma16_decode(crgb_object[led].r);
-  uint16_t g_from = gamma16_decode(crgb_object[led].g);
-  uint16_t b_from = gamma16_decode(crgb_object[led].b);
-
-  uint16_t r_to = gamma16_decode(rgb.r);
-  uint16_t g_to = gamma16_decode(rgb.g);
-  uint16_t b_to = gamma16_decode(rgb.b);
-
-  crgb_object[led].r = gamma8_encode(((r_to * brightness)+(r_from*(255-brightness))) >> 16);
-  crgb_object[led].g = gamma8_encode(((g_to * brightness)+(g_from*(255-brightness))) >> 16);
-  crgb_object[led].b = gamma8_encode(((b_to * brightness)+(b_from*(255-brightness))) >> 16);
+  crgb_object[led].r = gamma16_encode( ( (rgb.r<<8)*brightness + gamma16_decode(crgb_object[led].r)*(255-brightness) ) >> 8);
+  crgb_object[led].g = gamma16_encode( ( (rgb.g<<8)*brightness + gamma16_decode(crgb_object[led].g)*(255-brightness) ) >> 8);
+  crgb_object[led].b = gamma16_encode( ( (rgb.b<<8)*brightness + gamma16_decode(crgb_object[led].b)*(255-brightness) ) >> 8);
 
   //nblend(crgb_object[XY(x,y)], rgb, brightness);
 
@@ -343,7 +430,7 @@ static inline __attribute__ ((always_inline)) void drawXY_blend_gamma(CRGB crgb_
 
 }
 
-static inline __attribute__ ((always_inline)) void drawXYZ(CRGB crgb_object[], const int32_t& x, const int32_t& y, const int32_t& z, const CRGB& rgb_in, const bool& gamma = false) {
+static inline __attribute__ ((always_inline)) void drawXYZ(CRGB crgb_object[], const int32_t& x, const int32_t& y, const int32_t& z, CRGB rgb, const bool& gamma = false) {
   
   if (y >= 0 && y < MATRIX_HEIGHT && x >= 0 && x < MATRIX_WIDTH) {
 
@@ -351,16 +438,13 @@ static inline __attribute__ ((always_inline)) void drawXYZ(CRGB crgb_object[], c
 
       z_buffer[x][y] = z/16; 
 
-      CRGB rgb = rgb_in;
       
       int bri = 100 - z/768;
       bri = (bri*bri)/256;
 
       bri = 255-bri;
 
-      rgb.r = (rgb.r*bri)/256;
-      rgb.g = (rgb.g*bri)/256;
-      rgb.b = (rgb.b*bri)/256;
+      color_scale(rgb, bri);
       
 
       if (gamma) {
@@ -376,33 +460,33 @@ static inline __attribute__ ((always_inline)) void drawXYZ(CRGB crgb_object[], c
 
 }
 
-static inline __attribute__ ((always_inline)) void drawXYZ(CRGB crgb_object[], const int& x, const int& y, const int& z, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255) {
+// static inline __attribute__ ((always_inline)) void drawXYZ(CRGB crgb_object[], const int& x, const int& y, const int& z, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255) {
   
-  if (y >= 0 && y < MATRIX_HEIGHT) {
-    y_buffer[y][0] = _min(y_buffer[y][0], x);
-    y_buffer[y][1] = _max(y_buffer[y][1], x);
+//   if (y >= 0 && y < MATRIX_HEIGHT) {
+//     y_buffer[y][0] = _min(y_buffer[y][0], x);
+//     y_buffer[y][1] = _max(y_buffer[y][1], x);
   
   
-    if (x >= 0 && x < MATRIX_WIDTH) {
-      if (z > -10000 && z > z_buffer[x][y]) {
-        z_buffer[x][y] = z; 
-        crgb_object[XY(x,y)] = CHSV(hue,sat,val);
-      } else if (z == -10000) {
-        //crgb_object[XY(x,y)] += CHSV(hue,sat,val);
-        drawXY_blend(crgb_object, x, y, hue, sat, val, 255);
-      }
-    }
+//     if (x >= 0 && x < MATRIX_WIDTH) {
+//       if (z > -10000 && z > z_buffer[x][y]) {
+//         z_buffer[x][y] = z; 
+//         crgb_object[XY(x,y)] = CHSV(hue,sat,val);
+//       } else if (z == -10000) {
+//         //crgb_object[XY(x,y)] += CHSV(hue,sat,val);
+//         drawXY_blend(crgb_object, x, y, hue, sat, val, 255);
+//       }
+//     }
 
-  }
+//   }
 
-}
+// }
 
 
-static inline __attribute__ ((always_inline)) void drawXYZ2(CRGB crgb_object[], const int& x, const int& y, const int& z, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const uint8_t& brightness = 255) {
-  
-  drawXY_blend(crgb_object, x, y, hue, sat, val, brightness);
+// static inline __attribute__ ((always_inline)) void drawXYZ2(CRGB crgb_object[], const int& x, const int& y, const int& z, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const uint8_t& brightness = 255) {
+//   CRGB rgb = CHSV(hue,sat,val);
+//   drawXY_blend_gamma(crgb_object, x, y, rgb, brightness);
 
-}
+// }
 
 static inline __attribute__ ((always_inline)) void drawXYZ2(CRGB crgb_object[], const int& x, const int& y, const int& z, CRGB& rgb, const uint8_t& brightness = 255) {
   
@@ -429,34 +513,18 @@ static inline __attribute__ ((always_inline)) void blendXY(CRGB crgb_object[], c
   int x2val = 255 - xval; //amount of light left
   int y2val = 255 - yval; //amount of light top
   
-  uint8_t l1 = (x2val*y2val*1L)/(255L); //top left
-  uint8_t l2 = (xval*y2val*1L)/(255L); //top right
-  uint8_t l3 = (xval*yval*1L)/(255L); //bottom right
-  uint8_t l4 = (x2val*yval*1L)/(255L); //bottom left
-  
-  uint16_t led1 = XY(x,y);
-  uint16_t led2 = XY(x+1,y);
-  uint16_t led3 = XY(x+1,y+1);
-  uint16_t led4 = XY(x,y+1);
+  color_add_scaled_linear(crgb_object[XY(x,y)], rgb, (x2val*y2val*1L)/(255L)); //top left
 
-  crgb_object[led1].r = qadd8(crgb_object[led1].r, (rgb.r*l1)/255);
-  crgb_object[led1].g = qadd8(crgb_object[led1].g, (rgb.g*l1)/255);
-  crgb_object[led1].b = qadd8(crgb_object[led1].b, (rgb.b*l1)/255);
   if (x < MATRIX_WIDTH-1) {
-    crgb_object[led2].r = qadd8(crgb_object[led2].r, (rgb.r*l2)/255);
-    crgb_object[led2].g = qadd8(crgb_object[led2].g, (rgb.g*l2)/255);
-    crgb_object[led2].b = qadd8(crgb_object[led2].b, (rgb.b*l2)/255);
+    color_add_scaled_linear(crgb_object[XY(x+1,y)], rgb, (xval*y2val*1L)/(255L)); //top right
   }
   
   if (x < MATRIX_WIDTH-1 && y < MATRIX_HEIGHT-1) {
-    crgb_object[led3].r = qadd8(crgb_object[led3].r, (rgb.r*l3)/255);
-    crgb_object[led3].g = qadd8(crgb_object[led3].g, (rgb.g*l3)/255);
-    crgb_object[led3].b = qadd8(crgb_object[led3].b, (rgb.b*l3)/255);
+    color_add_scaled_linear(crgb_object[XY(x+1,y+1)], rgb, (xval*yval*1L)/(255L)); //bottom right
   }
+
   if (y < MATRIX_HEIGHT-1) {
-    crgb_object[led4].r = qadd8(crgb_object[led4].r, (rgb.r*l4)/255);
-    crgb_object[led4].g = qadd8(crgb_object[led4].g, (rgb.g*l4)/255);
-    crgb_object[led4].b = qadd8(crgb_object[led4].b, (rgb.b*l4)/255);
+    color_add_scaled_linear(crgb_object[XY(x,y+1)], rgb, (x2val*yval*1L)/(255L)); //bottom left
   }
 
 //  leds[XY(x,y)] += CHSV(hue,sat,(x2val*y2val*1L*val)/(255L*255L));
@@ -1715,7 +1783,7 @@ static inline __attribute__ ((always_inline)) void draw_circle_fine(const int32_
 
 
 
-static inline __attribute__ ((always_inline)) void height_map_to_LED(const int& threshold = -128*256, const int& light_x = 100, const int& light_y = 100, const int& spec_x = 15, const int& spec_y = 15) {
+static void height_map_to_LED(const int& threshold = -128*256, const int& light_x = 100, const int& light_y = 100, const int& spec_x = 15, const int& spec_y = 15) {
   //write our computed values to the screen
   uint16_t led = 0;
   for (uint16_t y = 0; y < MATRIX_HEIGHT; y++) {
@@ -1744,40 +1812,34 @@ static inline __attribute__ ((always_inline)) void height_map_to_LED(const int& 
           //change angle of light to be more extreme at top
           v_norm = abs(-(light_y-(y >> 4))*32 - v)/24;
         }
-        //specular highlights
-        uint16_t su_norm = abs(-spec_x*32 - u);
-        uint16_t sv_norm = abs(-spec_y*32 - v);
         
-
         //0 = off; 255 = full bright
         u_norm = _max(255 - u_norm,0);
         v_norm = _max(255 - v_norm,0);
+        
+        //combine the vertical and horizontal components to find our final brightness for this pixel
+        uint16_t norm = (u_norm*v_norm);
+  
+        //light fades by distance
+        uint16_t val = (norm*(255-y))/255;
+        
+        leds[led].r = gamma16_encode(_max(val,2));
+
+
+
+        //specular highlights
+        uint16_t su_norm = abs(-spec_x*32 - u);
+        uint16_t sv_norm = abs(-spec_y*32 - v);
 
         su_norm = 255 - _min(su_norm, 255);
         sv_norm = 255 - _min(sv_norm, 255);
         
+        uint16_t snorm = (su_norm*sv_norm) >> 2;
         
-        //combine the vertical and horizontal components to find our final brightness for this pixel
-        uint16_t norm = (u_norm*v_norm)>>8;
-  
-        //specular highlights
-        uint16_t snorm = (su_norm*sv_norm)>>8;
 
-        uint16_t val = _max(_min(norm, 255), 10);
-
-        
-        //light fades by distance
-        //val = (val*(sq(255-y)/256L))/256L;
-        val = (val*(255-y))>>8;
-        
-        leds[led].r = val;
-
-        snorm = _max(_min(snorm, 255), 0)>>2;
-
-        //specular highlights
-        leds[led].r += snorm;
-        leds[led].g += snorm;
-        leds[led].b += snorm;
+        color_add_linear16(leds[led].r, snorm);
+        color_add_linear16(leds[led].g, snorm);
+        color_add_linear16(leds[led].b, snorm);
         
 
         

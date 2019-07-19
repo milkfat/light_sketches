@@ -915,14 +915,10 @@ void draw_jelly(JELLY& jelly) {
       //matrix.rotate_x(norm,32);
       //matrix.rotate_y(norm,32);
 
-      int bri = 100 - orig.z/768;
-      bri = (bri*bri)/256;
+      int bri = _min(_max(((255-norm.z)*3)/4, 0) + bri/4,220);
 
-      bri = 255-bri;
-
-      bri = _min(_max(((255-norm.z)*3)/4, 0) + bri/4,220);
-
-      CRGB rgb = CHSV(hue,sat,(bri*val)/256);
+      CRGB rgb = CHSV(hue,sat,val);
+      color_scale(rgb, bri);
 
       //draw_line_fine(leds, a, b, rgb, z_depth, 255, 255, true);
       //draw_line_fine(leds, b, c, rgb, z_depth, 255, 255, true);

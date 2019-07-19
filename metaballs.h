@@ -333,7 +333,7 @@ class METABALLS: public LIGHT_SKETCH {
               opacity = _max(_min((temp_canvas[led].r - 96)*6, 255), 0);
               led_mask2[led] = opacity;
               height_map[y+1][x+1] = (height_map[y+1][x+1]*opacity)/255;
-              leds[led].nscale8(opacity);
+              color_scale(leds[led], opacity);
             } else {
               leds[led] = CRGB::Black;
               height_map[y+1][x+1] = 0;

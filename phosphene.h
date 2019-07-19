@@ -50,7 +50,7 @@ class PHOSPHENE: public LIGHT_SKETCH {
                     continue;
                 }
                 vals += getVal(tx, ty);
-                int32_t tempDel = getDel(tx, ty);
+                int32_t tempDel = getDel(tx, ty)/256;
                 dels += tempDel * abs(tempDel);
                 vals_cnt++;
             }
@@ -64,13 +64,13 @@ class PHOSPHENE: public LIGHT_SKETCH {
 
         int32_t ddd = dels;
 
-        
+        //std::cout << ddd << "\n";
         if ( ddd < 0 ) {
-            ddd = -sqrt(-ddd);
+            ddd = -sqrt16(-ddd);
         } else {
-            ddd = sqrt(ddd);
+            ddd = sqrt16(ddd);
         }
-
+        ddd*=256;
         
         int32_t out;
         
@@ -137,16 +137,11 @@ class PHOSPHENE: public LIGHT_SKETCH {
            
 
 
-            for (int x = 0; x < SIZE_X; x++) {
-                for (int y = 0; y < SIZE_Y; y++) {
+            for (int y = 0; y < SIZE_Y; y++) {
+                for (int x = 0; x < SIZE_X; x++) {
                     
-                    uint32_t bri = _min(_max(pixels[y][x],0),16833); //raw brightness 0-16833
-                    bri >>= 6; //divide by 64, 0-255
-                    bri = (bri*bri) >> 8; //divide by 256, more contrast, 0-255
-                    CRGB rgb = CHSV(96,255,bri);
-                    leds[XY(x,y)] += rgb;
+                    leds[XY(x,y)].g = _min(_max(pixels[y][x],0),16833) >> 6;
 
-               
                 }
             }
 

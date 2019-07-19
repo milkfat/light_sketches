@@ -23,7 +23,7 @@ class CINCO_DE_MAYO: public LIGHT_SKETCH {
     SPRITE sprites[NUM_SPRITES];
 
 
-    void rotate_pixel (alpha_pixel ap[], uint8_t image_width, uint8_t image_height, uint8_t image_x, uint8_t image_y, uint32_t x, uint32_t y, uint8_t angle, uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255) {
+    void rotate_pixel (alpha_pixel ap[], uint8_t& image_width, uint8_t& image_height, uint8_t& image_x, uint8_t& image_y, uint32_t& x, uint32_t& y, uint8_t& angle, uint8_t& r, uint8_t& g, uint8_t& b, const uint8_t& a = 255) {
        
 
         int angle_sin = sin8(angle)-127;
@@ -36,31 +36,77 @@ class CINCO_DE_MAYO: public LIGHT_SKETCH {
         
     }
 
+    static inline __attribute__ ((always_inline)) void read_image_pixel(uint8_t image[], const uint32_t& image_pos, uint16_t& r, uint16_t& g, uint16_t& b, uint16_t& a, const uint8_t& amount) {
 
-    void draw_image (int32_t x, int32_t y, uint8_t angle) {
-        alpha_pixel ap[MATRIX_HEIGHT*MATRIX_WIDTH+1];
-        for (int image_x = 0; image_x < 12; image_x++) {
-            for (int image_y = 0; image_y < 18; image_y++) {
-                uint8_t * p = &maraca[(image_y*12+image_x)*4];
-                uint8_t b = *p;
-                uint8_t g = *(p+1);
-                uint8_t r = *(p+2);
-                uint8_t a = *(p+3);
-                rotate_pixel(ap, 12, 18, image_x, image_y, x, y, angle, r, g, b, a);
-            }
-        }
-        for (x = 0; x < MATRIX_WIDTH; x++) {
-            for (y = 0; y < MATRIX_HEIGHT; y++) {
-                if (ap[XY(x,y)].cnt > 0) {
-                    leds[XY(x,y)].r = (leds[XY(x,y)].r*(255-ap[XY(x,y)].a/ap[XY(x,y)].cnt))/255;
-                    leds[XY(x,y)].r = leds[XY(x,y)].r + ((ap[XY(x,y)].r/ap[XY(x,y)].cnt)*(ap[XY(x,y)].a/ap[XY(x,y)].cnt))/255;
-                    leds[XY(x,y)].g = (leds[XY(x,y)].g*(255-ap[XY(x,y)].a/ap[XY(x,y)].cnt))/255;
-                    leds[XY(x,y)].g = leds[XY(x,y)].g + ((ap[XY(x,y)].g/ap[XY(x,y)].cnt)*(ap[XY(x,y)].a/ap[XY(x,y)].cnt))/255;
-                    leds[XY(x,y)].b = (leds[XY(x,y)].b*(255-ap[XY(x,y)].a/ap[XY(x,y)].cnt))/255;
-                    leds[XY(x,y)].b = leds[XY(x,y)].b + ((ap[XY(x,y)].b/ap[XY(x,y)].cnt)*(ap[XY(x,y)].a/ap[XY(x,y)].cnt))/255;
+        b += (gamma16_decode(image[image_pos])*amount)>>8;
+        g += (gamma16_decode(image[image_pos+1])*amount)>>8;
+        r += (gamma16_decode(image[image_pos+2])*amount)>>8;
+        a += image[image_pos+3]*amount;
+
+    }
+
+    //draw an image with bilinear filtering
+    void draw_image (const int32_t& x_in, const int32_t& y_in, const int32_t& width, const int32_t& height, const uint8_t& angle) {
+        
+        int32_t screen_x = x_in/256;
+        int32_t image_start_x = -(x_in%256);
+        
+        int32_t screen_y = y_in/256;
+        int32_t image_start_y = -(255-(y_in%256));
+
+        for (int y = 0; y <= 18; y++) {
+            for (int x = 0; x <= 12; x++) {
+
+                if (screen_x+x >= 0 && screen_x+x < MATRIX_WIDTH && screen_y+y >= 0 && screen_y-y < MATRIX_HEIGHT) {
+                    uint16_t b = 0;
+                    uint16_t g = 0;
+                    uint16_t r = 0;
+                    uint16_t a = 0;
+
+                    //fine resolution image coordinates
+                    int16_t image_x_fine = image_start_x + x*256;
+                    int16_t image_y_fine = image_start_y + y*256;
+
+                    //image coordinates
+                    //add 256 before division to avoid rounding errors at 0
+                    int16_t image_x = (image_x_fine+256)/256 - 1;
+                    int16_t image_y = (image_y_fine+256)/256 - 1;
+
+                    //find the amount top/bottom/left/right
+                    uint16_t l_top = (image_y_fine+256)%256;
+                    uint16_t l_bottom = 255-l_top;
+                    uint16_t l_right = (image_x_fine+256)%256;
+                    uint16_t l_left = 255-l_right;  
+
+                    //calculate the amount for each pixel
+                    uint16_t l_tl = (l_top*l_left)/255;
+                    uint16_t l_tr = (l_top*l_right)/255;
+                    uint16_t l_bl = (l_bottom*l_left)/255;
+                    uint16_t l_br = (l_bottom*l_right)/255;
+
+                    if (image_x >= 0 && image_x < 12 && image_y >= 0 && image_y < 18) {
+                        read_image_pixel(maraca, (image_y*12+image_x)*4, r, g, b, a, l_bl);
+                    }
+
+                    if (image_x >= 0 && image_x < 12 && image_y+1 >= 0 && image_y+1 < 18) {
+                        read_image_pixel(maraca, ((image_y+1)*12+image_x)*4, r, g, b, a, l_tl);
+                    }
+
+                    if (image_x+1 >= 0 && image_x+1 < 12 && image_y >= 0 && image_y < 18) {
+                        read_image_pixel(maraca, (image_y*12+(image_x+1))*4, r, g, b, a, l_br);
+                    }
+
+                    if (image_x+1 >= 0 && image_x+1 < 12 && image_y+1 >= 0 && image_y+1 < 18) {
+                        read_image_pixel(maraca, ((image_y+1)*12+(image_x+1))*4, r, g, b, a, l_tr);
+                    }
+
+                    color_blend_linear16( leds[XY(screen_x+x,screen_y-y)], r, g, b, a );
+                    
                 }
+
             }
         }
+
     }
 
     uint8_t maraca[12*18*4] = {
@@ -123,36 +169,36 @@ class CINCO_DE_MAYO: public LIGHT_SKETCH {
               
               for (int x = 0; x < MATRIX_WIDTH; x++) {
                   for (int y = 0; y < MATRIX_HEIGHT; y++) {
-                      if ( y < 25 ) {
+                      if ( y < MATRIX_HEIGHT/5 ) {
                           uint8_t v = sin8(cycle);
                           leds[XY(x,y)] = CRGB(
-                            cie((40*v)/256),
-                            cie((195*v)/256),
-                            cie((168*v)/256));
-                      } else if (y < 50 ) {
+                            (40*v)/256,
+                            (195*v)/256,
+                            (168*v)/256);
+                      } else if (y < (MATRIX_HEIGHT*2)/5 ) {
                           uint8_t v = sin8(cycle+48);
                           leds[XY(x,y)] = CRGB(
-                            cie((238*v)/256),
-                            cie((225*v)/256),
-                            cie((95*v)/256));
-                      } else if (y < 75 ) {
+                            (238*v)/256,
+                            (225*v)/256,
+                            (95*v)/256);
+                      } else if (y < (MATRIX_HEIGHT*3)/5 ) {
                           uint8_t v = sin8(cycle+96);
                           leds[XY(x,y)] = CRGB(
-                            cie((238*v)/256),
-                            cie((0*v)/256),
-                            cie((0*v)/256));
-                      } else if (y < 100 ) {
+                            (238*v)/256,
+                            (0*v)/256,
+                            (0*v)/256);
+                      } else if (y < (MATRIX_HEIGHT*4)/5 ) {
                           uint8_t v = sin8(cycle+144);
                           leds[XY(x,y)] = CRGB(
-                            cie((176*v)/256),
-                            cie((17*v)/256),
-                            cie((145*v)/256));
+                            (176*v)/256,
+                            (17*v)/256,
+                            (145*v)/256);
                       } else {
                           uint8_t v = sin8(cycle+192);
                           leds[XY(x,y)] = CRGB(
-                            cie((162*v)/256),
-                            cie((204*v)/256),
-                            cie((44*v)/256));
+                            (162*v)/256,
+                            (204*v)/256,
+                            (44*v)/256);
                       }
                   }
               }
@@ -180,7 +226,7 @@ class CINCO_DE_MAYO: public LIGHT_SKETCH {
                           s->dir = random(-5,6);
                       }
                   }
-                  draw_image(s->x, s->y, s->angle);
+                  draw_image(s->x, s->y, 12, 18, s->angle);
               }
           }
   
