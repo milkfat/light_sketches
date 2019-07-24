@@ -15,7 +15,7 @@ class CINCO_DE_MAYO: public LIGHT_SKETCH {
         int32_t y = -20*256L;
         int16_t vx = 0;
         int16_t vy = 0;
-        uint8_t angle = random(256);
+        uint16_t angle = random(65536);
         int8_t dir = random(-5,6);
         
     };
@@ -32,10 +32,10 @@ class CINCO_DE_MAYO: public LIGHT_SKETCH {
     }
 
     //draw an image with bilinear filtering
-    void draw_image (const int32_t& x_in, const int32_t& y_in, const int32_t& width, const int32_t& height, const uint8_t& angle) {
+    void draw_image (const int32_t& x_in, const int32_t& y_in, const int32_t& width, const int32_t& height, const uint16_t& angle) {
 
-        int angle_sin = sin8(angle)-127;
-        int angle_cos = cos8(angle)-127;
+        int angle_sin = sin16(angle);
+        int angle_cos = cos16(angle);
         
         int32_t screen_x = x_in/256;
         int32_t image_start_x = -(x_in%256);
@@ -43,30 +43,41 @@ class CINCO_DE_MAYO: public LIGHT_SKETCH {
         int32_t screen_y = y_in/256;
         int32_t image_start_y = -(255-(y_in%256));
 
-        int32_t min_x = 100000;
-        int32_t min_y = 100000;
-        int32_t max_x = -100000;
-        int32_t max_y = -100000;
+        //fine resolution image coordinates
+        int16_t image_x_fine0 = image_start_x - 12*128;
+        int16_t image_y_fine0 = image_start_y - 18*128;
 
-        int32_t temp_points[4][2];
-        temp_points[0][0] = ( ( (angle_cos) * width*128 - (angle_sin) * height*128 ) / 128 + width*128)/256;
-        temp_points[0][1] = ( ( (angle_sin) * width*128 + (angle_cos) * height*128 ) / 128 + height*128)/256;
-        temp_points[1][0] = ( ( (angle_cos) * -width*128 - (angle_sin) * height*128 ) / 128 + width*128)/256;
-        temp_points[1][1] = ( ( (angle_sin) * -width*128 + (angle_cos) * height*128 ) / 128 + height*128)/256;
-        temp_points[2][0] = ( ( (angle_cos) * width*128 - (angle_sin) * -height*128 ) / 128 + width*128)/256;
-        temp_points[2][1] = ( ( (angle_sin) * width*128 + (angle_cos) * -height*128 ) / 128 + height*128)/256;
-        temp_points[3][0] = ( ( (angle_cos) * -width*128 - (angle_sin) * -height*128 ) / 128 + width*128)/256;
-        temp_points[3][1] = ( ( (angle_sin) * -width*128 + (angle_cos) * -height*128 ) / 128 + height*128)/256;
+        int16_t image_x_start0 = ( (angle_cos) * image_x_fine0 - (angle_sin) * image_y_fine0 ) / 32768 + 12*128;
+        int16_t image_y_start0 = ( (angle_sin) * image_x_fine0 + (angle_cos) * image_y_fine0 ) / 32768 + 18*128;
 
-        for (int i = 0; i < 4; i++) {
-            min_x = _min(min_x, temp_points[i][0]);
-            max_x = _max(max_x, temp_points[i][0]);
-            min_y = _min(min_y, temp_points[i][1]);
-            max_y = _max(max_y, temp_points[i][1]);
-        }
+        int16_t x_step_x = ( (angle_cos) * 255 ) / 32768;
+        int16_t x_step_y = ( (angle_sin) * 255 ) / 32768;
 
-        for (int y = min_y-1; y <= max_y+1; y++) {
-            for (int x = min_x-1; x <= max_x+1; x++) {
+        int16_t y_step_x = ( -(angle_sin) * 255 ) / 32768;
+        int16_t y_step_y = (  (angle_cos) * 255 ) / 32768;
+        
+        uint32_t image_x_start = image_x_start0 - x_step_x*5 - y_step_x*5 + 32768;
+        uint32_t image_y_start = image_y_start0 - x_step_y*5 - y_step_y*5 + 32768;
+
+        int y = -5;
+        bool do_y = true;
+        int cnt_y = 0;
+        int fuck_y = 0;
+        while (do_y || cnt_y < 20) {
+            cnt_y++;
+            do_y = false;
+            int x = -5;
+            bool do_x = true;
+            int cnt_x = 0;
+
+            uint32_t image_x_fine = image_x_start + (fuck_y*y_step_x);
+            uint32_t image_y_fine = image_y_start + (fuck_y*y_step_y);
+
+            fuck_y++;
+            while (do_x || cnt_x < 20) {
+                cnt_x++;
+                do_x = false;
+
 
                 if (screen_x+x >= 0 && screen_x+x < MATRIX_WIDTH && screen_y+y >= 0 && screen_y-y < MATRIX_HEIGHT) {
                     uint16_t b = 0;
@@ -74,51 +85,58 @@ class CINCO_DE_MAYO: public LIGHT_SKETCH {
                     uint16_t r = 0;
                     uint16_t a = 0;
         
-                    //fine resolution image coordinates
-                    int16_t image_x_fine0 = image_start_x + x*256 - 12*128;
-                    int16_t image_y_fine0 = image_start_y + y*256 - 18*128;
-
-                    int16_t image_x_fine = ( (angle_cos) * image_x_fine0 - (angle_sin) * image_y_fine0 ) / 128 + 12*128;
-                    int16_t image_y_fine = ( (angle_sin) * image_x_fine0 + (angle_cos) * image_y_fine0 ) / 128 + 18*128;
-
                     //image coordinates
                     //avoid rounding errors at 0
-                    int16_t image_x = (image_x_fine+2560)/256 - 10;
-                    int16_t image_y = (image_y_fine+2560)/256 - 10;
+                    int16_t image_x = (image_x_fine>>8) - 128;
+                    int16_t image_y = (image_y_fine>>8) - 128;
 
                     //find the amount top/bottom/left/right
-                    uint16_t l_top = (image_y_fine+256)%256;
-                    uint16_t l_bottom = 255-l_top;
-                    uint16_t l_right = (image_x_fine+256)%256;
-                    uint16_t l_left = 255-l_right;  
+                    uint8_t l_top = image_y_fine;
+                    uint8_t l_right = image_x_fine;
 
                     //calculate the amount for each pixel
-                    uint16_t l_tl = (l_top*l_left)/255;
-                    uint16_t l_tr = (l_top*l_right)/255;
-                    uint16_t l_bl = (l_bottom*l_left)/255;
-                    uint16_t l_br = (l_bottom*l_right)/255;
 
-                    if (image_x >= 0 && image_x < 12 && image_y >= 0 && image_y < 18) {
-                        read_image_pixel(maraca, (image_y*12+image_x)*4, r, g, b, a, l_bl);
+                    if (image_x >= 0 && image_x < 12) {
+
+                        if ( image_y >= 0 && image_y < 18 ) {
+                            do_x = true;
+                            do_y = true;
+                            read_image_pixel(maraca, (image_y*12+image_x)*4, r, g, b, a, ((255-l_top)*(255-l_right))>>8);
+                        }
+
+                        if ( image_y+1 >= 0 && image_y+1 < 18 ) {
+                            do_x = true;
+                            do_y = true;
+                            read_image_pixel(maraca, ((image_y+1)*12+image_x)*4, r, g, b, a, (l_top*(255-l_right))>>8);
+                        }
+
                     }
 
-                    if (image_x >= 0 && image_x < 12 && image_y+1 >= 0 && image_y+1 < 18) {
-                        read_image_pixel(maraca, ((image_y+1)*12+image_x)*4, r, g, b, a, l_tl);
-                    }
+                    if (image_x+1 >= 0 && image_x+1 < 12) {
 
-                    if (image_x+1 >= 0 && image_x+1 < 12 && image_y >= 0 && image_y < 18) {
-                        read_image_pixel(maraca, (image_y*12+(image_x+1))*4, r, g, b, a, l_br);
-                    }
+                        if (image_y >= 0 && image_y < 18) {
+                            do_x = true;
+                            do_y = true;
+                            read_image_pixel(maraca, (image_y*12+(image_x+1))*4, r, g, b, a, ((255-l_top)*l_right)>>8);
+                        }
+                    
 
-                    if (image_x+1 >= 0 && image_x+1 < 12 && image_y+1 >= 0 && image_y+1 < 18) {
-                        read_image_pixel(maraca, ((image_y+1)*12+(image_x+1))*4, r, g, b, a, l_tr);
+                        if (image_y+1 >= 0 && image_y+1 < 18) {
+                            do_x = true;
+                            do_y = true;
+                            read_image_pixel(maraca, ((image_y+1)*12+(image_x+1))*4, r, g, b, a, (l_top*l_right)>>8);
+                        }
+                        
                     }
 
                     color_blend_linear16( leds[XY(screen_x+x,screen_y-y)], r, g, b, a );
-                    
+                    //leds[XY(screen_x+x,screen_y-y)].g += 50;
+                    image_x_fine += x_step_x;
+                    image_y_fine += x_step_y;
                 }
-
+                x++;
             }
+            y++;
         }
 
     }
@@ -177,7 +195,6 @@ class CINCO_DE_MAYO: public LIGHT_SKETCH {
       if (millis() - 16 > t) {
         t = millis();
       
-     uint32_t debug_time2 = micros();
         if (current_effect == 0) {
               static uint8_t cycle = 0;
               cycle+=2;
@@ -220,13 +237,14 @@ class CINCO_DE_MAYO: public LIGHT_SKETCH {
           } else if (current_effect == 1) {
               for (int i = 0; i < NUM_SPRITES; i++) {
                   SPRITE * s = &sprites[i];
-                  s->angle += s->dir;
+                  s->angle += s->dir*256;
                   s->y += s->vy;
                   s->vy--;
                   s->x += s->vx;
                   if (s->y < -10*256) {
                       s->y = (MATRIX_HEIGHT+random(10,20))*256;
                       s->x = random(MATRIX_WIDTH*384L)-2*256;
+                      s->x = MATRIX_WIDTH*96;
                       s->vx = random(-10,10);
                       if (s->x < 0) {
                           s->vx = 20;
@@ -234,6 +252,7 @@ class CINCO_DE_MAYO: public LIGHT_SKETCH {
                       if (s->x > (MATRIX_WIDTH-1)*256L) {
                           s->vx = -20;
                       }
+                      s->vx = 0;
                       s->vy = random(0,200) - 200;
                       s->angle = random(256);
                       s->dir = random(-5,6);
@@ -246,7 +265,6 @@ class CINCO_DE_MAYO: public LIGHT_SKETCH {
           }
   
           
-     debug_micros1 += micros() - debug_time2;
           LED_show();
           LED_black();
       }

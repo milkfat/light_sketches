@@ -44,12 +44,15 @@ uint32_t debug_micros1 = 0;
 //load all the magical light sketches
 #include "light_sketches.h"
 
+#include "text.h"
+
 uint32_t debug_time = 0;
 uint32_t debug_count = 0;
 
 bool spacebar = false;
 bool next_sketch = false;
 bool reset_sketch = false;
+bool typing_mode = false;
 
 SDL_bool done = SDL_FALSE;
 
@@ -124,21 +127,41 @@ void update_matrix() {
 		case SDL_QUIT:
 			done = SDL_TRUE;
 			break;
-		case SDL_KEYDOWN:
-			switch (event.key.keysym.sym)
-			{
-				case SDLK_ESCAPE: done=SDL_TRUE; break;
-				case SDLK_SPACE: spacebar=true; break;
-				case SDLK_f: button2_down=true; break;
-				case SDLK_n: next_sketch=true; break;
-				case SDLK_r: reset_sketch=true; break;
-				case SDLK_LEFT:  camera_scaler--; break;
-				case SDLK_RIGHT: camera_scaler++; break;
-				case SDLK_UP:    screen_scaler--; break;
-				case SDLK_DOWN:  screen_scaler++; break; 
+
+		case SDL_TEXTINPUT:
+			if (typing_mode) {
+        		display_text += event.text.text;
 			}
 			break;
-		
+
+		case SDL_KEYDOWN:
+			if (typing_mode) {
+				switch (event.key.keysym.sym)
+				{
+					case SDLK_ESCAPE: typing_mode=false; SDL_StopTextInput(); break;
+					case SDLK_BACKSPACE: 
+						if (display_text.length() > 0) {
+							display_text.pop_back();
+						}
+						break;
+				}
+			} else {
+				switch (event.key.keysym.sym)
+				{
+					case SDLK_ESCAPE: done=SDL_TRUE; break;
+					case SDLK_SPACE: spacebar=true; break;
+					case SDLK_f: button2_down=true; text_shake_time = millis(); break;
+					case SDLK_n: next_sketch=true; break;
+					case SDLK_r: reset_sketch=true; break;
+					case SDLK_t: typing_mode=true; SDL_StartTextInput(); break;
+					case SDLK_LEFT:  camera_scaler--; std::cout << "camera: " << (int16_t)camera_scaler << "\n"; break;
+					case SDLK_RIGHT: camera_scaler++; std::cout << "camera: " << (int16_t)camera_scaler << "\n"; break;
+					case SDLK_UP:    screen_scaler--; std::cout << "screen: " << (int16_t)screen_scaler << "\n"; break;
+					case SDLK_DOWN:  screen_scaler++; std::cout << "screen: " << (int16_t)screen_scaler << "\n"; break; 
+				}
+			}
+			break;
+
 		case SDL_KEYUP:
 			switch (event.key.keysym.sym)
 			{
@@ -152,8 +175,8 @@ void update_matrix() {
 	
 }
 
-int main(int argc, char **argv){
-	
+int main(int argc, char **argv){	
+
 
 	// for (int i = -120000; i > -190000; i-=1024) {
 	// 	uint16_t c = matt_compress8(i);
@@ -204,6 +227,7 @@ int main(int argc, char **argv){
 				
         uint32_t debug_time = micros();
 				light_sketches.loop();
+				handle_text();
         debug_micros0 += micros() - debug_time;
 				if (spacebar) {
 					spacebar = false; 

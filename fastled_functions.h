@@ -326,7 +326,14 @@ typedef struct CRGB
         b /= d;
         return *this;
     }
-    
+    /// Get the average of the R, G, and B values
+    inline uint8_t getAverageLight( )  const {
+        const uint8_t eightyfive = 85;
+        uint8_t avg = scale8( r, eightyfive) + \
+        scale8( g, eightyfive) + \
+        scale8( b, eightyfive);
+        return avg;
+    }
     
 } CRGB;
 

@@ -12,6 +12,8 @@
 #endif
 
 
+std::string display_text = "";
+
 //make the heightmap one pixel wider in each dimension to avoid surface normal aberations along the edges 
 #define HEIGHTMAP_WIDTH (MATRIX_WIDTH+2)
 #define HEIGHTMAP_HEIGHT (MATRIX_HEIGHT+2)
@@ -98,7 +100,6 @@ class Float16Compressor
 
 Float16Compressor FC;
 
-std::string display_text = "";
 bool text_mask = 0;
 bool invert_mask = 0;
 uint8_t update_since_text = 1;
@@ -127,8 +128,8 @@ uint8_t default_saturation = 255;
 uint8_t default_value = 255;
 
 uint8_t debug_scaler = 128;
-uint8_t camera_scaler = 232;
-uint8_t screen_scaler = 100;
+int16_t camera_scaler = 232;
+int16_t screen_scaler = 100;
 float rotation_alpha = 0;
 float rotation_beta = 90;
 float rotation_gamma = 0;
@@ -184,11 +185,19 @@ uint8_t gamma8_d[256];
 //decode 8-bit gamma to 16-bit linear
 uint16_t gamma16_d[256];
 
+//decode 8-bit gamma to 12-bit linear
+uint16_t gamma12_d[256];
+
 
 
 static inline __attribute__ ((always_inline)) uint16_t gamma16_decode(const uint8_t& value) {
   //decode 8-bit gamma 2.2 into 16-bit linear
   return gamma16_d[value];
+}
+
+static inline __attribute__ ((always_inline)) uint16_t gamma12_decode(const uint8_t& value) {
+  //decode 8-bit gamma 2.2 into 16-bit linear
+  return gamma12_d[value];
 }
 
 static inline __attribute__ ((always_inline)) uint8_t gamma8_encode(const uint8_t& value) {
@@ -198,10 +207,8 @@ static inline __attribute__ ((always_inline)) uint8_t gamma8_encode(const uint8_
 
 static inline __attribute__ ((always_inline)) uint8_t gamma16_encode(const uint16_t& value) {
   //encode 16-bit linear into 8-bit gamma 2.2
-  if (value < 256) {
-    return gamma8_e_16_low[value];
-  }
-  return gamma8_e[value>>8];
+  return (value>>8) ? gamma8_e[value>>8] : gamma8_e_16_low[value];
+
 }
 
 static inline __attribute__ ((always_inline)) uint8_t gamma8_decode(const uint8_t& value) {
@@ -267,7 +274,7 @@ static inline __attribute__ ((always_inline)) void color_add_scaled_linear(CRGB&
   color_add_linear8(rgb.b, (rgb2.b*scaler)/255);
 }
 
-static inline __attribute__ ((always_inline)) void color_blend_linear(CRGB& rgb1, const CRGB& rgb2, const uint8_t& brightness = 255) {
+static inline __attribute__ ((always_inline)) void color_blend_linear(CRGB& rgb1, const CRGB& rgb2, const uint8_t& brightness) {
   
   //treat RGB values as gamma 2.2
   //must be decoded, added, then re-encoded
@@ -280,7 +287,7 @@ static inline __attribute__ ((always_inline)) void color_blend_linear(CRGB& rgb1
 
 }
 
-static inline __attribute__ ((always_inline)) void color_blend_linear16(CRGB& rgb1, const uint16_t& r, const uint16_t& g, const uint16_t& b, const uint16_t& brightness = 65535) {
+static inline __attribute__ ((always_inline)) void color_blend_linear16(CRGB& rgb1, const uint16_t& r, const uint16_t& g, const uint16_t& b, const uint16_t& brightness) {
   
   //treat RGB values as gamma 2.2
   //must be decoded, added, then re-encoded
@@ -387,9 +394,10 @@ static inline __attribute__ ((always_inline)) void drawXY_RGB(CRGB crgb_object[]
 }
 
 //int y_buffer[MATRIX_HEIGHT][2]; //stores the min/max X values per Y so that we can fill between them
-int * y_buffer[MATRIX_HEIGHT]; //stores the min/max X values per Y so that we can fill between them
-int y_buffer_max = 0;
-int y_buffer_min = MATRIX_HEIGHT-1;
+int32_t * y_buffer[MATRIX_HEIGHT]; //stores the min/max X values per Y so that we can fill between them
+int32_t y_buffer_max = 0;
+int32_t y_buffer_min = MATRIX_HEIGHT-1;
+int32_t x_buffer[MATRIX_WIDTH][2]; //stores the min/max Y values per X so that we can fill between them
 
 //int z_buffer[MATRIX_WIDTH][MATRIX_HEIGHT];
 int16_t * z_buffer[MATRIX_WIDTH];
@@ -413,20 +421,39 @@ static inline __attribute__ ((always_inline)) void drawXY_blend_gamma(CRGB crgb_
   //treat RGB values as gamma 2.2
   //must be decoded, added, then re-encoded
 
-  crgb_object[led].r = gamma16_encode( ( (rgb.r<<8)*brightness + gamma16_decode(crgb_object[led].r)*(255-brightness) ) >> 8);
-  crgb_object[led].g = gamma16_encode( ( (rgb.g<<8)*brightness + gamma16_decode(crgb_object[led].g)*(255-brightness) ) >> 8);
-  crgb_object[led].b = gamma16_encode( ( (rgb.b<<8)*brightness + gamma16_decode(crgb_object[led].b)*(255-brightness) ) >> 8);
+  crgb_object[led].r = gamma16_encode( ( gamma16_decode(rgb.r)*brightness + gamma16_decode(crgb_object[led].r)*(255-brightness) ) >> 8);
+  crgb_object[led].g = gamma16_encode( ( gamma16_decode(rgb.g)*brightness + gamma16_decode(crgb_object[led].g)*(255-brightness) ) >> 8);
+  crgb_object[led].b = gamma16_encode( ( gamma16_decode(rgb.b)*brightness + gamma16_decode(crgb_object[led].b)*(255-brightness) ) >> 8);
 
   //nblend(crgb_object[XY(x,y)], rgb, brightness);
 
 }
 
-static inline __attribute__ ((always_inline)) void drawXY_blend_gamma(CRGB crgb_object[], const int& x, const int& y, const CRGB& rgb, const uint8_t& brightness = 255) {
+static inline __attribute__ ((always_inline)) void drawXY_blend_gamma(CRGB crgb_object[], const int& x, const int& y, const int& z, const CRGB& rgb_in, const uint8_t& brightness = 255, const bool& ignore_z = true) {
   
   //treat RGB values as gamma 2.2
   //must be decoded, added, then re-encoded
+  if (y >= 0 && y < MATRIX_HEIGHT && x >= 0 && x < MATRIX_WIDTH) {
 
-  drawXY_blend_gamma(crgb_object, XY(x,y), rgb, brightness);
+    if (ignore_z || z/16 > z_buffer[x][y]) {
+
+      if (z/16 > z_buffer[x][y]) {
+        z_buffer[x][y] = z/16; 
+      }
+      
+      int bri = 100 - z/768;
+      bri = (bri*bri)/256;
+      bri = 255-bri;
+      
+      CRGB rgb = rgb_in;
+      color_scale(rgb, bri);
+      
+      drawXY_blend_gamma(crgb_object, XY(x,y), rgb, brightness);
+
+      //crgb_object[XY(x,y)] = rgb;
+    }
+
+  }
 
 }
 
@@ -441,9 +468,9 @@ static inline __attribute__ ((always_inline)) void drawXYZ(CRGB crgb_object[], c
       
       int bri = 100 - z/768;
       bri = (bri*bri)/256;
-
+      
       bri = 255-bri;
-
+      
       color_scale(rgb, bri);
       
 
@@ -488,9 +515,9 @@ static inline __attribute__ ((always_inline)) void drawXYZ(CRGB crgb_object[], c
 
 // }
 
-static inline __attribute__ ((always_inline)) void drawXYZ2(CRGB crgb_object[], const int& x, const int& y, const int& z, CRGB& rgb, const uint8_t& brightness = 255) {
+static inline __attribute__ ((always_inline)) void drawXYZ2(CRGB crgb_object[], const int32_t& x, const int32_t& y, const int32_t& z, const CRGB& rgb, const uint8_t& brightness = 255, const bool& ignore_z = true) {
   
-  drawXY_blend_gamma(crgb_object, x, y, rgb, brightness);
+  drawXY_blend_gamma(crgb_object, x, y, z, rgb, brightness, ignore_z);
 
 }
 
@@ -964,7 +991,7 @@ static inline __attribute__ ((always_inline)) void draw_line_ybuffer(VECTOR3 a, 
 //DRAW LINE FINE
 
 
-static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_object[], int32_t x1, int32_t y1, int32_t x2, int32_t y2, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false) {
+static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_object[], int32_t x1, int32_t y1, int32_t x2, int32_t y2, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true) {
   
   //avoid vertical and horizontal lines by fudging a bit
   if (x1 == x2 ) {
@@ -1076,8 +1103,50 @@ static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_obje
           b = (b*x2_r)/256;
           b2 = (b2*x2_r)/256;
         }
-        drawXYZ2(crgb_object,i, Hy, z_depth, rgb, (b2*v1)/256 + (b2*v2)/256 );
-        drawXYZ2(crgb_object,i, Ly, z_depth, rgb, (b *v1)/256 + (b *v2)/256 );
+        drawXYZ2(crgb_object,i, Hy, z_depth, rgb, (b2*v1)/256 + (b2*v2)/256, ignore_z );
+        drawXYZ2(crgb_object,i, Ly, z_depth, rgb, (b *v1)/256 + (b *v2)/256, ignore_z );
+        
+        //record stuff in our x and y buffers for other functions to use
+        if (i >= 0 && i < MATRIX_WIDTH) {
+
+          if (Hy <= x_buffer[i][0]) {
+            x_buffer[i][0] = _min(x_buffer[i][0], Hy);
+
+            y_buffer_min = _min(y_buffer_min,Hy);
+
+            if (Hy >= 0 && Hy < MATRIX_HEIGHT) {
+              y_buffer[Hy][0] = _min(y_buffer[Hy][0], i);
+              y_buffer[Hy][1] = _max(y_buffer[Hy][1], i);
+            }
+
+          }
+
+          if (Ly >= x_buffer[i][1]) {
+            x_buffer[i][1] = _max(x_buffer[i][1], Ly);
+
+            y_buffer_max = _max(y_buffer_max,Ly);
+
+            if (Ly >= 0 && Ly < MATRIX_HEIGHT) {
+              y_buffer[Ly][0] = _min(y_buffer[Ly][0], i);
+              y_buffer[Ly][1] = _max(y_buffer[Ly][1], i);
+
+            }
+
+          }
+
+        } else {
+
+            if (Ly >= 0 && Ly < MATRIX_HEIGHT) {
+              y_buffer[Ly][0] = _min(y_buffer[Ly][0], i);
+              y_buffer[Ly][1] = _max(y_buffer[Ly][1], i);
+
+            } 
+            if (Hy >= 0 && Hy < MATRIX_HEIGHT) {
+              y_buffer[Hy][0] = _min(y_buffer[Hy][0], i);
+              y_buffer[Hy][1] = _max(y_buffer[Hy][1], i);
+            }
+          
+          }
         //drawXYZ(crgb_object,i, Hy, z_depth, hue, sat, (b2*v1)/256 + (b2*v2)/256 );
         //drawXYZ(crgb_object,i, Ly, z_depth, hue, sat, (b *v1)/256 + (b *v2)/256 );
       }
@@ -1118,8 +1187,27 @@ static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_obje
           b  = (b*y2_r)/256;
           b2 = (b2*y2_r)/256;
         }
-        drawXYZ2(crgb_object,  ceil(x_start/256L), i, z_depth, rgb, (b2*v1)/256 + (b2*v2)/256 );
-        drawXYZ2(crgb_object, floor(x_start/256L), i, z_depth, rgb, (b *v1)/256 + (b *v2)/256 );
+
+        drawXYZ2(crgb_object,  Hx, i, z_depth, rgb, (b2*v1)/256 + (b2*v2)/256, ignore_z );
+        drawXYZ2(crgb_object,  Lx, i, z_depth, rgb, (b *v1)/256 + (b *v2)/256, ignore_z );
+
+        //record stuff in our x and y buffers for other functions to use
+        if (i >= 0 && i < MATRIX_HEIGHT) {
+          y_buffer_min = _min(i,y_buffer_min);
+          y_buffer_max = _max(i,y_buffer_max);
+          y_buffer[i][0] = _min(y_buffer[i][0], Hx);
+          y_buffer[i][1] = _max(y_buffer[i][1], Lx);
+        }
+
+        if (Lx >= 0 && Lx < MATRIX_WIDTH) {
+            x_buffer[Lx][0] = _min(x_buffer[Lx][0], i);
+            x_buffer[Lx][1] = _max(x_buffer[Lx][1], i);
+        }
+        if (Hx >= 0 && Hx < MATRIX_WIDTH) {
+            x_buffer[Hx][0] = _min(x_buffer[Hx][0], i);
+            x_buffer[Hx][1] = _max(x_buffer[Hx][1], i);
+        }
+
         //drawXYZ(crgb_object,  ceil(x_start/256L), i, z_depth, h, s, (b2*v1)/256 + (b2*v2)/256 );
         //drawXYZ(crgb_object, floor(x_start/256L), i, z_depth, h, s, (b *v1)/256 + (b *v2)/256 );
       }
@@ -1135,8 +1223,8 @@ static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_obje
   draw_line_fine(crgb_object, x1, y1, x2, y2, rgb, z_depth, val, val2, trim);
 }
 
-static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_object[], const VECTOR3& a, const VECTOR3& b, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false) {
-  draw_line_fine(crgb_object, a.x, a.y, b.x, b.y, rgb, z_depth, val, val2, trim);
+static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_object[], const VECTOR3& a, const VECTOR3& b, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true) {
+  draw_line_fine(crgb_object, a.x, a.y, b.x, b.y, rgb, z_depth, val, val2, trim, ignore_z);
 }
 
 //DRAW CURVE
@@ -1880,6 +1968,21 @@ static inline __attribute__ ((always_inline)) void LED_show() {
   #endif
   //FastLEDshowESP32();
   update_since_text = 1;
+}
+
+
+static inline __attribute__ ((always_inline)) void reset_y_buffer() {
+  for (int i = 0; i < MATRIX_HEIGHT; i++) {
+  y_buffer[i][0] = MATRIX_WIDTH + 1;
+  y_buffer[i][1] = -1;
+  }
+}
+
+static inline __attribute__ ((always_inline)) void reset_x_buffer() {
+  for (int i = 0; i < MATRIX_WIDTH; i++) {
+  x_buffer[i][0] = MATRIX_HEIGHT + 1;
+  x_buffer[i][1] = -1;
+  }
 }
 
 static inline __attribute__ ((always_inline)) void reset_z_buffer() {

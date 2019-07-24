@@ -128,16 +128,21 @@ class MATRIX {
 
         //take X,Y,Z coordinate
         //modifies X,Y to screen coordinates
+        #define MATRIX_PRECISION 4
         static inline __attribute__ ((always_inline)) bool perspective(int32_t& x, int32_t& y, int32_t& z) {
             if (z < Cz) {
-                x/=2;//half precision to double each axis of our available coordinate space
-                y/=2;
-                z/=2;
-                x = ( x * (Sz - Cz) ) / ( z - Cz ) + (MATRIX_WIDTH * 256L/2) / 2;
-                y = ( y * (Sz - Cz) ) / ( z - Cz ) + (MATRIX_HEIGHT * 256L/2) / 2;
-                x*=2;
-                y*=2;
-                z*=2;
+                x/=MATRIX_PRECISION;//half precision to double each axis of our available coordinate space
+                y/=MATRIX_PRECISION;
+                z/=MATRIX_PRECISION;
+                int32_t zCz = (z-Cz/MATRIX_PRECISION);
+                if (zCz == 0) {
+                    zCz = 1;
+                }
+                x = ( x * (Sz/MATRIX_PRECISION - Cz/MATRIX_PRECISION) ) / zCz + (MATRIX_WIDTH * 256L/MATRIX_PRECISION) / 2;
+                y = ( y * (Sz/MATRIX_PRECISION - Cz/MATRIX_PRECISION) ) / zCz + (MATRIX_HEIGHT * 256L/MATRIX_PRECISION) / 2;
+                x*=MATRIX_PRECISION;
+                y*=MATRIX_PRECISION;
+                z*=MATRIX_PRECISION;
                 return true;
             }
             return false;
@@ -268,3 +273,171 @@ float MATRIX::matrix[3][3];
 uint32_t MATRIX::update_time = 0;
 
 MATRIX matrix;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void draw_quad(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& d, const VECTOR3& orig, const VECTOR3& norm_in, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255) {
+  
+  //optimization:
+  //identify clockwise/counterclockwise orientation
+  //draw in only one orientation (facing toward the camera)
+  int orientation = (b.y-a.y)*(c.x-b.x) - (c.y-b.y)*(b.x-a.x);
+  
+  if ( orientation < 0 ) {
+
+    VECTOR3 norm = norm_in;
+
+    // draw_line_ybuffer(a, b);
+    // draw_line_ybuffer(b, c);
+    // draw_line_ybuffer(c, d);
+    // draw_line_ybuffer(d, a);
+
+    int32_t z_depth = orig.z+norm.z; 
+
+    matrix.rotate_x(norm,32);
+    matrix.rotate_y(norm,32);
+
+    
+    uint8_t bri = _min(_max((norm.z*7)/8,0)+32,255);
+
+    CRGB rgb = CHSV(hue,sat,val);
+    color_scale(rgb, bri);
+    reset_y_buffer();
+    reset_x_buffer();
+    draw_line_fine(leds, a, b, rgb, z_depth-16, 255, 255, true, false);
+    draw_line_fine(leds, b, c, rgb, z_depth-16, 255, 255, true, false);
+    draw_line_fine(leds, c, d, rgb, z_depth-16, 255, 255, true, false);
+    draw_line_fine(leds, d, a, rgb, z_depth-16, 255, 255, true, false);
+    
+
+    for (int x = 0; x < MATRIX_WIDTH; x++) {
+        
+        if (x_buffer[x][0]-1 >= 0 && x_buffer[x][0]-1 < MATRIX_HEIGHT) {
+            z_buffer[x][x_buffer[x][0]-1] += 1;
+        }
+
+        if (x_buffer[x][1]+1 >= 0 && x_buffer[x][1]+1 < MATRIX_HEIGHT) {
+            z_buffer[x][x_buffer[x][1]+1] += 1;
+        }
+
+    }
+    //fill between the pixels of our lines
+    for (int y = _max(y_buffer_min, 0); y <= _min(y_buffer_max,MATRIX_HEIGHT-1); y++) {
+        if (y_buffer[y][0] <= y_buffer[y][1]) {
+
+        for (int x = y_buffer[y][0]; x <= y_buffer[y][1]; x++) {
+          drawXYZ(leds, x, y, z_depth, rgb);
+        }
+
+      }
+      //reset the y_buffer
+      y_buffer[y][0] = MATRIX_WIDTH + 1;
+      y_buffer[y][1] = -1;
+    
+    }
+
+    y_buffer_max = 0;
+    y_buffer_min = MATRIX_HEIGHT-1;
+
+  }
+} //draw_quad()
+
+uint16_t cube_ang = 0;
+uint16_t cube_ang2 = 0;
+int16_t cube_ang3 = 0;
+void draw_cube(const VECTOR3& p, const int32_t& width, const int32_t& height, const int32_t& depth, const uint8_t& hue = 255, const uint8_t& sat = 0, const uint8_t& val = 255) {
+
+  VECTOR3 norm_right(255,0,0);
+  VECTOR3 norm_left(-255,0,0);
+  VECTOR3 norm_top(0,255,0);
+  VECTOR3 norm_bottom(0,-255,0);
+  VECTOR3 norm_front(0,0,255);
+  VECTOR3 norm_back(0,0,-255);
+
+  matrix.rotate(norm_right);
+  matrix.rotate(norm_left);
+  matrix.rotate(norm_top);
+  matrix.rotate(norm_bottom);
+  matrix.rotate(norm_front);
+  matrix.rotate(norm_back);
+
+  matrix.rotate_y(norm_right,cube_ang3);  //rotates the cube itself (around it's own y-axis)
+  matrix.rotate_y(norm_left,cube_ang3);
+  matrix.rotate_y(norm_top,cube_ang3);
+  matrix.rotate_y(norm_bottom,cube_ang3);
+  matrix.rotate_y(norm_front,cube_ang3);
+  matrix.rotate_y(norm_back,cube_ang3);
+
+
+
+  VECTOR3 points[] = {
+    
+    VECTOR3(width,height,depth), //top right front
+    VECTOR3(width,height,-depth), //top right back
+    VECTOR3(-width,height,-depth), //top left  back
+    VECTOR3(-width,height,depth), //top left  front
+    
+    VECTOR3(width,-height,depth), //bottom right front
+    VECTOR3(width,-height,-depth), //bottom right back
+    VECTOR3(-width,-height,-depth), //bottom left  back
+    VECTOR3(-width,-height,depth)  //bottom left  front
+
+  };
+
+  for (int i = 0; i < 8; i++) {
+    matrix.rotate_y(points[i],cube_ang3);
+    points[i]+=p;
+    matrix.rotate(points[i]);
+    
+    //translate vectors to coordinates
+    matrix.scale_z(points[i]);
+
+    //correct 3d perspective
+    matrix.perspective(points[i]);
+
+  }
+
+  VECTOR3 newp = p;
+  matrix.rotate(newp);
+  int i = 0;
+  //draw faces from back to front
+  while (i < 256) {
+    if (norm_right.z == i) {
+        draw_quad(points[0],points[4],points[5],points[1],newp,norm_right,48,sat,val);  //right
+    }
+    if (norm_left.z == i) {
+        draw_quad(points[2],points[6],points[7],points[3],newp,norm_left,48,sat,val); //left
+    }
+
+    if (norm_top.z == i) {
+        draw_quad(points[0],points[1],points[2],points[3],newp,norm_top,48,sat,val);  //top
+    }
+    if (norm_bottom.z == i) {
+        draw_quad(points[7],points[6],points[5],points[4],newp,norm_bottom,48,sat,val); //bottom
+    }
+
+    if (norm_front.z == i) {
+        draw_quad(points[0],points[3],points[7],points[4],newp,norm_front,48,sat,val);  //front
+    }
+    if (norm_back.z == i) {
+        draw_quad(points[1],points[5],points[6],points[2],newp,norm_back,48,sat,val); //back
+    }
+
+    i++;
+  }
+} //draw_cube()

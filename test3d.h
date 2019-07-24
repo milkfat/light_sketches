@@ -801,16 +801,19 @@ class TEST3D: public LIGHT_SKETCH {
             handle_spiral();
             break;
           case BOX:
+            cube_ang = 0;
+            cube_ang2 = 0;
+            cube_ang3 = 0;
             draw_cube(VECTOR3(0,cube_size,0),15*256,15*256,15*256);
             draw_cube(VECTOR3(0,-cube_size,0),15*256,15*256,15*256);
             draw_cube(VECTOR3(cube_size,0,0),15*256,15*256,15*256);
             draw_cube(VECTOR3(-cube_size,0,0),15*256,15*256,15*256);
             draw_cube(VECTOR3(0,0,cube_size),15*256,15*256,15*256);
             draw_cube(VECTOR3(0,0,-cube_size),15*256,15*256,15*256);
-            cube_step +=4;
-            rotation_alpha += 1;
-            rotation_beta += .77;
-            rotation_gamma += .68;
+            cube_step +=1;
+            rotation_alpha += .1;
+            rotation_beta += .077;
+            rotation_gamma += .068;
             //handle_cube();
             break;
           case TUNNEL:
@@ -1295,109 +1298,6 @@ void handle_spiral() {
 
 } //handle_spiral();
 
-void draw_quad(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& d, const VECTOR3& orig, VECTOR3& norm, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255) {
-  
-  //optimization:
-  //identify clockwise/counterclockwise orientation
-  //draw in only one orientation (facing toward the camera)
-  int orientation = (b.y-a.y)*(c.x-b.x) - (c.y-b.y)*(b.x-a.x);
-  
-  if ( orientation < 0 ) {
-    draw_line_ybuffer(a, b);
-    draw_line_ybuffer(b, c);
-    draw_line_ybuffer(c, d);
-    draw_line_ybuffer(d, a);
-
-    int32_t z_depth = orig.z+norm.z; 
-
-    matrix.rotate_x(norm,32);
-    matrix.rotate_y(norm,32);
-
-    
-    uint8_t bri = _min(_max((norm.z*7)/8,0)+32,255);
-
-    CRGB rgb = CHSV(hue,sat,val);
-    color_scale(rgb, bri);
-
-    //fill between the pixels of our lines
-    for (int y = y_buffer_min; y <= y_buffer_max; y++) {
-        if (y_buffer[y][0] <= y_buffer[y][1]) {
-
-        for (int x = y_buffer[y][0]; x <= y_buffer[y][1]; x++) {
-          drawXYZ(leds, x, y, z_depth, rgb);
-        }
-
-      }
-      //clear the buffer to be used for filling the triangle
-      y_buffer[y][0] = MATRIX_WIDTH + 1;
-      y_buffer[y][1] = -1;
-    
-    }
-
-    y_buffer_max = 0;
-    y_buffer_min = MATRIX_HEIGHT-1;
-
-  }
-} //draw_quad()
-
-
-void draw_cube(const VECTOR3& p, const int32_t& width, const int32_t& height, const int32_t& depth) {
-
-  VECTOR3 norm_right(255,0,0);
-  VECTOR3 norm_left(-255,0,0);
-  VECTOR3 norm_top(0,255,0);
-  VECTOR3 norm_bottom(0,-255,0);
-  VECTOR3 norm_front(0,0,255);
-  VECTOR3 norm_back(0,0,-255);
-
-  matrix.rotate(norm_right);
-  matrix.rotate(norm_left);
-  matrix.rotate(norm_top);
-  matrix.rotate(norm_bottom);
-  matrix.rotate(norm_front);
-  matrix.rotate(norm_back);
-
-  VECTOR3 points[] = {
-    
-    VECTOR3(p.x+width,p.y+height,p.z+depth), //top right front
-    VECTOR3(p.x+width,p.y+height,p.z-depth), //top right back
-    VECTOR3(p.x-width,p.y+height,p.z-depth), //top left  back
-    VECTOR3(p.x-width,p.y+height,p.z+depth), //top left  front
-    
-    VECTOR3(p.x+width,p.y-height,p.z+depth), //bottom right front
-    VECTOR3(p.x+width,p.y-height,p.z-depth), //bottom right back
-    VECTOR3(p.x-width,p.y-height,p.z-depth), //bottom left  back
-    VECTOR3(p.x-width,p.y-height,p.z+depth)  //bottom left  back
-
-  };
-
-  for (int i = 0; i < 8; i++) {
-    matrix.rotate(points[i]);
-    
-    //translate vectors to coordinates
-    matrix.scale_z(points[i]);
-
-    //correct 3d perspective
-    matrix.perspective(points[i]);
-
-  }
-
-  VECTOR3 newp = p;
-  matrix.rotate(newp);
-
-  draw_quad(points[0],points[4],points[5],points[1],newp,norm_right,212,0,255);  //right
-  draw_quad(points[2],points[6],points[7],points[3],newp,norm_left,0,0,255); //left
-
-
-  draw_quad(points[0],points[1],points[2],points[3],newp,norm_top,0,0,255);  //top
-  draw_quad(points[7],points[6],points[5],points[4],newp,norm_bottom,48,0,255); //bottom
-
-
-  draw_quad(points[0],points[3],points[7],points[4],newp,norm_front,96,255,255);  //front
-  draw_quad(points[1],points[5],points[6],points[2],newp,norm_back,160,255,255); //back
-  
-
-} //draw_cube()
 
 void handle_tunnel() {
   static uint16_t stp = 0; //rotation

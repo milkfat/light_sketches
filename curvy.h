@@ -213,8 +213,8 @@ class CURVY: public LIGHT_SKETCH {
 
         for (uint16_t i = 0; i < NUM_LEDS; i++) {
           leds[i].r = 0;
-          leds[i].g = 20;
-          leds[i].b = 25;
+          leds[i].g = 4;
+          leds[i].b = 5;
         }
         //handle_bubbles();
 
@@ -975,7 +975,7 @@ void draw_jelly(JELLY& jelly) {
         // draw_line_fine(leds, c, a, rgb, a.z, 255, 255, true);
         
         //fill between the pixels of our lines
-        for (int y = y_buffer_min; y <= y_buffer_max; y++) {
+        for (int y = _max(y_buffer_min,0); y <= _min(y_buffer_max,MATRIX_HEIGHT); y++) {
 
             int32_t dist_x = y_buffer2[y][1].position.x - y_buffer2[y][0].position.x;
 
@@ -1179,7 +1179,7 @@ void draw_jelly(JELLY& jelly) {
         VECTOR3 atnorm = tnorm*-1;
         VECTOR3 atnorm2 = tnorm2*-1;
 
-        if (points_2d[a].z > -200*256) {
+        //if (points_2d[a].z > -200*256) {
 
           draw_triangle( points_2d[a],points_2d[b],points_2d[j],tnorm,right,right,rgb );
           draw_triangle( points_2d[b],points_2d[g],points_2d[j],right,tnorm2,right,rgb );
@@ -1196,22 +1196,22 @@ void draw_jelly(JELLY& jelly) {
           draw_triangle(points_2d[d],points_2d[e],points_2d[h],front,up,left,rgb);
           draw_triangle(points_2d[e],points_2d[b],points_2d[h],up,back,left,rgb);
 
-        } else {
+        // } else {
 
-          draw_triangle_flat(points_2d[a],points_2d[b],points_2d[j],fish.hue,fish.sat,bri,true);
-          draw_triangle_flat(points_2d[b],points_2d[g],points_2d[j],fish.hue,fish.sat,bri,true);
+        //   draw_triangle_flat(points_2d[a],points_2d[b],points_2d[j],fish.hue,fish.sat,bri,true);
+        //   draw_triangle_flat(points_2d[b],points_2d[g],points_2d[j],fish.hue,fish.sat,bri,true);
 
-          draw_triangle_flat(points_2d[b],points_2d[c],points_2d[h],fish.hue,fish.sat,bri,false);
-          draw_triangle_flat(points_2d[c],points_2d[d],points_2d[h],fish.hue,fish.sat,bri,false);
-          draw_triangle_flat(points_2d[d],points_2d[e],points_2d[h],fish.hue,fish.sat,bri,false);
-          draw_triangle_flat(points_2d[e],points_2d[b],points_2d[h],fish.hue,fish.sat,bri,false);
+        //   draw_triangle_flat(points_2d[b],points_2d[c],points_2d[h],fish.hue,fish.sat,bri,false);
+        //   draw_triangle_flat(points_2d[c],points_2d[d],points_2d[h],fish.hue,fish.sat,bri,false);
+        //   draw_triangle_flat(points_2d[d],points_2d[e],points_2d[h],fish.hue,fish.sat,bri,false);
+        //   draw_triangle_flat(points_2d[e],points_2d[b],points_2d[h],fish.hue,fish.sat,bri,false);
 
-          draw_triangle_flat(points_2d[c],points_2d[b],points_2d[i],fish.hue,fish.sat,bri,false);
-          draw_triangle_flat(points_2d[d],points_2d[c],points_2d[i],fish.hue,fish.sat,bri,false);
-          draw_triangle_flat(points_2d[e],points_2d[d],points_2d[i],fish.hue,fish.sat,bri,false);
-          draw_triangle_flat(points_2d[b],points_2d[e],points_2d[i],fish.hue,fish.sat,bri,false);
+        //   draw_triangle_flat(points_2d[c],points_2d[b],points_2d[i],fish.hue,fish.sat,bri,false);
+        //   draw_triangle_flat(points_2d[d],points_2d[c],points_2d[i],fish.hue,fish.sat,bri,false);
+        //   draw_triangle_flat(points_2d[e],points_2d[d],points_2d[i],fish.hue,fish.sat,bri,false);
+        //   draw_triangle_flat(points_2d[b],points_2d[e],points_2d[i],fish.hue,fish.sat,bri,false);
         
-        }
+        // }
 
         //matt_curve8(points,FISH_POINTS,fish.hue,fish.sat,bri,false,false,true,255,detail);
       }
@@ -1264,7 +1264,7 @@ void draw_jelly(JELLY& jelly) {
 
           //draw curve
           //swap X and Y axis if our display width is greater than the height
-          uint8_t b = 140-i*8;
+          uint8_t b = 96-i*8;
           #if MATRIX_WIDTH > MATRIX_HEIGHT
           matt_curve8(leds, my_points[i], NUM_POINTS, 96, default_saturation, b, true, false, true, b, 255);
           #else
@@ -1300,7 +1300,6 @@ void draw_jelly(JELLY& jelly) {
             uint8_t bri = inoise8((x<<2)+z,y<<2,z);
             //uint8_t caustics = inoise8(((x-MATRIX_WIDTH/2)*((y+16)))/6,(y*(y+8))/6,z*2);
 
-            bri>>=3;
             //CRGB rgb = CHSV(142, 255, 255);
             temp_canvas[XY(x,y)].b = bri;
           }
@@ -1309,7 +1308,7 @@ void draw_jelly(JELLY& jelly) {
 
       for (uint16_t i = 0; i < NUM_LEDS; i++) {
           //nblend(leds[i], temp_canvas[i], 127);
-          drawXY_blend_gamma(leds, i, CRGB(0,210,255), temp_canvas[i].b);
+          color_blend_linear16(leds[i], 0, gamma16_decode(210), 65535, gamma16_decode(temp_canvas[i].b)>>5);
           //leds[i] += temp_canvas[i];
       }
 
