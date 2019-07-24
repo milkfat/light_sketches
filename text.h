@@ -132,7 +132,7 @@ void handle_text() {
     
     for (int i = display_text.length(); i < 16; i++) {
         text_animation[i] = 0;
-        text_animation_speed[i] = 1000;
+        text_animation_speed[i] = 1500;
     }
     for (int i = 0; i < display_text.length(); i++) {
 
@@ -204,6 +204,10 @@ void handle_text() {
       
       if (current_font == 0) {
         uint8_t letter = display_text[i];
+        if (text_animation[i] < 200000) {
+            text_animation[i]+=text_animation_speed[i];
+            text_animation_speed[i]+=75;
+        }
         for (int y = 0; y < 8; y++) {
           int32_t ypos = 0-y;
           if (ypos+ystp-8*i < -10 || ypos+ystp-8*i > MATRIX_HEIGHT+8) {
@@ -338,10 +342,7 @@ void handle_text() {
 
                     cube_ang2-=256;
 
-                    if (text_animation[i] < 200000) {
-                        text_animation[i]+=text_animation_speed[i]/16;
-                        text_animation_speed[i]+=4;
-                    }
+                    
                     //std::cout << u2 << "," << v2 << "\n";
                }
                
