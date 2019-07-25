@@ -435,7 +435,7 @@ static inline __attribute__ ((always_inline)) void drawXY_blend_gamma(CRGB crgb_
   //must be decoded, added, then re-encoded
   if (y >= 0 && y < MATRIX_HEIGHT && x >= 0 && x < MATRIX_WIDTH) {
 
-    if (ignore_z || z/16 > z_buffer[x][y]) {
+    if (ignore_z || z/16 >= z_buffer[x][y]) {
 
       if (z/16 > z_buffer[x][y]) {
         z_buffer[x][y] = z/16; 
@@ -1103,9 +1103,9 @@ static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_obje
           b = (b*x2_r)/256;
           b2 = (b2*x2_r)/256;
         }
-        drawXYZ2(crgb_object,i, Hy, z_depth, rgb, (b2*v1)/256 + (b2*v2)/256, ignore_z );
-        drawXYZ2(crgb_object,i, Ly, z_depth, rgb, (b *v1)/256 + (b *v2)/256, ignore_z );
-        
+          drawXYZ2(crgb_object,i, Hy, z_depth, rgb, (b2*v1)/256 + (b2*v2)/256, ignore_z );
+          drawXYZ2(crgb_object,i, Ly, z_depth, rgb, (b *v1)/256 + (b *v2)/256, ignore_z );
+       
         //record stuff in our x and y buffers for other functions to use
         if (i >= 0 && i < MATRIX_WIDTH) {
 
@@ -1136,17 +1136,17 @@ static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_obje
 
         } else {
 
-            if (Ly >= 0 && Ly < MATRIX_HEIGHT) {
-              y_buffer[Ly][0] = _min(y_buffer[Ly][0], i);
-              y_buffer[Ly][1] = _max(y_buffer[Ly][1], i);
+          if (Ly >= 0 && Ly < MATRIX_HEIGHT) {
+            y_buffer[Ly][0] = _min(y_buffer[Ly][0], i);
+            y_buffer[Ly][1] = _max(y_buffer[Ly][1], i);
 
-            } 
-            if (Hy >= 0 && Hy < MATRIX_HEIGHT) {
-              y_buffer[Hy][0] = _min(y_buffer[Hy][0], i);
-              y_buffer[Hy][1] = _max(y_buffer[Hy][1], i);
-            }
-          
+          } 
+          if (Hy >= 0 && Hy < MATRIX_HEIGHT) {
+            y_buffer[Hy][0] = _min(y_buffer[Hy][0], i);
+            y_buffer[Hy][1] = _max(y_buffer[Hy][1], i);
           }
+         
+        }
         //drawXYZ(crgb_object,i, Hy, z_depth, hue, sat, (b2*v1)/256 + (b2*v2)/256 );
         //drawXYZ(crgb_object,i, Ly, z_depth, hue, sat, (b *v1)/256 + (b *v2)/256 );
       }
@@ -1188,9 +1188,9 @@ static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_obje
           b2 = (b2*y2_r)/256;
         }
 
-        drawXYZ2(crgb_object,  Hx, i, z_depth, rgb, (b2*v1)/256 + (b2*v2)/256, ignore_z );
-        drawXYZ2(crgb_object,  Lx, i, z_depth, rgb, (b *v1)/256 + (b *v2)/256, ignore_z );
-
+          drawXYZ2(crgb_object,  Hx, i, z_depth, rgb, (b2*v1)/256 + (b2*v2)/256, ignore_z );
+          drawXYZ2(crgb_object,  Lx, i, z_depth, rgb, (b *v1)/256 + (b *v2)/256, ignore_z );
+   
         //record stuff in our x and y buffers for other functions to use
         if (i >= 0 && i < MATRIX_HEIGHT) {
           y_buffer_min = _min(i,y_buffer_min);
@@ -1207,7 +1207,7 @@ static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_obje
             x_buffer[Hx][0] = _min(x_buffer[Hx][0], i);
             x_buffer[Hx][1] = _max(x_buffer[Hx][1], i);
         }
-
+        
         //drawXYZ(crgb_object,  ceil(x_start/256L), i, z_depth, h, s, (b2*v1)/256 + (b2*v2)/256 );
         //drawXYZ(crgb_object, floor(x_start/256L), i, z_depth, h, s, (b *v1)/256 + (b *v2)/256 );
       }

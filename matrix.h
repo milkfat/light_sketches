@@ -362,28 +362,21 @@ uint16_t cube_ang2 = 0;
 int16_t cube_ang3 = 0;
 void draw_cube(const VECTOR3& p, const int32_t& width, const int32_t& height, const int32_t& depth, const uint8_t& hue = 255, const uint8_t& sat = 0, const uint8_t& val = 255) {
 
-  VECTOR3 norm_right(255,0,0);
-  VECTOR3 norm_left(-255,0,0);
-  VECTOR3 norm_top(0,255,0);
-  VECTOR3 norm_bottom(0,-255,0);
-  VECTOR3 norm_front(0,0,255);
-  VECTOR3 norm_back(0,0,-255);
+  
 
-  matrix.rotate(norm_right);
-  matrix.rotate(norm_left);
-  matrix.rotate(norm_top);
-  matrix.rotate(norm_bottom);
-  matrix.rotate(norm_front);
-  matrix.rotate(norm_back);
+  VECTOR3 normals[] = {
+    VECTOR3(255,0,0),  //right
+    VECTOR3(-255,0,0), //left
+    VECTOR3(0,255,0),  //top
+    VECTOR3(0,-255,0), //bottom
+    VECTOR3(0,0,255),  //front
+    VECTOR3(0,0,-255)  //back
+  };
 
-  matrix.rotate_y(norm_right,cube_ang3);  //rotates the cube itself (around it's own y-axis)
-  matrix.rotate_y(norm_left,cube_ang3);
-  matrix.rotate_y(norm_top,cube_ang3);
-  matrix.rotate_y(norm_bottom,cube_ang3);
-  matrix.rotate_y(norm_front,cube_ang3);
-  matrix.rotate_y(norm_back,cube_ang3);
-
-
+  for (int i = 0; i < 6; i++) {
+    matrix.rotate_y(normals[i],cube_ang3);
+    matrix.rotate(normals[i]);
+  }
 
   VECTOR3 points[] = {
     
@@ -414,30 +407,58 @@ void draw_cube(const VECTOR3& p, const int32_t& width, const int32_t& height, co
 
   VECTOR3 newp = p;
   matrix.rotate(newp);
-  int i = 0;
+
+  int16_t cube_face_order[6][2]={{1000,0},{1000,0},{1000,0},{1000,0},{1000,0},{1000,0}};
+
+  for (int i = 0; i < 6; i++) {
+    int pos = -1000;
+    int last0;
+    int last1;
+    for (int j = 0; j < 6; j++) {
+      if (pos == -1000) {
+        if (normals[i].z < cube_face_order[j][0]) {
+          pos = j;
+          last0 = cube_face_order[j][0];
+          last1 = cube_face_order[j][1];
+          cube_face_order[pos][0] = normals[i].z;
+          cube_face_order[pos][1] = i;
+        }
+      } else {
+        int temp0 = cube_face_order[j][0];
+        int temp1 = cube_face_order[j][1];
+        cube_face_order[j][0] = last0;
+        cube_face_order[j][1] = last1;
+        last0 = temp0;
+        last1 = temp1;
+      }
+    }
+  }
+
   //draw faces from back to front
-  while (i < 256) {
-    if (norm_right.z == i) {
-        draw_quad(points[0],points[4],points[5],points[1],newp,norm_right,48,sat,val);  //right
-    }
-    if (norm_left.z == i) {
-        draw_quad(points[2],points[6],points[7],points[3],newp,norm_left,48,sat,val); //left
+  for (int i = 0; i < 6; i++) {
+    uint8_t next_side = cube_face_order[i][1];
+    switch (next_side) {
+        case 0:
+            draw_quad(points[0],points[4],points[5],points[1],newp,normals[0],48,sat,val);  //right
+            break;
+        case 1:
+            draw_quad(points[2],points[6],points[7],points[3],newp,normals[1],96,sat,val); //left
+            break;
+        case 2:
+            draw_quad(points[0],points[1],points[2],points[3],newp,normals[2],96,sat,val);  //top
+            break;
+        case 3:
+            draw_quad(points[7],points[6],points[5],points[4],newp,normals[3],128,sat,val); //bottom
+            break;
+        case 4:
+            draw_quad(points[0],points[3],points[7],points[4],newp,normals[4],212,sat,val);  //front
+            break;
+        case 5:
+            draw_quad(points[1],points[5],points[6],points[2],newp,normals[5],160,sat,val); //back
+            break;
+        default:
+            break;
     }
 
-    if (norm_top.z == i) {
-        draw_quad(points[0],points[1],points[2],points[3],newp,norm_top,48,sat,val);  //top
-    }
-    if (norm_bottom.z == i) {
-        draw_quad(points[7],points[6],points[5],points[4],newp,norm_bottom,48,sat,val); //bottom
-    }
-
-    if (norm_front.z == i) {
-        draw_quad(points[0],points[3],points[7],points[4],newp,norm_front,48,sat,val);  //front
-    }
-    if (norm_back.z == i) {
-        draw_quad(points[1],points[5],points[6],points[2],newp,norm_back,48,sat,val); //back
-    }
-
-    i++;
   }
 } //draw_cube()

@@ -810,10 +810,10 @@ class TEST3D: public LIGHT_SKETCH {
             draw_cube(VECTOR3(-cube_size,0,0),15*256,15*256,15*256);
             draw_cube(VECTOR3(0,0,cube_size),15*256,15*256,15*256);
             draw_cube(VECTOR3(0,0,-cube_size),15*256,15*256,15*256);
-            cube_step +=1;
-            rotation_alpha += .1;
-            rotation_beta += .077;
-            rotation_gamma += .068;
+            cube_step +=4;
+            rotation_alpha += 1;
+            rotation_beta += .77;
+            rotation_gamma += .68;
             //handle_cube();
             break;
           case TUNNEL:
