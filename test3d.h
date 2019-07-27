@@ -801,15 +801,12 @@ class TEST3D: public LIGHT_SKETCH {
             handle_spiral();
             break;
           case BOX:
-            cube_ang = 0;
-            cube_ang2 = 0;
-            cube_ang3 = 0;
-            draw_cube(VECTOR3(0,cube_size,0),15*256,15*256,15*256);
-            draw_cube(VECTOR3(0,-cube_size,0),15*256,15*256,15*256);
-            draw_cube(VECTOR3(cube_size,0,0),15*256,15*256,15*256);
-            draw_cube(VECTOR3(-cube_size,0,0),15*256,15*256,15*256);
-            draw_cube(VECTOR3(0,0,cube_size),15*256,15*256,15*256);
-            draw_cube(VECTOR3(0,0,-cube_size),15*256,15*256,15*256);
+            draw_cube(VECTOR3(0,cube_size,0), VECTOR3(15*256,15*256,15*256) );
+            draw_cube(VECTOR3(0,-cube_size,0), VECTOR3(15*256,15*256,15*256) );
+            draw_cube(VECTOR3(cube_size,0,0), VECTOR3(15*256,15*256,15*256) );
+            draw_cube(VECTOR3(-cube_size,0,0), VECTOR3(15*256,15*256,15*256) );
+            draw_cube(VECTOR3(0,0,cube_size), VECTOR3(15*256,15*256,15*256) );
+            draw_cube(VECTOR3(0,0,-cube_size), VECTOR3(15*256,15*256,15*256) );
             cube_step +=4;
             rotation_alpha += 1;
             rotation_beta += .77;

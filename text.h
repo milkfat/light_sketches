@@ -26,6 +26,10 @@ static inline uint8_t bitRead(const uint8_t& this_byte, const uint8_t& this_bit)
     return (this_byte & (1 << (this_bit))) ? 1 : 0;
 }
 
+int32_t cube_ang = 0;
+int32_t cube_ang2 = 0;
+int32_t cube_ang3 = 0;
+
 void handle_text() {
   //if the screen has been updated then redraw the text
   if (update_since_text == 1) {
@@ -331,16 +335,19 @@ void handle_text() {
                     z = _max(z,35*256);
                     if (z < (camera_scaler-5)*256) {;
                         VECTOR3 p((u+offsets[offset_pos]*256)*7-7*3*256,(v+offsets[offset_pos+1]*256-42000)*7,0);
-                        cube_ang3 = (sin8(cube_ang2/256)-127)/4;
-                        //cube_ang3 = cube_ang2/256;
+                        cube_ang3 = 0;
+                        if ( cube_ang2 % (65536*2) < 65536 ) {
+                          //cube_ang3 = (sin8(cube_ang2/256)-127)/3;
+                          cube_ang3 = cube_ang2/256;
+                        }
                         matrix.rotate_y(p,cube_ang3); //rotates the cube as part of a letter (around the letter's y-axis)
                         p.z += z;
                         
-                        draw_cube(p, 512, 512, 512, 96, 192, 255);
+                        draw_cube( p, VECTOR3(512,512,512), VECTOR3(0,cube_ang3,0), CHSV(hue,255,255) );
 
                     }
 
-                    cube_ang2-=256;
+                    cube_ang2-=128;
 
                     
                     //std::cout << u2 << "," << v2 << "\n";
@@ -441,4 +448,5 @@ void handle_text() {
   
     //END SCROLLING TEXT
   }
-}
+  draw_cubes();
+} //handle_text()
