@@ -74,7 +74,9 @@ class LIGHT_SKETCHES {
         int heightmap_size = sizeof(int16_t) * (HEIGHTMAP_WIDTH*HEIGHTMAP_HEIGHT);
         int mask_size = sizeof(uint8_t) * (NUM_LEDS);
         int ybuffer_size = sizeof(int) * 2 * (MATRIX_HEIGHT);
+        int ybuffer2_size = sizeof(Y_BUF[2]) * 2 * (MATRIX_HEIGHT);
         int zbuffer_size = sizeof(int16_t[MATRIX_HEIGHT]) * (MATRIX_WIDTH);
+        int cubes_size = sizeof(CUBE) * NUMBER_OF_CUBES;
         #ifdef __INC_FASTSPI_LED2_H 
         Serial.print(largest_sketch);
         Serial.println(" bytes required for largest sketch");
@@ -90,10 +92,14 @@ class LIGHT_SKETCHES {
         Serial.println(" bytes required for led mask2");
         Serial.print(ybuffer_size);
         Serial.println(" bytes required for Y buffer");
+        Serial.print(ybuffer2_size);
+        Serial.println(" bytes required for Y buffer2");
         Serial.print(zbuffer_size);
         Serial.println(" bytes required for Z buffer");
+        Serial.print(cubes_size);
+        Serial.println(" bytes required for cube cache");
         Serial.println();
-        Serial.print(largest_sketch+leds_size+canvas_size+heightmap_size+mask_size+ybuffer_size+zbuffer_size);
+        Serial.print(largest_sketch+leds_size+canvas_size+heightmap_size+mask_size+mask_size+ybuffer_size+ybuffer2_size+zbuffer_size+cubes_size);
         Serial.println(" bytes required total");
         Serial.printf("\r\nHeap Memory Available: %d bytes total, %d bytes largest free block: \r\n\r\n", heap_caps_get_free_size(0), heap_caps_get_largest_free_block(0));
         #else
@@ -104,8 +110,10 @@ class LIGHT_SKETCHES {
         std::cout << mask_size << " bytes required for led mask\n";
         std::cout << mask_size << " bytes required for led mask2\n";
         std::cout << ybuffer_size << " bytes required for Y buffer\n";
+        std::cout << ybuffer2_size << " bytes required for Y buffer2\n";
         std::cout << zbuffer_size << " bytes required for Z buffer\n\n";
-        std::cout << largest_sketch+leds_size+canvas_size+heightmap_size+mask_size+ybuffer_size+zbuffer_size << " bytes required total\n\n";
+        std::cout << cubes_size << " bytes required for cube cache\n\n";
+        std::cout << largest_sketch+leds_size+canvas_size+heightmap_size+mask_size+mask_size+ybuffer_size+ybuffer2_size+zbuffer_size+cubes_size << " bytes required total\n\n";
         #endif
 
         buffer = new char[largest_sketch];
@@ -212,6 +220,7 @@ class LIGHT_SKETCHES {
           y_buffer[i] = new int[2]; //stores the min/max X values per Y so that we can fill between them
           y_buffer[i][0] = MATRIX_WIDTH + 1;
           y_buffer[i][1] = -1;
+          y_buffer2[i] = new Y_BUF[2]; //stores the min/max X values per Y so that we can fill between them
           y_buffer2[i][0].position.x = MATRIX_WIDTH*256;
           y_buffer2[i][1].position.x = -1;
 
@@ -237,6 +246,16 @@ class LIGHT_SKETCHES {
         Serial.printf("Heap Memory Available: %d bytes total, %d bytes largest free block: \r\n\r\n", heap_caps_get_free_size(0), heap_caps_get_largest_free_block(0));
         #else
         std::cout << "*Z buffer allocated\n";
+        #endif
+
+        cubes = new CUBE[NUMBER_OF_CUBES];
+
+
+        #ifdef __INC_FASTSPI_LED2_H 
+        Serial.println("*CUBE cache allocated");
+        Serial.printf("Heap Memory Available: %d bytes total, %d bytes largest free block: \r\n\r\n", heap_caps_get_free_size(0), heap_caps_get_largest_free_block(0));
+        #else
+        std::cout << "*CUBE cache allocated\n";
         #endif
 
 
@@ -323,19 +342,19 @@ bool LIGHT_SKETCHES::need_to_allocate = true;
 
 LIGHT_SKETCHES light_sketches;
 
-#include "balls_squishy.h"
-#include "balls2d.h"
-#include "cinco_de_mayo.h"
+//#include "balls_squishy.h"
+//#include "balls2d.h"
+//#include "cinco_de_mayo.h"
 #include "curvy.h"
-#include "fire.h"
-#include "growcircle.h"
-#include "mattclock.h"
-#include "metaballs.h"
-#include "orbit.h"
-#include "neon.h"
-#include "shapes.h"
-#include "simplex.h"
-#include "test2d.h"
+//#include "fire.h"
+//#include "growcircle.h"
+//#include "mattclock.h"
+//#include "metaballs.h"
+//#include "orbit.h"
+//#include "neon.h"
+//#include "shapes.h"
+//#include "simplex.h"
+//#include "test2d.h"
 #include "test3d.h"
-#include "phosphene.h"
-#include "waves.h"
+//#include "phosphene.h"
+//#include "waves.h"

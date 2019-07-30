@@ -141,6 +141,7 @@ void update_matrix() {
 					case SDLK_ESCAPE: typing_mode=false; SDL_StopTextInput(); break;
 					case SDLK_BACKSPACE: 
 						if (display_text.length() > 0) {
+							old_display_text = display_text;
 							display_text.pop_back();
 						}
 						break;
@@ -227,8 +228,10 @@ int main(int argc, char **argv){
 				
         uint32_t debug_time = micros();
 				light_sketches.loop();
+		debug_micros0 += micros() - debug_time;
+
 				handle_text();
-        debug_micros0 += micros() - debug_time;
+
 				if (spacebar) {
 					spacebar = false; 
 					light_sketches.next_sketch();

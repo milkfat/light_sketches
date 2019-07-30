@@ -216,11 +216,20 @@ class CURVY: public LIGHT_SKETCH {
           leds[i].g = 4;
           leds[i].b = 5;
         }
-        //handle_bubbles();
 
-        //handle_jellies();
+        
+        handle_bubbles();
+
+        
+        handle_jellies();
+
+        reset_x_buffer();
+        reset_y_buffer();
 
         handle_fish();
+
+        reset_x_buffer();
+        reset_y_buffer();
 
         draw_grass();
         draw_water();
@@ -306,7 +315,7 @@ class CURVY: public LIGHT_SKETCH {
         int32_t p[3];
         p[0] = MATRIX_WIDTH*256;
         p[1] = random(MATRIX_HEIGHT*160) + MATRIX_HEIGHT*32;
-        p[2] = random(400);
+        p[2] = random(002);
         p[2] = (p[2]*p[2])/400;
         p[2] = -p[2];
         p[2] *= 256;
@@ -788,7 +797,7 @@ void draw_jelly(JELLY& jelly) {
       }
 
       for(int i = 0; i < NUM_BUBBLES; i++) {
-        draw_circle_fine(bubbles[i].x, bubbles[i].y, bubbles[i].r/2+128, 0, 0, 96-(256-bubbles[i].r)/64, -1, 64);
+        draw_circle_fine(bubbles[i].x, bubbles[i].y, bubbles[i].r/2+128, 0, 0, 40-(256-bubbles[i].r)/32, -1, 64);
       }
     }//handle_bubbles()
 
@@ -929,7 +938,7 @@ void draw_jelly(JELLY& jelly) {
       //nblend(rgb, rgb2, bri);
 
       //fill between the pixels of our lines
-      for (int y = y_buffer_min; y <= y_buffer_max; y++) {
+      for (int y = y_buffer_min; y <= _min(y_buffer_max,MATRIX_HEIGHT-1); y++) {
           if (y_buffer[y][0] <= y_buffer[y][1]) {
 
           for (int x = y_buffer[y][0]; x <= y_buffer[y][1]; x++) {
@@ -975,7 +984,7 @@ void draw_jelly(JELLY& jelly) {
         // draw_line_fine(leds, c, a, rgb, a.z, 255, 255, true);
         
         //fill between the pixels of our lines
-        for (int y = _max(y_buffer_min,0); y <= _min(y_buffer_max,MATRIX_HEIGHT); y++) {
+        for (int y = _max(y_buffer_min,0); y <= _min(y_buffer_max,MATRIX_HEIGHT-1); y++) {
 
             int32_t dist_x = y_buffer2[y][1].position.x - y_buffer2[y][0].position.x;
 

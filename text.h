@@ -21,10 +21,10 @@ bool scrolling_text_enabled = 0;
 void add_character(char c) {
     display_text.push_back(c);
 }
-
-static inline uint8_t bitRead(const uint8_t& this_byte, const uint8_t& this_bit) {
-    return (this_byte & (1 << (this_bit))) ? 1 : 0;
-}
+#define bitRead(value, bit) (((value) >> (bit)) & 0x01)
+// static inline uint8_t bitRead(const uint8_t& this_byte, const uint8_t& this_bit) {
+//     return (this_byte & (1 << (this_bit))) ? 1 : 0;
+// }
 
 int32_t cube_ang = 0;
 int32_t cube_ang2 = 0;
@@ -134,11 +134,11 @@ void handle_text() {
     }
 
     
-    for (int i = display_text.length(); i < 16; i++) {
+    for (int i = _max( display_text.length(), old_display_text.length() ); i < 16; i++) {
         text_animation[i] = 0;
         text_animation_speed[i] = 1500;
     }
-    for (int i = 0; i < display_text.length(); i++) {
+    for (int i = 0; i < _max( display_text.length(), old_display_text.length() ); i++) {
 
       //keep track of this character's lookup position for the shaking offset
       uint8_t offset_pos = i%8*2;
@@ -208,6 +208,7 @@ void handle_text() {
       
       if (current_font == 0) {
         uint8_t letter = display_text[i];
+        uint8_t old_letter = old_display_text[i];
         if (text_animation[i] < 200000) {
             text_animation[i]+=text_animation_speed[i];
             text_animation_speed[i]+=75;
@@ -219,146 +220,159 @@ void handle_text() {
           }
           scroll_reset = 0;
           for (int x = 0; x < 8; x++) {
-            uint8_t pixel_bit = bitRead(font8x8_basic[letter][y],x);
-            
+            uint8_t pixel_bits[2][2] = {{0,0},{1,0}};
+            if (display_text.length() > i) {
+              pixel_bits[0][1] = bitRead(font8x8_basic[letter][y],x);
+            }
+            uint8_t amount = 1;
+            if (display_text.length() <= i) {
+              pixel_bits[1][1] = bitRead(font8x8_basic[old_letter][y],x);
+              amount++;
+              leds[0] = CRGB::White;
+            }
             //int u = cos(-angle) * x * (1.0 / scale) + sin(-angle) * y * (1.0 / scale);
             //int v = -sin(-angle) * x * (1.0 / scale) + cos(-angle) * y * (1.0 / scale);
-            if (pixel_bit) {
-              int32_t u;
-              int32_t v;
-              if (text_rotate == 1) {
-                u = ( (angle_cos) * (x*256L-(256*7)/2) )/127L - ( (angle_sin) * (ypos*256L+(256*7)/2) )/127L + (256*7)/2;
-                v = ( (angle_sin) * (x*256L-(256*7)/2) )/127L + ( (angle_cos) * (ypos*256L+(256*7)/2) )/127L - (256*7)/2;
-              } else {
-                u = x*256L;
-                v = ypos*256L;
-              }
-              v += (ystp-8*i)*256L;
-              if (text_filter == 1) {
-                 
-
-                int32_t u2 = u+offsets[offset_pos]*256;
-                int32_t v2 = v+offsets[offset_pos+1]*256;
-
-                int32_t u_diff = 0;
-                int32_t v_diff = 0;
-                if (text_effect == 0) {
-                  //do nothing
-                  
-                } if (text_effect == 1) {
-                  //mask (text appears beneath the mask)
-                  
-                } else if (text_effect == 2) {
-                  
-                  //DISPLACEMENT
-                  
-                  //horizontal pixel difference
-                  u_diff = height_map[u2/256+2][v2/256+1] - height_map[u2/256][v2/256+1]; //between -128*32 and 127*32
-                  u_diff/=8;
-                  //vertical pixel difference
-                  v_diff = height_map[u2/256+1][v2/256+2] - height_map[u2/256+1][v2/256]; //between -128*32 and 127*32
-                  v_diff/=8;
-                  
-                } else if (text_effect == 3) {
-  
-                  //LIGHT BENDING?
-                  u_diff = height_map[u2/256+2][v2/256+1] - height_map[u2/256][v2/256+1]; //between -128*32 and 127*32
-                  if (u_diff > 0) {
-                    //u_diff = 127*32 - abs(u_diff);
-                    //u_diff = sq(u_diff)/(128L*32);
-                  } else if (u_diff < 0) {
-                    //u_diff = 127*32 - abs(u_diff);
-                    //u_diff = -sq(u_diff)/(128L*32);
-                  }
-                  u_diff /= 24;
-                  //vertical pixel difference
-                  v_diff = height_map[u2/256+1][v2/256+2] - height_map[u2/256+1][v2/256]; //between -128*32 and 127*32
-                  if (v_diff > 0) {
-                    //v_diff = 127*32 - abs(v_diff);
-                    //v_diff = sq(v_diff)/(128L*32);
-                  } else if (v_diff < 0) {
-                    //v_diff = 127*32 - abs(v_diff);
-                    //v_diff = -sq(v_diff)/(128L*32);
-                  }
-                  v_diff /= 24;
-                  
+            for (int j = 0; j < amount; j++) {
+              uint8_t is_old = pixel_bits[j][0];
+              uint8_t pixel_bit = pixel_bits[j][1];
+              if (pixel_bit) {
+                int32_t u;
+                int32_t v;
+                if (text_rotate == 1) {
+                  u = ( (angle_cos) * (x*256L-(256*7)/2) )/127L - ( (angle_sin) * (ypos*256L+(256*7)/2) )/127L + (256*7)/2;
+                  v = ( (angle_sin) * (x*256L-(256*7)/2) )/127L + ( (angle_cos) * (ypos*256L+(256*7)/2) )/127L - (256*7)/2;
+                } else {
+                  u = x*256L;
+                  v = ypos*256L;
                 }
-                
+                v += (ystp-8*i)*256L;
+                if (text_filter == 1) {
+                  
 
-                
-                if (!text_mask) {
-                  //filtered text is added to the image
-       
-                  if (text_effect) {
+                  int32_t u2 = u+offsets[offset_pos]*256;
+                  int32_t v2 = v+offsets[offset_pos+1]*256;
 
-                    if (text_effect != 4) {
-                      
-                      //normal text drawn outside of mask area
-                      blendXY(leds, u2, v2, hue, text_saturation, (text_brightness*(255-led_mask2[XY(u2/256,v2/256)]))/256L );
-  
-                      if (text_effect > 1) {
-                      
-                        //refractory effects drawn inside the mask area
-                        blendXY(leds, u2+u_diff, v2+v_diff, hue, text_saturation, (text_brightness*(led_mask2[XY(u2/256,v2/256)]))/256L );
+                  int32_t u_diff = 0;
+                  int32_t v_diff = 0;
+                  if (text_effect == 0) {
+                    //do nothing
+                    
+                  } if (text_effect == 1) {
+                    //mask (text appears beneath the mask)
+                    
+                  } else if (text_effect == 2) {
+                    
+                    //DISPLACEMENT
+                    
+                    //horizontal pixel difference
+                    u_diff = height_map[u2/256+2][v2/256+1] - height_map[u2/256][v2/256+1]; //between -128*32 and 127*32
+                    u_diff/=8;
+                    //vertical pixel difference
+                    v_diff = height_map[u2/256+1][v2/256+2] - height_map[u2/256+1][v2/256]; //between -128*32 and 127*32
+                    v_diff/=8;
+                    
+                  } else if (text_effect == 3) {
+    
+                    //LIGHT BENDING?
+                    u_diff = height_map[u2/256+2][v2/256+1] - height_map[u2/256][v2/256+1]; //between -128*32 and 127*32
+                    if (u_diff > 0) {
+                      //u_diff = 127*32 - abs(u_diff);
+                      //u_diff = sq(u_diff)/(128L*32);
+                    } else if (u_diff < 0) {
+                      //u_diff = 127*32 - abs(u_diff);
+                      //u_diff = -sq(u_diff)/(128L*32);
+                    }
+                    u_diff /= 24;
+                    //vertical pixel difference
+                    v_diff = height_map[u2/256+1][v2/256+2] - height_map[u2/256+1][v2/256]; //between -128*32 and 127*32
+                    if (v_diff > 0) {
+                      //v_diff = 127*32 - abs(v_diff);
+                      //v_diff = sq(v_diff)/(128L*32);
+                    } else if (v_diff < 0) {
+                      //v_diff = 127*32 - abs(v_diff);
+                      //v_diff = -sq(v_diff)/(128L*32);
+                    }
+                    v_diff /= 24;
+                    
+                  }
+                  
+
+                  
+                  if (!text_mask) {
+                    //filtered text is added to the image
+        
+                    if (text_effect) {
+
+                      if (text_effect != 4) {
+                        
+                        //normal text drawn outside of mask area
+                        blendXY(leds, u2, v2, hue, text_saturation, (text_brightness*(255-led_mask2[XY(u2/256,v2/256)]))/256L );
+    
+                        if (text_effect > 1) {
+                        
+                          //refractory effects drawn inside the mask area
+                          blendXY(leds, u2+u_diff, v2+v_diff, hue, text_saturation, (text_brightness*(led_mask2[XY(u2/256,v2/256)]))/256L );
+                        }
+
+                      } else {
+                        //text is drawn to temporary canvas to be used for later effects
+                        blendXY(temp_canvas, u2+u_diff, v2+u_diff, hue, text_saturation, text_brightness  );
                       }
-
+                      
                     } else {
-                      //text is drawn to temporary canvas to be used for later effects
-                      blendXY(temp_canvas, u2+u_diff, v2+u_diff, hue, text_saturation, text_brightness  );
+                      //normal text, no effects, drawn to the image
+                      blendXY(leds, u2, v2, hue, text_saturation, text_brightness );
+                      
                     }
                     
                   } else {
-                    //normal text, no effects, drawn to the image
-                    blendXY(leds, u2, v2, hue, text_saturation, text_brightness );
                     
+                    //text is used as a mask for the rest of the image
+                    //use the temp_canvas as a temporary buffer to build the mask                 
+                    blendXY(temp_canvas, u2+u_diff, v2+u_diff, hue, 0, 255  );
                   }
-                  
+                    
+                    
                 } else {
                   
-                  //text is used as a mask for the rest of the image
-                  //use the temp_canvas as a temporary buffer to build the mask                 
-                  blendXY(temp_canvas, u2+u_diff, v2+u_diff, hue, 0, 255  );
+                  //no filtering, coarse text
+                  if (text_mask) {
+                    //text is used as a mask for the rest of the image
+                    int led_num = XY(x+offsets[offset_pos], ypos+ystp-8*i+offsets[offset_pos+1]);
+                    led_mask[led_num] = 0;
+                  } else {                  
+                  //normal text drawn to the image
+                  //drawXY_fine(leds, u+offsets[offset_pos]*256, v+offsets[offset_pos+1]*256, hue, text_saturation, text_brightness  );
+                  int32_t z = (camera_scaler-65)*256-text_animation[i] + (fmix32((i+1)*(y*8+x))%(400*256));
+                      z = _max(z,35*256);
+                      if (z < (camera_scaler-5)*256) {;
+                          VECTOR3 p((u+offsets[offset_pos]*256)*7-7*3*256,(v+offsets[offset_pos+1]*256-42000)*7,0);
+                          cube_ang3 = 0;
+                          if ( cube_ang2 % (65536*2) < 65536 ) {
+                            //cube_ang3 = (sin8(cube_ang2/256)-127)/3;
+                            cube_ang3 = cube_ang2/256;
+                          }
+                          matrix.rotate_y(p,cube_ang3); //rotates the cube as part of a letter (around the letter's y-axis)
+                          p.z += z;
+                          if (p.z < camera_scaler*256-512) {
+                            draw_cube( p, VECTOR3(512,512,512), VECTOR3_8(0,cube_ang3,0), CHSV(hue,255,255) );
+                          }
+
+                      }
+
+                      cube_ang2-=128;
+
+                      
+                      //std::cout << u2 << "," << v2 << "\n";
                 }
-                  
-                  
-              } else {
                 
-                //no filtering, coarse text
-                if (text_mask) {
-                  //text is used as a mask for the rest of the image
-                  int led_num = XY(x+offsets[offset_pos], ypos+ystp-8*i+offsets[offset_pos+1]);
-                  led_mask[led_num] = 0;
-                } else {                  
-                 //normal text drawn to the image
-                 //drawXY_fine(leds, u+offsets[offset_pos]*256, v+offsets[offset_pos+1]*256, hue, text_saturation, text_brightness  );
-                 int32_t z = (camera_scaler-65)*256-text_animation[i] + (fmix32((i+1)*(y*8+x))%(400*256));
-                    z = _max(z,35*256);
-                    if (z < (camera_scaler-5)*256) {;
-                        VECTOR3 p((u+offsets[offset_pos]*256)*7-7*3*256,(v+offsets[offset_pos+1]*256-42000)*7,0);
-                        cube_ang3 = 0;
-                        if ( cube_ang2 % (65536*2) < 65536 ) {
-                          //cube_ang3 = (sin8(cube_ang2/256)-127)/3;
-                          cube_ang3 = cube_ang2/256;
-                        }
-                        matrix.rotate_y(p,cube_ang3); //rotates the cube as part of a letter (around the letter's y-axis)
-                        p.z += z;
-                        
-                        draw_cube( p, VECTOR3(512,512,512), VECTOR3(0,cube_ang3,0), CHSV(hue,255,255) );
-
-                    }
-
-                    cube_ang2-=128;
-
-                    
-                    //std::cout << u2 << "," << v2 << "\n";
-               }
-               
+                }
+                
+                //blendXY(leds, (x+offsets[pos])*(36+255), (ypos+offsets[pos+1])*(36+255), hue, 255, bitRead(font8x8_basic[letter][y],x)*96  );
+                
+                
+                
               }
-              
-              //blendXY(leds, (x+offsets[pos])*(36+255), (ypos+offsets[pos+1])*(36+255), hue, 255, bitRead(font8x8_basic[letter][y],x)*96  );
-              
-              
-              
             }
           }
         }
@@ -449,4 +463,5 @@ void handle_text() {
     //END SCROLLING TEXT
   }
   draw_cubes();
+  old_display_text=display_text;
 } //handle_text()

@@ -206,6 +206,10 @@ class TEST3D: public LIGHT_SKETCH {
       }
       current_variation %= NUM_EFFECTS;
 
+      display_text = "";
+      if (current_variation == TUNNEL) {
+        display_text = " HELLO";
+      }
 
       //reset rotation
       reset();

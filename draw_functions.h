@@ -13,6 +13,7 @@
 
 
 std::string display_text = "";
+std::string old_display_text = "";
 
 //make the heightmap one pixel wider in each dimension to avoid surface normal aberations along the edges 
 #define HEIGHTMAP_WIDTH (MATRIX_WIDTH+2)
@@ -435,14 +436,15 @@ static inline __attribute__ ((always_inline)) void drawXY_blend_gamma(CRGB crgb_
   //must be decoded, added, then re-encoded
   if (y >= 0 && y < MATRIX_HEIGHT && x >= 0 && x < MATRIX_WIDTH) {
 
-    if (ignore_z || z/16 >= z_buffer[x][y]) {
+    int z_depth = z/16;
+    if (ignore_z || z_depth >= z_buffer[x][y]) {
 
-      if (z/16 > z_buffer[x][y]) {
-        z_buffer[x][y] = z/16; 
+      if (z_depth > z_buffer[x][y]) {
+        z_buffer[x][y] = z_depth; 
       }
       
-      int bri = 100 - z/768;
-      bri = (bri*bri)/256;
+      uint8_t bri = _clamp8(100 - z/768);
+      bri = (bri*bri)>>8;
       bri = 255-bri;
       
       CRGB rgb = rgb_in;
@@ -466,8 +468,8 @@ static inline __attribute__ ((always_inline)) void drawXYZ(CRGB crgb_object[], c
       z_buffer[x][y] = z/16; 
 
       
-      int bri = 100 - z/768;
-      bri = (bri*bri)/256;
+      uint8_t bri = _clamp8(100 - z/768);
+      bri = (bri*bri)>>8;
       
       bri = 255-bri;
       
@@ -568,49 +570,50 @@ static inline __attribute__ ((always_inline)) void blendXY(CRGB crgb_object[], c
   blendXY(crgb_object, xpos, ypos, rgb);
 }
 
-struct VECTOR3 {
-  int32_t x;
-  int32_t y;
-  int32_t z;
+template <class T>
+struct VECTOR3_CLASS {
+  T x;
+  T y;
+  T z;
 
-  inline VECTOR3 () {}
+  inline VECTOR3_CLASS<T> () {}
 
-  inline VECTOR3 (const int32_t& x_in, const int32_t& y_in, const int32_t& z_in): x(x_in), y(y_in), z(z_in) {}
+  inline VECTOR3_CLASS<T> (const T& x_in, const T& y_in, const T& z_in): x(x_in), y(y_in), z(z_in) {}
   
-  inline VECTOR3 operator + (VECTOR3 const &p_in) { 
-    VECTOR3 p; 
+  inline VECTOR3_CLASS<T> operator + (VECTOR3_CLASS<T> const &p_in) { 
+    VECTOR3_CLASS<T> p; 
     p.x = x + p_in.x; 
     p.y = y + p_in.y; 
     p.z = z + p_in.z; 
     return p; 
   } 
 
-  inline VECTOR3 operator - (VECTOR3 const &p_in) { 
-    VECTOR3 p; 
+  inline VECTOR3_CLASS<T> operator - (VECTOR3_CLASS<T> const &p_in) { 
+    VECTOR3_CLASS<T> p; 
     p.x = x - p_in.x; 
     p.y = y - p_in.y; 
     p.z = z - p_in.z; 
     return p; 
   } 
   
-  inline VECTOR3 operator - (VECTOR3 const &p_in) const { 
-    VECTOR3 p; 
+  inline VECTOR3_CLASS<T> operator - (VECTOR3_CLASS<T> const &p_in) const { 
+    VECTOR3_CLASS<T> p; 
     p.x = x - p_in.x; 
     p.y = y - p_in.y; 
     p.z = z - p_in.z; 
     return p; 
   } 
 
-  inline VECTOR3 operator * (int const &num) { 
-    VECTOR3 p; 
+  inline VECTOR3_CLASS<T> operator * (int const &num) { 
+    VECTOR3_CLASS<T> p; 
     p.x = x * num; 
     p.y = y * num; 
     p.z = z * num; 
     return p; 
   } 
 
-  inline VECTOR3 operator / (int const &num) { 
-    VECTOR3 p; 
+  inline VECTOR3_CLASS<T> operator / (int const &num) { 
+    VECTOR3_CLASS<T> p; 
     p.x = x / num; 
     p.y = y / num; 
     p.z = z / num; 
@@ -619,14 +622,14 @@ struct VECTOR3 {
 
 
   //overload -=
-  inline VECTOR3& operator-= (const VECTOR3& rhs) {
+  inline VECTOR3_CLASS<T>& operator-= (const VECTOR3_CLASS<T>& rhs) {
     this->x -= rhs.x;
     this->y -= rhs.y;
     this->z -= rhs.z;
     return *this;
   }
   //overload +=
-  inline VECTOR3& operator+= (const VECTOR3& rhs) {
+  inline VECTOR3_CLASS<T>& operator+= (const VECTOR3_CLASS<T>& rhs) {
     this->x += rhs.x;
     this->y += rhs.y;
     this->z += rhs.z;
@@ -634,7 +637,7 @@ struct VECTOR3 {
   }
 
   //overload +=
-  inline VECTOR3& operator+= (const int& rhs) {
+  inline VECTOR3_CLASS<T>& operator+= (const int& rhs) {
     this->x += rhs;
     this->y += rhs;
     this->z += rhs;
@@ -642,14 +645,14 @@ struct VECTOR3 {
   }
   
   //overload /=
-  inline VECTOR3& operator/= (const int& rhs) {
+  inline VECTOR3_CLASS<T>& operator/= (const int& rhs) {
     this->x /= rhs;
     this->y /= rhs;
     this->z /= rhs;
     return *this;
   }
 
-  inline int32_t& operator[] (const int& index)
+  inline T& operator[] (const int& index)
   {
       return index == 0 ? x : index == 1 ? y : z;
   }
@@ -660,9 +663,9 @@ struct VECTOR3 {
     z = -z;
   }
 
-  VECTOR3 inline __attribute__((always_inline))  unit() {
+  VECTOR3_CLASS<T> inline __attribute__((always_inline))  unit() {
 
-    VECTOR3 norm;
+    VECTOR3_CLASS<T> norm;
     int32_t length = sqrt16(x*x+y*y+z*z);
     if (length != 0) {
       norm.x = (x*255)/length;
@@ -679,6 +682,10 @@ struct VECTOR3 {
 
 };
 
+
+typedef VECTOR3_CLASS<int32_t> VECTOR3;
+typedef VECTOR3_CLASS<int32_t> VECTOR3_8;
+
 inline VECTOR3 abs(const VECTOR3& v) {
     VECTOR3 temp;
     temp.x = abs(v.x);
@@ -691,7 +698,7 @@ struct Y_BUF {
   VECTOR3 position;
   VECTOR3 ratio;
 };
-Y_BUF y_buffer2[MATRIX_HEIGHT][2];
+Y_BUF* y_buffer2[MATRIX_HEIGHT];
 
 
 static inline __attribute__ ((always_inline)) CRGB gamma8_decode(const VECTOR3& value) {
@@ -993,6 +1000,12 @@ static inline __attribute__ ((always_inline)) void draw_line_ybuffer(VECTOR3 a, 
 
 static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_object[], int32_t x1, int32_t y1, int32_t x2, int32_t y2, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true) {
   
+  //add one pixel to compensate for rounding errors between -1 and 0
+  x1+=256;
+  y1+=256;
+  x2+=256;
+  y2+=256;
+  
   //avoid vertical and horizontal lines by fudging a bit
   if (x1 == x2 ) {
     x1++;
@@ -1040,41 +1053,40 @@ static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_obje
   
   if (trim) {
   
-    x1_led = floor((x1+128)/256.f);
-    x1_r = (x1_led+1)*256L - (x1+128);
-    x2_led = ceil((x2-128)/256.f);
-    x2_r = ((x2-128) - (x2_led-1)*256L);
+    x1_led = (x1+128)>>8;
+    x1_r = ((x1_led+1)<<8) - (x1+128);
+    x2_led = (x2-128+255)/256; //ceil
+    x2_r = ((x2-128) - ((x2_led-1)<<8));
 
 
-    y1_led = floor((y1+128)/256.f);
-    y1_r = (y1_led+1)*256L - (y1+128);
-    y2_led = ceil((y2-128)/256.f);
-    y2_r = ((y2-128) - (y2_led-1)*256L);
+    y1_led = (y1+128)>>8;
+    y1_r = ((y1_led+1)<<8) - (y1+128);
+    y2_led = (y2-128+255)/256; //ceil
+    y2_r = ((y2-128) - ((y2_led-1)<<8));
   
   } else {
     
-    x1_led = floor((x1)/256.f);
-    x1_r = (x1_led+1)*256L - (x1);
-    x2_led = ceil((x2)/256.f);
-    x2_r = ((x2) - (x2_led-1)*256L);
+    x1_led = x1>>8;
+    x1_r = ((x1_led+1)<<8) - (x1);
+    x2_led = (x2+255)/256; //ceil
+    x2_r = ((x2) - ((x2_led-1)<<8));
 
 
-    y1_led = floor((y1)/256.f);
-    y1_r = (y1_led+1)*256L - (y1);
-    y2_led = ceil((y2)/256.f);
-    y2_r = ((y2) - (y2_led-1)*256L);
+    y1_led = y1>>8;
+    y1_r = ((y1_led+1)<<8) - (y1);
+    y2_led = (y2+255)/256; //ceil
+    y2_r = ((y2) - ((y2_led-1)<<8));
   
   }
 
   int32_t x_dist = x2 - x1;
   int32_t y_dist = y2 - y1;
-  float x_step = (1.f*x_dist)/(1.f*y_dist);
-  float y_step = (1.f*y_dist)/(1.f*x_dist);
+  int32_t x_step = (x_dist*256)/y_dist;
+  int32_t y_step = (y_dist*256)/x_dist;
   if (abs(x1 - x2) > abs(y1 - y2)) {
     //calculate horizontally
     
-    float y_start = y1 + (x1_led*256.f - x1)*y_step;
-    y_step *= 256.f;
+    int y_start = y1 + ((x1_led*256 - x1)*y_step)/256;
     for (int i = (x1_led); i <= (x2_led); i++) {
       //if ((i != x1_led && i != x2_led) || !trim) {
       if (true) {
@@ -1089,22 +1101,28 @@ static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_obje
         } else {
           v2 = (val2-val)*pos;
         }
-        float y = y_start;
-        int Hy = ceil(y/256.f);
-        int Ly = floor(y/256.f);
-        int progress = abs(y - Hy*256);
-        int b = _min( _max(progress, 0), 255);
-        int b2 = 255-b;
+        int y = y_start;
+        int Hy = (y+255)/256; //ceil
+        int Ly = y/256;
+        uint progress = abs(y - Hy*256);
+        uint8_t b = _min( _max(progress, 0), 255);
+        uint8_t b2 = 255-b;
         if (i == x1_led) {
-          b = (b*x1_r)/256;
-          b2 = (b2*x1_r)/256;
+          b = (b*x1_r)>>8;
+          b2 = (b2*x1_r)>>8;
         }
         if (i == x2_led) {
-          b = (b*x2_r)/256;
-          b2 = (b2*x2_r)/256;
+          b = (b*x2_r)>>8;
+          b2 = (b2*x2_r)>>8;
         }
-          drawXYZ2(crgb_object,i, Hy, z_depth, rgb, (b2*v1)/256 + (b2*v2)/256, ignore_z );
-          drawXYZ2(crgb_object,i, Ly, z_depth, rgb, (b *v1)/256 + (b *v2)/256, ignore_z );
+
+        //subtract the pixel we added to compensate for rounding errors between -1 and 0
+        Hy--;
+        Ly--;
+        i--;
+
+        drawXYZ2(crgb_object,i, Hy, z_depth, rgb, ((b2*v1)>>8) + ((b2*v2)>>8), ignore_z );
+        drawXYZ2(crgb_object,i, Ly, z_depth, rgb, ((b *v1)>>8) + ((b *v2)>>8), ignore_z );
        
         //record stuff in our x and y buffers for other functions to use
         if (i >= 0 && i < MATRIX_WIDTH) {
@@ -1150,6 +1168,7 @@ static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_obje
         //drawXYZ(crgb_object,i, Hy, z_depth, hue, sat, (b2*v1)/256 + (b2*v2)/256 );
         //drawXYZ(crgb_object,i, Ly, z_depth, hue, sat, (b *v1)/256 + (b *v2)/256 );
       }
+      i++;
       y_start += y_step;
     }
 
@@ -1157,60 +1176,66 @@ static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_obje
   } else {
     //calculate vertically
 
-    float x_start = x1 + (y1_led*256.f - y1)*x_step;
-    x_step *= 256.f;
+    int32_t x_start = x1 + ((y1_led*256-y1)*x_step)/256;
     for (int i = (y1_led); i <= (y2_led); i++) {
-      //if ((i != y1_led && i != y2_led) || !trim) {
-      if (true) {
-        uint8_t v1 = val;
-        int pos = i - y1_led;
-        if (flip) {
-          pos = y2_led - i;
-        }
-        uint8_t v2;
-        if (y2_led-y1_led != 0) {
-          v2 = ((val2-val)*(pos))/(y2_led-y1_led);
-        } else {
-          v2 = (val2-val)*pos;
-        }
-        float x = x_start;
-        int Hx = ceil(x/256.f);
-        int Lx = floor(x/256.f);
-        int progress = abs(x - Hx*256);
-        int b = _min( _max(progress, 0), 255);
-        int b2 = 255-b;
-        if (i == y1_led) {
-          b  = (b*y1_r)/256;
-          b2 = (b2*y1_r)/256;
-        }
-        if (i == y2_led) {
-          b  = (b*y2_r)/256;
-          b2 = (b2*y2_r)/256;
-        }
-
-          drawXYZ2(crgb_object,  Hx, i, z_depth, rgb, (b2*v1)/256 + (b2*v2)/256, ignore_z );
-          drawXYZ2(crgb_object,  Lx, i, z_depth, rgb, (b *v1)/256 + (b *v2)/256, ignore_z );
-   
-        //record stuff in our x and y buffers for other functions to use
-        if (i >= 0 && i < MATRIX_HEIGHT) {
-          y_buffer_min = _min(i,y_buffer_min);
-          y_buffer_max = _max(i,y_buffer_max);
-          y_buffer[i][0] = _min(y_buffer[i][0], Hx);
-          y_buffer[i][1] = _max(y_buffer[i][1], Lx);
-        }
-
-        if (Lx >= 0 && Lx < MATRIX_WIDTH) {
-            x_buffer[Lx][0] = _min(x_buffer[Lx][0], i);
-            x_buffer[Lx][1] = _max(x_buffer[Lx][1], i);
-        }
-        if (Hx >= 0 && Hx < MATRIX_WIDTH) {
-            x_buffer[Hx][0] = _min(x_buffer[Hx][0], i);
-            x_buffer[Hx][1] = _max(x_buffer[Hx][1], i);
-        }
-        
-        //drawXYZ(crgb_object,  ceil(x_start/256L), i, z_depth, h, s, (b2*v1)/256 + (b2*v2)/256 );
-        //drawXYZ(crgb_object, floor(x_start/256L), i, z_depth, h, s, (b *v1)/256 + (b *v2)/256 );
+      uint8_t v1 = val;
+      int pos = i - y1_led;
+      if (flip) {
+        pos = y2_led - i;
       }
+      uint8_t v2;
+      if (y2_led-y1_led != 0) {
+        v2 = ((val2-val)*(pos))/(y2_led-y1_led);
+      } else {
+        v2 = (val2-val)*pos;
+      }
+      int x = x_start;
+      int Hx = (x+255)/256; //ceil
+      int Lx = x/256;
+      uint progress = abs(x - Hx*256);
+      uint8_t b = _min( _max(progress, 0), 255);
+      uint8_t b2 = 255-b;
+      if (i == y1_led) {
+        b  = (b*y1_r)>>8;
+        b2 = (b2*y1_r)>>8;
+      }
+      if (i == y2_led) {
+        b  = (b*y2_r)>>8;
+        b2 = (b2*y2_r)>>8;
+      }
+
+
+      //subtract the pixel we added to compensate for rounding errors between -1 and 0
+      Hx--;
+      Lx--;
+      i--;
+
+      drawXYZ2(crgb_object,  Hx, i, z_depth, rgb, ((b2*v1)>>8) + ((b2*v2)>>8), ignore_z );
+      drawXYZ2(crgb_object,  Lx, i, z_depth, rgb, ((b *v1)>>8) + ((b *v2)>>8), ignore_z );
+  
+      //record stuff in our x and y buffers for other functions to use
+      if (i >= 0 && i < MATRIX_HEIGHT) {
+        y_buffer_min = _min(i,y_buffer_min);
+        y_buffer_max = _max(i,y_buffer_max);
+        y_buffer[i][0] = _min(y_buffer[i][0], Hx);
+        y_buffer[i][1] = _max(y_buffer[i][1], Lx);
+      }
+
+      if (Lx >= 0 && Lx < MATRIX_WIDTH) {
+          x_buffer[Lx][0] = _min(x_buffer[Lx][0], i);
+          x_buffer[Lx][1] = _max(x_buffer[Lx][1], i);
+      }
+      if (Hx >= 0 && Hx < MATRIX_WIDTH) {
+          x_buffer[Hx][0] = _min(x_buffer[Hx][0], i);
+          x_buffer[Hx][1] = _max(x_buffer[Hx][1], i);
+      }
+      
+      //drawXYZ(crgb_object,  ceil(x_start/256L), i, z_depth, h, s, (b2*v1)/256 + (b2*v2)/256 );
+      //drawXYZ(crgb_object, floor(x_start/256L), i, z_depth, h, s, (b *v1)/256 + (b *v2)/256 );
+
+
+      //add the pixel we subtracted to compensate for rounding errors between -1 and 0
+      i++;
       x_start += x_step;
     }
     
@@ -1362,12 +1387,12 @@ static inline __attribute__ ((always_inline)) void matt_curve(int32_t coordinate
 
     
     float len = _min(len0,len1);
-    len = _max((len-.5)*2,0);
+    len = _max((len-.5f)*2,0);
     float exp = _min(exp0,exp1);
     float w = exp*len;
 
     float len2 = _min(last_len,len0);
-    len2 = _max((len2-.5)*2,0);
+    len2 = _max((len2-.5f)*2,0);
     float exp2 = _min(last_exp,exp0);
     float w2 = exp2*len2;
 

@@ -138,8 +138,8 @@ class MATRIX {
                 if (zCz == 0) {
                     zCz = 1;
                 }
-                x = ( x * (Sz/MATRIX_PRECISION - Cz/MATRIX_PRECISION) ) / zCz + (MATRIX_WIDTH * 256L/MATRIX_PRECISION) / 2;
-                y = ( y * (Sz/MATRIX_PRECISION - Cz/MATRIX_PRECISION) ) / zCz + (MATRIX_HEIGHT * 256L/MATRIX_PRECISION) / 2;
+                x = ( x * ((Sz - Cz)/MATRIX_PRECISION) ) / zCz + ((MATRIX_WIDTH * 128)/MATRIX_PRECISION);
+                y = ( y * ((Sz - Cz)/MATRIX_PRECISION) ) / zCz + ((MATRIX_HEIGHT * 128)/MATRIX_PRECISION);
                 x*=MATRIX_PRECISION;
                 y*=MATRIX_PRECISION;
                 z*=MATRIX_PRECISION;
@@ -168,8 +168,8 @@ class MATRIX {
             p[0]/=2;//half precision to double each axis of our available coordinate space
             p[1]/=2;
             p[2]/=2;
-            p[0] = ( ( p[0] - (MATRIX_WIDTH*256L/2)/2 ) * ( p[2] - Cz ) ) / ( Sz - Cz );
-            p[1] = ( ( p[1] - (MATRIX_HEIGHT*256L/2)/2 ) * ( p[2] - Cz ) ) / ( Sz - Cz );
+            p[0] = ( ( p[0] - (MATRIX_WIDTH*128)/2 ) * (( p[2] - Cz )/2) ) / (( Sz - Cz )/2);
+            p[1] = ( ( p[1] - (MATRIX_HEIGHT*128)/2 ) * (( p[2] - Cz )/2) ) / (( Sz - Cz )/2);
             p[0]*=2;
             p[1]*=2;
             p[2]*=2;
@@ -291,7 +291,7 @@ MATRIX matrix;
 
 
 
-void draw_quad(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& d, const VECTOR3& orig, const VECTOR3& norm_in, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255) {
+static void draw_quad(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& d, const VECTOR3& orig, const VECTOR3& norm_in, const CRGB& rgb_in = CRGB(255,0,0) ) {
   
   //optimization:
   //identify clockwise/counterclockwise orientation
@@ -315,7 +315,7 @@ void draw_quad(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& d, const VECTOR3& or
     
     uint8_t bri = _min(_max((norm.z*7)/8,0)+32,255);
 
-    CRGB rgb = CHSV(hue,sat,val);
+    CRGB rgb = rgb_in;
     color_scale(rgb, bri);
     reset_y_buffer();
     reset_x_buffer();
@@ -358,24 +358,24 @@ void draw_quad(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& d, const VECTOR3& or
 } //draw_quad()
 
 struct CUBE {
-    VECTOR3 p;
-    VECTOR3 d;
-    VECTOR3 r;
+    VECTOR3 p; //position X,Y,Z
+    VECTOR3 d; //dimensions X,Y,Z
+    VECTOR3_8 r; //rotation X,Y,Z
     int32_t z;
-    CHSV hsv;
+    CRGB rgb;
     int16_t prev = -1;
     int16_t next = -1;
 };
 
 #define NUMBER_OF_CUBES 200
 
-CUBE cubes[NUMBER_OF_CUBES];
+CUBE* cubes;
 
 int16_t current_cube = 0;
 int16_t first_cube = 0;
 
 //find cube's z depth and sort it into our buffer
-void draw_cube(const VECTOR3& p, const VECTOR3& d = VECTOR3(256,256,256), const VECTOR3& r = VECTOR3(0,0,0), const CHSV& hsv = CHSV(0,0,255)) {
+static void draw_cube(const VECTOR3& p, const VECTOR3& d = VECTOR3(256,256,256), const VECTOR3_8& r = VECTOR3_8(0,0,0), const CHSV& hsv = CHSV(0,0,255)) {
 
   if (current_cube < NUMBER_OF_CUBES) {
     CUBE* c = &cubes[current_cube];
@@ -387,54 +387,51 @@ void draw_cube(const VECTOR3& p, const VECTOR3& d = VECTOR3(256,256,256), const 
     c->p = p;
     c->d = d;
     c->r = r;
-    c->hsv = hsv;
+    hsv2rgb_rainbow(hsv, c->rgb);
     
     if (current_cube == 0) {
         first_cube = 0;
         c->prev = -1;
         c->next = -1;
     } else {
-        int16_t cube_in_question = current_cube-1;
-        while (c->z < cubes[cube_in_question].z && cubes[cube_in_question].prev !=-1) {
-            cube_in_question = cubes[cube_in_question].prev;
+        
+        uint8_t cube_in_question = current_cube-1;
+        CUBE* ciq = &cubes[current_cube-1];
+
+        while (c->z < ciq->z && ciq->prev !=-1) {
+            cube_in_question = ciq->prev;
+            ciq = &cubes[ciq->prev];
         }
-        while (c->z > cubes[cube_in_question].z && cubes[cube_in_question].next != -1) {
-                cube_in_question = cubes[cube_in_question].next;
+        while (c->z > ciq->z && ciq->next != -1) {
+            cube_in_question = ciq->next;
+            ciq = &cubes[ciq->next];
         }
-        if (c->z <= cubes[cube_in_question].z && cubes[cube_in_question].prev == -1) {
+        if (c->z <= ciq->z && ciq->prev == -1) {
             first_cube = current_cube;
             c->prev = -1;
             c->next = cube_in_question;
-            cubes[cube_in_question].prev = current_cube;
+            ciq->prev = current_cube;
 
-        } else if (c->z >= cubes[cube_in_question].z && cubes[cube_in_question].next == -1) {
+        } else if (c->z >= ciq->z && ciq->next == -1) {
             c->prev = cube_in_question;
             c->next = -1;
-            cubes[cube_in_question].next = current_cube;
+            ciq->next = current_cube;
         } else {
-            CUBE* nc = &cubes[cube_in_question];
-            CUBE* pc = &cubes[nc->prev];
-            c->prev = nc->prev;
+            CUBE* pc = &cubes[ciq->prev];
+            c->prev = ciq->prev;
             c->next = cube_in_question;
             pc->next = current_cube;
-            nc->prev = current_cube;
+            ciq->prev = current_cube;
         }
     }
-    int16_t my_current_cube = current_cube;
-    int16_t my_first_cube = first_cube;
-    CUBE c0 = cubes[0];
-    CUBE c1 = cubes[1];
-    CUBE c2 = cubes[2];
-    CUBE c3 = cubes[3];
-    CUBE c4 = cubes[4];
-    CUBE c5 = cubes[5];
+    
     current_cube++;
 
   }
 
 }
 
-void draw_cached_cube(const int16_t& cp) {
+static void draw_cached_cube(const int16_t& cp) {
 
   CUBE* c = &cubes[cp];
 
@@ -504,28 +501,30 @@ void draw_cached_cube(const int16_t& cp) {
       }
     }
   }
+
   matrix.rotate(c->p);
+  
   //draw faces from back to front
   for (int i = 0; i < 6; i++) {
     uint8_t next_side = cube_face_order[i][1];
     switch (next_side) {
         case 0:
-            draw_quad(points[0],points[4],points[5],points[1],c->p,normals[0],c->hsv.h,c->hsv.s,c->hsv.v);  //right
+            draw_quad(points[0],points[4],points[5],points[1],c->p,normals[0],c->rgb);  //right
             break;
         case 1:
-            draw_quad(points[2],points[6],points[7],points[3],c->p,normals[1],c->hsv.h,c->hsv.s,c->hsv.v); //left
+            draw_quad(points[2],points[6],points[7],points[3],c->p,normals[1],c->rgb); //left
             break;
         case 2:
-            draw_quad(points[0],points[1],points[2],points[3],c->p,normals[2],c->hsv.h,c->hsv.s,c->hsv.v);  //top
+            draw_quad(points[0],points[1],points[2],points[3],c->p,normals[2],c->rgb);  //top
             break;
         case 3:
-            draw_quad(points[7],points[6],points[5],points[4],c->p,normals[3],c->hsv.h,c->hsv.s,c->hsv.v); //bottom
+            draw_quad(points[7],points[6],points[5],points[4],c->p,normals[3],c->rgb); //bottom
             break;
         case 4:
-            draw_quad(points[0],points[3],points[7],points[4],c->p,normals[4],c->hsv.h,c->hsv.s,c->hsv.v);  //front
+            draw_quad(points[0],points[3],points[7],points[4],c->p,normals[4],c->rgb);  //front
             break;
         case 5:
-            draw_quad(points[1],points[5],points[6],points[2],c->p,normals[5],c->hsv.h,c->hsv.s,c->hsv.v); //back
+            draw_quad(points[1],points[5],points[6],points[2],c->p,normals[5],c->rgb); //back
             break;
         default:
             break;
@@ -535,12 +534,9 @@ void draw_cached_cube(const int16_t& cp) {
 } //draw_cached_cube()
 
 
-void draw_cubes() {
-    int16_t cube_count = -1;
+static void draw_cubes() {
     int16_t cube = first_cube;
     while (cube != -1) {
-        cube_count++;
-        CUBE* cube_info = &cubes[cube];
         int16_t next_cube = cubes[cube].next;
         draw_cached_cube(cube);
         cubes[cube].prev = -1;
