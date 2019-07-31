@@ -218,13 +218,14 @@ class CURVY: public LIGHT_SKETCH {
         }
 
         
-        handle_bubbles();
         
         handle_jellies();
         
         reset_y_buffer();
         
         handle_fish();
+        
+        handle_bubbles();
 
         draw_grass();
         draw_water();

@@ -365,71 +365,63 @@ struct CUBE {
     CRGB rgb;
     int16_t prev = -1;
     int16_t next = -1;
+    bool persist = false;
 };
 
-#define NUMBER_OF_CUBES 200
+#define NUMBER_OF_CUBES 300
 
 CUBE* cubes;
 
-int16_t current_cube = 0;
 int16_t first_cube = -1;
+int16_t last_cube = -1;
+
+
+
+
+int16_t get_current_cube() {
+    for (int i = 0; i < NUMBER_OF_CUBES; i++) {
+        if (cubes[i].next == -1 && i != last_cube) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+
 
 //find cube's z depth and sort it into our buffer
-static void draw_cube(const VECTOR3& p, const VECTOR3& d = VECTOR3(256,256,256), const VECTOR3_8& r = VECTOR3_8(0,0,0), const CHSV& hsv = CHSV(0,0,255)) {
+static void draw_cube(const VECTOR3& p, const VECTOR3& d = VECTOR3(256,256,256), const VECTOR3_8& r = VECTOR3_8(0,0,0), const CHSV& hsv = CHSV(0,0,255), const bool& persist=false) {
+  
+  int16_t current_cube = get_current_cube();
 
-  if (current_cube < NUMBER_OF_CUBES) {
+  if (current_cube != -1) {
     CUBE* c = &cubes[current_cube];
     
     VECTOR3 newp = p;
     matrix.rotate(newp);
 
+    c->persist = persist;
     c->z = newp.z;
     c->p = p;
     c->d = d;
     c->r = r;
     hsv2rgb_rainbow(hsv, c->rgb);
-    
-    if (current_cube == 0) {
-        first_cube = 0;
+
+    if (first_cube == -1) {
+        first_cube = current_cube;
+        last_cube = current_cube;
         c->prev = -1;
         c->next = -1;
     } else {
-        
-        uint8_t cube_in_question = current_cube-1;
-        CUBE* ciq = &cubes[current_cube-1];
-
-        while (c->z < ciq->z && ciq->prev !=-1) {
-            cube_in_question = ciq->prev;
-            ciq = &cubes[ciq->prev];
-        }
-        while (c->z > ciq->z && ciq->next != -1) {
-            cube_in_question = ciq->next;
-            ciq = &cubes[ciq->next];
-        }
-        if (c->z <= ciq->z && ciq->prev == -1) {
-            first_cube = current_cube;
-            c->prev = -1;
-            c->next = cube_in_question;
-            ciq->prev = current_cube;
-
-        } else if (c->z >= ciq->z && ciq->next == -1) {
-            c->prev = cube_in_question;
-            c->next = -1;
-            ciq->next = current_cube;
-        } else {
-            CUBE* pc = &cubes[ciq->prev];
-            c->prev = ciq->prev;
-            c->next = cube_in_question;
-            pc->next = current_cube;
-            ciq->prev = current_cube;
-        }
-    }
-    
-    current_cube++;
+        cubes[last_cube].next = current_cube;
+        c->prev = last_cube;
+        c->next = -1;
+        last_cube = current_cube;
+    }    
 
   }
 
-}
+} //draw_cube()
 
 static void draw_cached_cube(const int16_t& cp) {
 
@@ -502,29 +494,30 @@ static void draw_cached_cube(const int16_t& cp) {
     }
   }
 
-  matrix.rotate(c->p);
+  VECTOR3 p;
+  matrix.rotate(c->p, p);
   
   //draw faces from back to front
   for (int i = 0; i < 6; i++) {
     uint8_t next_side = cube_face_order[i][1];
     switch (next_side) {
         case 0:
-            draw_quad(points[0],points[4],points[5],points[1],c->p,normals[0],c->rgb);  //right
+            draw_quad(points[0],points[4],points[5],points[1],p,normals[0],c->rgb);  //right
             break;
         case 1:
-            draw_quad(points[2],points[6],points[7],points[3],c->p,normals[1],c->rgb); //left
+            draw_quad(points[2],points[6],points[7],points[3],p,normals[1],c->rgb); //left
             break;
         case 2:
-            draw_quad(points[0],points[1],points[2],points[3],c->p,normals[2],c->rgb);  //top
+            draw_quad(points[0],points[1],points[2],points[3],p,normals[2],c->rgb);  //top
             break;
         case 3:
-            draw_quad(points[7],points[6],points[5],points[4],c->p,normals[3],c->rgb); //bottom
+            draw_quad(points[7],points[6],points[5],points[4],p,normals[3],c->rgb); //bottom
             break;
         case 4:
-            draw_quad(points[0],points[3],points[7],points[4],c->p,normals[4],c->rgb);  //front
+            draw_quad(points[0],points[3],points[7],points[4],p,normals[4],c->rgb);  //front
             break;
         case 5:
-            draw_quad(points[1],points[5],points[6],points[2],c->p,normals[5],c->rgb); //back
+            draw_quad(points[1],points[5],points[6],points[2],p,normals[5],c->rgb); //back
             break;
         default:
             break;
@@ -534,18 +527,91 @@ static void draw_cached_cube(const int16_t& cp) {
 } //draw_cached_cube()
 
 
-static void draw_cubes() {
+void sort_cubes() {
     int16_t cube = first_cube;
     while (cube != -1) {
         int16_t next_cube = cubes[cube].next;
-        draw_cached_cube(cube);
-        cubes[cube].prev = -1;
-        cubes[cube].next = -1;
+
+        int16_t current_position = cubes[cube].next;
+
+        while (current_position != -1 && cubes[cube].z > cubes[current_position].z) {
+            current_position = cubes[current_position].next;
+        }
+
+        if (current_position != cubes[cube].next) {
+
+            //update old neighbors
+            if (cube == first_cube) {
+                first_cube = cubes[cube].next;
+            } else {
+                cubes[cubes[cube].prev].next = cubes[cube].next;
+            }
+            cubes[cubes[cube].next].prev = cubes[cube].prev;
+
+            
+            if (current_position == -1) {
+                //move to end
+                cubes[last_cube].next = cube;
+                cubes[cube].next = -1;
+                cubes[cube].prev = last_cube;
+                last_cube = cube;
+
+            } else {
+
+                //update new neighbors
+                cubes[cube].next = current_position;
+                cubes[cube].prev = cubes[current_position].prev;
+                cubes[cubes[current_position].prev].next = cube;
+                cubes[current_position].prev = cube;
+
+            } 
+        }
         cube = next_cube;
     }
-    current_cube = 0;
-    first_cube = -1;
-}
+} //sort_cubes()
+
+static void draw_cubes() {
+    
+    sort_cubes();
+
+    int16_t cube = first_cube;
+    int16_t new_first_cube = -1;
+    int16_t new_last_cube = -1;
+    while (cube != -1) {
+        int16_t next_cube = cubes[cube].next;
+        draw_cached_cube(cube);
+        if (cubes[cube].persist) {
+
+            cubes[cube].d.x = (cubes[cube].d.x*(50+(fmix32(cube)%32))) / 100;
+            cubes[cube].d.y = (cubes[cube].d.y*(50+(fmix32(cube)%32))) / 100;
+            cubes[cube].d.z = (cubes[cube].d.z*(50+(fmix32(cube)%32))) / 100;
+            cubes[cube].p.z -= 5000;
+            if (cubes[cube].d.x == 0 || cubes[cube].d.y == 0 || cubes[cube].d.z == 0 || cubes[cube].p.z < -200000) {
+                cubes[cube].persist = false;
+            }
+            if (new_first_cube == -1) {
+                new_first_cube = cube;
+                new_last_cube = cube;
+                cubes[cube].prev = -1;
+                cubes[cube].next = -1;
+            } else {
+                cubes[new_last_cube].next = cube;
+                cubes[cube].prev = new_last_cube;
+                cubes[cube].next = -1;
+                new_last_cube = cube;
+            }
+        } else {
+            cubes[cube].prev = -1;
+            cubes[cube].next = -1;
+        }
+        cube = next_cube;
+    }
+    first_cube = new_first_cube;
+    last_cube = new_last_cube;
+} //draw_cubes()
+
+
+
 
 
 

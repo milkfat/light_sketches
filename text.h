@@ -145,6 +145,8 @@ void handle_text() {
 
       //decide the hue of this character
       uint8_t hue = (i*32)%255;
+      uint8_t sat = 255;
+      bool persist = false;
       if (text_color >= 0) {
         hue = text_color;
       }
@@ -225,10 +227,12 @@ void handle_text() {
               pixel_bits[0][1] = bitRead(font8x8_basic[letter][y],x);
             }
             uint8_t amount = 1;
-            if (display_text.length() <= i) {
+            if (display_text[i] != old_display_text[i] && old_display_text.length() > i) {
               pixel_bits[1][1] = bitRead(font8x8_basic[old_letter][y],x);
               amount++;
-              leds[0] = CRGB::White;
+              persist=true;
+              //text_animation[i] = 0;
+              //text_animation_speed[i] = 6000;
             }
             //int u = cos(-angle) * x * (1.0 / scale) + sin(-angle) * y * (1.0 / scale);
             //int v = -sin(-angle) * x * (1.0 / scale) + cos(-angle) * y * (1.0 / scale);
@@ -355,7 +359,7 @@ void handle_text() {
                           matrix.rotate_y(p,cube_ang3); //rotates the cube as part of a letter (around the letter's y-axis)
                           p.z += z;
                           if (p.z < camera_scaler*256-512) {
-                            draw_cube( p, VECTOR3(512,512,512), VECTOR3_8(0,cube_ang3,0), CHSV(hue,255,255) );
+                            draw_cube( p, VECTOR3(512,512,512), VECTOR3_8(0,cube_ang3,0), CHSV(hue,sat,255), persist);
                           }
 
                       }

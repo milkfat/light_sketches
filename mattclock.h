@@ -665,6 +665,10 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
 
     void next_effect() {
+
+      camera_scaler = 232;
+      screen_scaler = 100;
+      
       if (current_effect == TEXT_CLOCK) {
         display_text = "";
       }
@@ -683,6 +687,9 @@ class MATTCLOCK: public LIGHT_SKETCH {
         clock_digital = false;
         erase_delay = 100;
         draw_delay = 400;
+      } else if (current_effect == TEXT_CLOCK) {
+        camera_scaler = 232;
+        screen_scaler = 169;
       }
     }
 
@@ -741,13 +748,9 @@ class MATTCLOCK: public LIGHT_SKETCH {
           draw_digital_clock();
         }
 
-        camera_scaler = 232;
-        screen_scaler = 100;
         if (current_effect == TEXT_CLOCK) {
+          old_display_text = display_text;
           display_text = timebuffer;
-
-          camera_scaler = 232;
-          screen_scaler = 169;
         }
 
         if (current_effect == ANALOG_CLOCK) {
