@@ -372,7 +372,7 @@ struct CUBE {
 CUBE* cubes;
 
 int16_t current_cube = 0;
-int16_t first_cube = 0;
+int16_t first_cube = -1;
 
 //find cube's z depth and sort it into our buffer
 static void draw_cube(const VECTOR3& p, const VECTOR3& d = VECTOR3(256,256,256), const VECTOR3_8& r = VECTOR3_8(0,0,0), const CHSV& hsv = CHSV(0,0,255)) {

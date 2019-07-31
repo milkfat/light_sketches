@@ -741,8 +741,13 @@ class MATTCLOCK: public LIGHT_SKETCH {
           draw_digital_clock();
         }
 
+        camera_scaler = 232;
+        screen_scaler = 100;
         if (current_effect == TEXT_CLOCK) {
           display_text = timebuffer;
+
+          camera_scaler = 232;
+          screen_scaler = 169;
         }
 
         if (current_effect == ANALOG_CLOCK) {

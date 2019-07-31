@@ -219,17 +219,12 @@ class CURVY: public LIGHT_SKETCH {
 
         
         handle_bubbles();
-
         
         handle_jellies();
-
-        reset_x_buffer();
+        
         reset_y_buffer();
-
+        
         handle_fish();
-
-        reset_x_buffer();
-        reset_y_buffer();
 
         draw_grass();
         draw_water();
@@ -1026,7 +1021,7 @@ void draw_jelly(JELLY& jelly) {
               if (dist_x > 0) {
 
                 iterate(*ratio,step_ratio,a_dist_ratio,err_ratio,dist_x);
-              
+                
               }
 
             }

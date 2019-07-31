@@ -879,7 +879,7 @@ static inline __attribute__ ((always_inline)) void swap_coords(VECTOR3& a, VECTO
 static inline __attribute__((always_inline)) void iterate(VECTOR3& a, const VECTOR3& step, const VECTOR3& dist, VECTOR3& err, const int32_t& target_dist ) {
 
   if (target_dist > 0) {
-
+            
     err += dist;
     while (err.x >= target_dist) {
       a.x += step.x;
@@ -2000,7 +2000,15 @@ static inline __attribute__ ((always_inline)) void reset_y_buffer() {
   for (int i = 0; i < MATRIX_HEIGHT; i++) {
   y_buffer[i][0] = MATRIX_WIDTH + 1;
   y_buffer[i][1] = -1;
+
+  y_buffer2[i][0].position.x = INT32_MAX;
+  y_buffer2[i][1].position.x = INT32_MIN;
+
   }
+
+  y_buffer_max = 0;
+  y_buffer_min = MATRIX_HEIGHT-1;
+  
 }
 
 static inline __attribute__ ((always_inline)) void reset_x_buffer() {
