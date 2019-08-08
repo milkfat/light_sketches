@@ -12,7 +12,10 @@
 #include <iostream>
 #include <string>
 #include <memory>
-
+uint8_t debug_flag = 0;
+int32_t max_iterations = 0;
+int32_t iteration_cnt = 0;
+int32_t iteration_calls = 1;
 //graphics/audio/keyboard/mouse/joystick library
 //https://www.libsdl.org/index.php
 //SDL2-2.0.9
@@ -152,8 +155,10 @@ void update_matrix() {
 					case SDLK_ESCAPE: done=SDL_TRUE; break;
 					case SDLK_SPACE: spacebar=true; break;
 					case SDLK_f: button2_down=true; text_shake_time = millis(); break;
+					case SDLK_g: button1_down=true; button1_click=true; break;
 					case SDLK_n: next_sketch=true; break;
 					case SDLK_r: reset_sketch=true; break;
+					case SDLK_d: debug_flag=true; break;
 					case SDLK_t: typing_mode=true; SDL_StartTextInput(); break;
 					case SDLK_LEFT:  camera_scaler--; std::cout << "camera: " << (int16_t)camera_scaler << "\n"; break;
 					case SDLK_RIGHT: camera_scaler++; std::cout << "camera: " << (int16_t)camera_scaler << "\n"; break;
@@ -167,6 +172,7 @@ void update_matrix() {
 			switch (event.key.keysym.sym)
 			{
 				case SDLK_f: button2_down=false; break;
+				case SDLK_g: button1_down=false; break;
 			}
 			break;
 		}
@@ -219,6 +225,10 @@ int main(int argc, char **argv){
 						uint32_t debug_micros0_avg = debug_micros0/debug_count;
 						uint32_t debug_micros1_avg = debug_micros1/debug_count;
 						std::cout << (debug_micros1_avg/(debug_micros0_avg+1.f)) << " " << debug_micros1_avg << " " << debug_micros0_avg << "\n";
+						std::cout << "avg iterations: " << (iteration_cnt/iteration_calls) << "\n";
+						max_iterations = 0;
+						iteration_cnt = 0;
+						iteration_calls = 1;
 						debug_time = millis();
 						debug_micros0 = 0;
 						debug_micros1 = 0;
