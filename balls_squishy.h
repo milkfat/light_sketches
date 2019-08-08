@@ -1,6 +1,8 @@
 
 //BALLS SQUISHY
 
+#define SQUISHY_MATRIX_WIDTH (MATRIX_WIDTH)
+#define SQUISHY_MATRIX_HEIGHT (MATRIX_HEIGHT)
 
 class BALLS_SQUISHY: public LIGHT_SKETCH {
   public:
@@ -130,8 +132,8 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
     void check_wall_collisions(const int& i) {
       //check for collisions with walls
 
-      if (balls[i].y + balls[i].r > (MATRIX_HEIGHT-1) * 256.f) {
-        float dt = ( balls[i].y + balls[i].r - (MATRIX_HEIGHT * 256.f) ) / (balls[i].disty);
+      if (balls[i].y + balls[i].r > (SQUISHY_MATRIX_HEIGHT-1) * 256.f) {
+        float dt = ( balls[i].y + balls[i].r - (SQUISHY_MATRIX_HEIGHT * 256.f) ) / (balls[i].disty);
         if (dt != 0) {
           add_to_buffer(i, 0, dt, 't');
         }
@@ -151,8 +153,8 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
         }
       }
       
-      if (balls[i].x + balls[i].r > (MATRIX_WIDTH-1) * 256.f) {
-        float dt = ( balls[i].x + balls[i].r - (MATRIX_WIDTH * 256.f) ) / (balls[i].distx);
+      if (balls[i].x + balls[i].r > (SQUISHY_MATRIX_WIDTH-1) * 256.f) {
+        float dt = ( balls[i].x + balls[i].r - (SQUISHY_MATRIX_WIDTH * 256.f) ) / (balls[i].distx);
         if (dt != 0) {
           add_to_buffer(i, 0, dt, 'r');
         }
@@ -224,13 +226,26 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
         for (int a = -3; a <= 3; a++) {
           
           //find the distance of this segment from our target segment (0 = target segment)
-          uint8_t segment_distance = abs(0 - a);
+          uint8_t segment_distance = _max(abs(0 - a),0);
 
           //find the weight for compression of this segment (6 = maximum weight)
-          uint8_t segment_weight = 4 - segment_distance;
+          uint8_t segment_weight = 0;
+          switch (segment_distance) {
+            case 0:
+              segment_weight = 0;
+            case 1:
+              segment_weight = 16;
+              break;
+            case 2:
+              segment_weight = 64;
+              break;
+            case 3:
+              segment_weight = 128;
+              break;
+          }
 
           //convert to squish amount 0-255 (target segment is squished the most)
-          uint8_t distance_squish = (segment_weight*255)/4;
+          uint8_t distance_squish = _clamp8(cr*255 - segment_weight);
 
           //calculate a "squish factor" based on the ratio of two balls' radii
           
@@ -243,9 +258,9 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
           i_a2 /= 16;
 
           //apply squish using the compression ratio and squish amount
-          circle_angles[i][i_a2] = _min(circle_angles[i][i_a2], 255 - (cr*distance_squish*1.2f));
+          circle_angles[i][i_a2] = _max(_min(circle_angles[i][i_a2], 255 - distance_squish),0);
           float area = (balls[i].r*balls[i].r*355)/113;
-          area += (area*cr)/16;
+          area += (area*cr)/24;
           float new_radius = sqrt((area*113)/355);
           balls[i].vr += new_radius-balls[i].r;
 
@@ -290,10 +305,10 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
                 sat = _max(sat - (pulse_dist - 230) * 10, 0);
               }
               pulse_dist = (pulse_dist * 80) / 255;
-              //int mag = sqrt( sq(balls[i].x - (MATRIX_WIDTH*256L/2L)) + sq(balls[i].y - (MATRIX_HEIGHT*256L)/2L) );
+              //int mag = sqrt( sq(balls[i].x - (SQUISHY_MATRIX_WIDTH*256L/2L)) + sq(balls[i].y - (SQUISHY_MATRIX_HEIGHT*256L)/2L) );
 
-              draw_x += ((balls[i].x / 256L - MATRIX_WIDTH / 2) / (balls[i].dist[p])) * ((10000 * pulse_dist) / 80);
-              draw_y += ((balls[i].y / 256L - MATRIX_HEIGHT / 2) / (balls[i].dist[p])) * ((10000 * pulse_dist) / 80);
+              draw_x += ((balls[i].x / 256L - SQUISHY_MATRIX_WIDTH / 2) / (balls[i].dist[p])) * ((10000 * pulse_dist) / 80);
+              draw_y += ((balls[i].y / 256L - SQUISHY_MATRIX_HEIGHT / 2) / (balls[i].dist[p])) * ((10000 * pulse_dist) / 80);
 
             }
             if (current_variation == 2 && pulse_dist < 20) {
@@ -304,10 +319,10 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
                 sat = _max(sat - (pulse_dist - 230) * 10, 0);
               }
               pulse_dist = (pulse_dist * 20) / 255;
-              //int mag = sqrt( sq(balls[i].x - (MATRIX_WIDTH*256L/2L)) + sq(balls[i].y - (MATRIX_HEIGHT*256L)/2L) );
+              //int mag = sqrt( sq(balls[i].x - (SQUISHY_MATRIX_WIDTH*256L/2L)) + sq(balls[i].y - (SQUISHY_MATRIX_HEIGHT*256L)/2L) );
 
-              int mod_x = ((balls[i].x / 256L - MATRIX_WIDTH / 2) / (balls[i].dist[p])) * ((1500 * pulse_dist) / 20);
-              int mod_y = ((balls[i].y / 256L - MATRIX_HEIGHT / 2) / (balls[i].dist[p])) * ((1500 * pulse_dist) / 20);
+              int mod_x = ((balls[i].x / 256L - SQUISHY_MATRIX_WIDTH / 2) / (balls[i].dist[p])) * ((1500 * pulse_dist) / 20);
+              int mod_y = ((balls[i].y / 256L - SQUISHY_MATRIX_HEIGHT / 2) / (balls[i].dist[p])) * ((1500 * pulse_dist) / 20);
               if (balls[i].dist[p] < 20) {
                 mod_x = (mod_x * balls[i].dist[p]) / 20;
                 mod_y = (mod_y * balls[i].dist[p]) / 20;
@@ -425,42 +440,31 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
             i_ratio = _max(i_ratio, 8);
 
             //calculate a number of angle segments to make a smooth curve
-            for (int a = -5; a <= 5; a++) {
+            for (int a = -3; a <= 3; a++) {
               
               //find the distance of this segment from our target segment (0 = target segment)
               uint8_t segment_distance = abs(0 - a);
 
               //find the weight for compression of this segment (6 = maximum weight)
-              uint8_t segment_weight = 6 - segment_distance;
+              uint8_t segment_weight = 0;
+              switch (segment_distance) {
+                case 0:
+                  segment_weight = 0;
+                case 1:
+                  segment_weight = 16;
+                  break;
+                case 2:
+                  segment_weight = 64;
+                  break;
+                case 3:
+                  segment_weight = 128;
+                  break;
+              }
 
               //convert to squish amount 0-255 (target segment is squished the most)
-              uint8_t distance_squish = (segment_weight*255)/6;
+              uint8_t distance_squish = _clamp8(cr*255 - segment_weight);
               
-              uint8_t distance_squish_i = distance_squish - i_ar;
-              uint8_t distance_squish_j = distance_squish - j_ar;
-              
-              distance_squish_i = ease8InOutApprox(distance_squish_i);
-              distance_squish_j = ease8InOutApprox(distance_squish_j);
-              //calculate a "squish factor" based on the ratio of two balls' radii
-              
-
-              //calculate new squish amounts based on squish factor
-              uint8_t min_distance_i = i_ratio;
-              uint8_t min_distance_j = j_ratio;
-
-              uint8_t squish_amount_i = 0;
-              uint8_t squish_amount_j = 0;
-
-              if (distance_squish > i_ratio) {
-                  squish_amount_i = _max(distance_squish_i - i_ratio,0);
-                  squish_amount_i = (squish_amount_i*255)/(255 - i_ratio);
-              }
-
-              if (distance_squish > j_ratio) {
-                  squish_amount_j = _max(distance_squish_j - j_ratio,0);
-                  squish_amount_j = (squish_amount_j*255)/(255 - j_ratio);
-              }
-
+          
               //find the absolute angle segment that we are working with
               uint8_t i_a2 = i_a + a;
               uint8_t j_a2 = j_a + a;
@@ -472,8 +476,8 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
               j_a2 /= 16;
 
               //apply squish using the compression ratio and squish amount
-              circle_angles[i][i_a2] = _min(circle_angles[i][i_a2], 255 - (cr*squish_amount_i)*1.2f);
-              circle_angles[j][j_a2] = _min(circle_angles[j][j_a2], 255 - (cr*squish_amount_j)*1.2f);
+              circle_angles[i][i_a2] = _max(_min(circle_angles[i][i_a2], 255 - distance_squish),0);
+              circle_angles[j][j_a2] = _max(_min(circle_angles[j][j_a2], 255 - distance_squish),0);
               {
               float area = (balls[i].r*balls[i].r*355)/113;
               area += (area*cr)/16;
@@ -537,7 +541,7 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
 
         if (flag == 't') {
           balls[i].cnt++;
-          float d = (MATRIX_HEIGHT-1) * 256.f - balls[i].y;
+          float d = (SQUISHY_MATRIX_HEIGHT-1 ) * 256.f - balls[i].y;
           wall_collide(i, d, 0, 1);
 
         }
@@ -555,7 +559,7 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
         }
         if (flag == 'r') {
           balls[i].cnt++;
-          float d = ( ((MATRIX_WIDTH-1) * 256.f) - balls[i].x );
+          float d = ( ((SQUISHY_MATRIX_WIDTH-1) * 256.f) - balls[i].x );
           wall_collide(i, d, 1, 0);
 
         }
@@ -581,10 +585,10 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
       for ( int i = 0; i < NUM_BALLS; i++) {
         balls[i].h = random(256);
         //balls[i].h = 128;
-        //balls[i].x = (((i+1)*MATRIX_WIDTH)/(NUM_BALLS+2))*256;
-        balls[i].x = (((i/2+1)*MATRIX_WIDTH)/(NUM_BALLS/2+2))*256;
-        //balls[i].y = random(1,7)*(MATRIX_HEIGHT/8)*256;
-        balls[i].y = ((i+1)*MATRIX_HEIGHT*256)/(NUM_BALLS+2);
+        //balls[i].x = (((i+1)*SQUISHY_MATRIX_WIDTH)/(NUM_BALLS+2))*256;
+        balls[i].x = (((i/2+1)*SQUISHY_MATRIX_WIDTH)/(NUM_BALLS/2+2))*256;
+        //balls[i].y = random(1,7)*(SQUISHY_MATRIX_HEIGHT/8)*256;
+        balls[i].y = ((i+1)*SQUISHY_MATRIX_HEIGHT*256)/(NUM_BALLS+2);
         
         //balls[i].r = random(512,2048);
         balls[i].r = random(950,1736);
@@ -609,8 +613,8 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
 
 
     void loop() {
-      
-
+//    CRGB rgb = CRGB(32,32,32);
+//    draw_line_fine(leds,(MATRIX_WIDTH-4)*256,0,(MATRIX_WIDTH-4)*256,(MATRIX_HEIGHT-1)*256,rgb);
 
       if (current_variation == 0) {
         gravity = 20;
