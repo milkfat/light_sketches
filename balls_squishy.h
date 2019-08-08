@@ -18,6 +18,13 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
     uint8_t current_variation = 0;
     int pulse[5] = {255, 255, 255, 255, 255};
     int current_pulse = 0;
+    bool draw_filled = false;
+    
+    enum squishy_types {
+      SQUISHY_DEFAULT,
+      SQUISHY_GRAVITY,
+      NUMBER_OF_SQUISHY_TYPES
+    };
 
 
 
@@ -334,7 +341,13 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
           }
         }
         //blendXY(leds, draw_x, draw_y, hue, sat, 255);
-        draw_circle_fine(draw_x, draw_y, balls[i].vr, hue, sat, 255, i);
+        draw_circle_fine(draw_x, draw_y, balls[i].vr, hue, sat, 255, i, 16, i*32);
+        if (draw_filled) {
+          CRGB rgb = CHSV(hue,sat,255);
+          y_buffer_fill(leds, rgb, i*32+16);
+          reset_y_buffer();
+          reset_x_buffer();
+        }
         
         //dma_display.drawPixelRGB36(draw_x/256, draw_y/256, 255, 0, 0);
       }
@@ -451,10 +464,10 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
                 case 0:
                   segment_weight = 0;
                 case 1:
-                  segment_weight = 16;
+                  segment_weight = 4;
                   break;
                 case 2:
-                  segment_weight = 64;
+                  segment_weight = 32;
                   break;
                 case 3:
                   segment_weight = 128;
@@ -462,7 +475,7 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
               }
 
               //convert to squish amount 0-255 (target segment is squished the most)
-              uint8_t distance_squish = _clamp8(cr*255 - segment_weight);
+              uint8_t distance_squish = _clamp8(cr*255 - segment_weight)*1.4f;
               
           
               //find the absolute angle segment that we are working with
@@ -575,7 +588,7 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
   public:
     void next_effect() {
       current_variation++;
-      current_variation %= 3;
+      current_variation %= 2;
     }
 
 
@@ -615,13 +628,21 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
     void loop() {
 //    CRGB rgb = CRGB(32,32,32);
 //    draw_line_fine(leds,(MATRIX_WIDTH-4)*256,0,(MATRIX_WIDTH-4)*256,(MATRIX_HEIGHT-1)*256,rgb);
+      if (button1_click) {
+        draw_filled = !draw_filled;
+        reset_y_buffer();
+        reset_x_buffer();
+        button1_click = false;
+      }
 
       if (current_variation == 0) {
         gravity = 20;
+        gravity_x = 0;
+        gravity_y = 0;
       } else {
         gravity = 0;
         gravity_x = 0;
-        gravity_y = 0;
+        gravity_y = 3;
       }
 
      
@@ -635,6 +656,13 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
           for (int i = 0; i < NUM_BALLS; i++) {
             balls[i].vr = balls[i].r;
             balls[i].update();
+          }
+
+          if (button2_down) {
+            for (int i = 0; i < NUM_BALLS; i++) {
+                balls[i].vx *= .99f;
+                balls[i].vy *= .99f;
+            }
           }
 
           
