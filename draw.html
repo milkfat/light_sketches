@@ -1,0 +1,450 @@
+<!DOCTYPE html><html>
+   <head>
+      <title>DRAW!</title>
+      <style>
+         html body {position: fixed;width:100%;height: 100%;margin: 0;border: 0;overflow:hidden;display: block;}
+         p {display: none;}
+      </style>
+   </head>
+   <body>
+      <canvas id='myCanvas' style='position:absolute; left:0px; top:0px;'></canvas>
+      <p id = 'status'>Not connected</p>
+      <p>Users connected: <span id = 'connected'>0
+         </span>
+      </p>
+      <ul id = 'log'></ul>
+      <script>
+         connected = document.getElementById("connected");
+         log = document.getElementById("log");
+         chat = document.getElementById("text");
+         state = document.getElementById("status");
+         
+         if (window.WebSocket === undefined) {
+            state.innerHTML = "sockets not supported";
+            state.className = "fail";
+         }else {
+             if (typeof String.prototype.startsWith != "function") {
+                String.prototype.startsWith = function (str) {
+                   return this.indexOf(str) == 0;
+                };
+             }
+         
+           window.addEventListener("load", onLoad, false);
+         }
+         
+         var canvas = document.getElementById('myCanvas');
+         var context = canvas.getContext('2d');
+         
+         function fullScreen() {
+		  // Kind of painful, but this is how it works for now
+		  if (document.documentElement.requestFullscreen) {
+			document.documentElement.requestFullscreen();
+		  } else if (document.documentElement.mozRequestFullScreen) {
+			document.documentElement.mozRequestFullScreen();
+		  } else if (document.documentElement.webkitRequestFullscreen) {
+			document.documentElement.webkitRequestFullscreen();
+		  } else if (document.documentElement.msRequestFullscreen) {
+			document.documentElement.msRequestFullscreen();
+		  }
+		}
+
+		function smolScreen() {
+		  if (document.exitFullscreen) {
+			document.exitFullscreen();
+		  } else if (document.webkitExitFullscreen) {
+			document.webkitExitFullscreen();
+		  } else if (document.mozCancelFullScreen) {
+			document.mozCancelFullScreen();
+		  } else if (document.msExitFullscreen) {
+			document.msExitFullscreen();
+		  }
+		}
+
+		function lock(orientation) {
+		  fullScreen();
+		  locOrientation = screen.lockOrientation || screen.mozLockOrientation || screen.msLockOrientation || screen.orientation.lock;
+		  locOrientation('landscape');
+		}
+         
+         
+         function onLoad() {
+            websocket = new WebSocket(((window.location.protocol === "https:") ? "wss://" : "ws://") + window.location.hostname + ":8081/socket");
+            websocket.onopen = function(evt) { onOpen(evt) };
+            websocket.onclose = function(evt) { onClose(evt) };
+            websocket.onmessage = function(evt) { onMessage(evt) };
+            websocket.onerror = function(evt) { onError(evt) };
+            window.addEventListener('resize', resizeCanvas, false);
+            resizeCanvas();
+         }
+         
+         function onOpen(evt) {
+            state.className = "success";
+            state.innerHTML = "Connected to server";
+         }
+         
+         function onClose(evt) {
+            state.className = "fail";
+            state.innerHTML = "Not connected. Attempting to reconnect...";
+            connected.innerHTML = "0";
+            // Try to reconnect in 5 seconds
+            websocket = null;
+            setTimeout(function(){onLoad()}, 500);
+         }
+         
+         
+         function onMessage(evt) {
+            var message = evt.data;
+         }
+         
+         function onError(evt) {
+           state.className = "fail";
+           state.innerHTML = "Communication error";
+         }
+         function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            drawBoxes();
+            drawButtons();
+         }
+         function drawBoxes() {
+          context.fillStyle = 'black';
+          context.fillRect(canvas.width*3/5, canvas.height/8, canvas.width/5, canvas.height*6/8);
+          context.fillStyle = 'black';
+          context.fillRect(canvas.width/5, canvas.height/8, canvas.width/5, canvas.height*6/8);
+         }
+         function getButton() {
+          return {
+            text:'clear',
+            l:canvas.width*5/6,
+            t:canvas.height/40,
+            w:canvas.width/6,
+            h:canvas.height*3/40,
+            f:function() {websocket.send('{"cc":1}')},
+          }
+         }
+         function drawButtons() {
+          context.fillStyle = 'blue';
+          var button = getButton();
+          context.fillRect(button.l, button.t, button.w, button.h);
+          context.font = '16pt Calibri';
+          context.fillStyle = 'black';
+          context.fillText(button.text, button.l+20, button.t+20);
+         }
+         
+         //check for button presses
+         function checkButtons(x, y) {
+               var button = getButton();
+               if (x > button.l && y > button.t && x < (button.l+button.w) && y < button.t+button.h ) {
+                 button.f();  
+                 return;     
+               }
+         }
+         
+         function writeMessage(canvas, message) {
+          context.clearRect(0, 0, canvas.width, canvas.height);
+          drawBoxes();
+          drawButtons();
+          context.font = '12pt Calibri';
+          context.fillStyle = 'red';
+		  //context.fillText(absolute, 10, 75);
+		  context.fillText('alpha: ' + alpha, 10, 100);
+		  context.fillText('beta: ' + beta, 10, 125);
+		  context.fillText('gamma: ' + gamma, 10, 150);
+		  //context.fillText('accel: ', 10, 175);
+		  //context.fillText('x: ' + acceleration.x, 10, 200);
+		  //context.fillText('y: ' + acceleration.y, 10, 225);
+		  //context.fillText('z: ' + acceleration.z, 10, 250);
+		     //context.fillText(accelerationIncludingGravity, 10, 200);
+		  //context.fillText('rotate: ', 10, 275);
+		  //context.fillText('alpha: ' + rototationRate.alpha, 10, 300);
+		  //context.fillText('beta: ' + rototationRate.beta, 10, 325);
+		  //context.fillText('gamma: ' + rototationRate.gamma, 10, 350);
+		     //context.fillText(interval, 10, 250)
+         }
+         
+         //functions to adjust canvas coordinates to LED coordinates
+         function adjust_x(x) {
+          return Math.round((x-canvas.width*3/5)/( (canvas.width/5)/8 ));
+         }
+         
+         function adjust_y(y) {
+           return Math.round( ( (canvas.height*7)/8 - y) / ( (canvas.height*6/8)/128 ));
+         }
+         
+         function getMousePos(canvas, evt) {
+          var rect = canvas.getBoundingClientRect();
+          return {
+            x: evt.clientX - rect.left,
+            y: evt.clientY - rect.top
+          };
+         }
+         
+         function getTouchPos(canvas, touch) {
+          return {
+            x: touch.pageX - canvas.offsetLeft,
+            y: touch.pageY - canvas.offsetTop,
+            f: touch.force
+          };
+         }
+         
+         //objects to track mouse/touch positions
+         var cursorTracker = {};
+         var cursorUpdates = [];
+         var mousedown = 0;
+         
+         //create variable to track how many cursor positions are currently in our JSON transmission
+         var positionCnt = 0;
+         //variable to store our JSON message
+         var jsonBuffer ={'l':[],'e':[]};
+
+         canvas.addEventListener('mousedown', emousedown, false);
+         canvas.addEventListener('mouseup', emouseup, false);
+         canvas.addEventListener('mousemove', emousemove, false);
+         canvas.addEventListener('touchmove', etouchmove, false);
+         canvas.addEventListener('touchend', etouchend, false);
+         canvas.addEventListener('touchstart', etouchstart, false);
+         canvas.addEventListener('touchforcechange', etouchmove, false);
+         window.addEventListener('deviceorientation', handleOrientation, true);
+         //window.addEventListener("devicemotion", handleMotion, true);
+         
+         var absolute;
+         var alpha;
+         var oldalpha = 0;
+         var beta;
+         var oldbeta = 0;
+         var gamma;
+         var oldgamma = 0;
+	     
+         var time_then = new Date().getTime() + 0;
+         
+         function handleOrientation(event) {
+			  //absolute = event.absolute;
+			  alpha    = parseFloat(event.alpha.toPrecision(4));
+			  beta     = parseFloat(event.beta.toPrecision(4));
+			  gamma    = parseFloat(event.gamma.toPrecision(4));
+			  if (!(oldalpha == alpha && oldbeta == beta && oldgamma == gamma) && new Date().getTime() - 15 > time_then) {
+			    time_then = new Date().getTime() + 0;
+			  	jsonBuffer.a = [alpha,beta,gamma];
+			    positionCnt++;
+			  	oldalpha = alpha;
+			  	oldbeta = beta;
+			  	oldgamma = gamma;
+			  }
+			  //console.log('absolute: ' + absolute + ' alpha: ' + alpha + 'beta: ' + beta + 'gamma: ' + gamma)
+			  // Do stuff with the new orientation data
+			}
+	     //var acceleration;
+		 //var accelerationIncludingGravity;
+		 //var rototationRate;
+		 //var interval;
+			
+		 //function handleMotion(event) {
+		//	acceleration = event.acceleration;
+		//	//console.log(JSON.stringify(acceleration));
+		//	accelerationIncludingGravity = DeviceMotionEvent.accelerationIncludingGravity;
+		//	//console.log(JSON.stringify(accelerationIncludingGravity));
+		//	rototationRate = event.rotationRate;
+		//	//console.log(JSON.stringify(rototationRate));
+		//	interval = event.interval;
+		//	//console.log(JSON.stringify(interval));
+		 //}
+         
+         
+         
+         
+         //function to calculate, track, and send any cursor changes to the server
+         
+         function emousedown (evt) {
+           evt.preventDefault();
+           
+           //add any new mouse clicks to our tracking object
+		   
+			 var cp = getMousePos(canvas, evt);
+			 cursorTracker.mouse = {};
+			 cursorTracker.mouse.newx = cp.x;
+			 cursorTracker.mouse.newy = cp.y;
+			 cursorTracker.mouse.newf = 0;
+			 cursorTracker.mouse.oldf = 0;
+			 mousedown = 1;
+			 cursorUpdates.push('mouse'); 
+			 checkButtons(cp.x, cp.y);
+			 //remove the mouse from our cursorLift object
+             for (i = 0; i < cursorLifts.length; i++) {
+              if (cursorLifts[i][0] == 255) {
+                cursorLifts.splice(i,1);
+                i--;
+              } 
+            }
+         }
+         
+         var cursorLifts = [];
+         
+         function emouseup (evt) {
+           evt.preventDefault(); 
+           //remove any released clicks from tracking object
+            delete cursorTracker['mouse'];
+            mousedown = 0;
+            cursorLifts.push([255,0]);
+            //jsonBuffer.e.push(255);
+            positionCnt++;
+         }
+         
+         function emousemove (evt) {
+           evt.preventDefault(); 
+           
+           //record the current mouse position
+          if (mousedown == 1) {
+            var cp = getMousePos(canvas, evt);
+            cursorTracker.mouse.newx = cp.x;
+            cursorTracker.mouse.newy = cp.y;
+            cursorTracker.mouse.newf = 1;
+            cursorTracker.mouse.newf = 1;
+            cursorUpdates.push('mouse');
+           }
+         }
+         
+         function etouchstart (evt) {
+           evt.preventDefault();
+           
+           //add any new touches to our tracking object
+            for(i=0;i<evt.changedTouches.length;i++) {
+              var touchId = evt.changedTouches[i].identifier;
+              var tp = getTouchPos(canvas,evt.changedTouches[i]);
+              cursorTracker[touchId] = {};
+              cursorTracker[touchId].newx = tp.x;
+              cursorTracker[touchId].newy = tp.y;
+              cursorTracker[touchId].newy = tp.y;
+              cursorTracker[touchId].newf = tp.f;
+              cursorTracker[touchId].oldf = tp.f;
+              cursorUpdates.push(evt.changedTouches[i].identifier);
+			  checkButtons(tp.x, tp.y);
+            }
+          
+           
+         }
+         
+         
+         function etouchend (evt) {
+           evt.preventDefault();
+           //remove any released touches from tracking object
+            for(i=0;i<evt.changedTouches.length;i++) {
+              delete cursorTracker[evt.changedTouches[i].identifier];
+              cursorLifts.push([Math.abs(evt.changedTouches[i].identifier%255), 0]);
+              //jsonBuffer.e.push(evt.changedTouches[i].identifier%255);
+              positionCnt++;
+              }
+          
+         }
+         
+         
+         function etouchmove (evt) {
+           evt.preventDefault();
+          //record any changed touches
+            for (i = 0;i < evt.changedTouches.length; i++) {
+              var tp = getTouchPos(canvas,evt.changedTouches[i]);
+              if(cursorTracker[evt.changedTouches[i].identifier]) {
+                cursorTracker[evt.changedTouches[i].identifier].newx = tp.x;
+                cursorTracker[evt.changedTouches[i].identifier].newy = tp.y;
+                cursorTracker[evt.changedTouches[i].identifier].newf = tp.f;
+                cursorUpdates.push(evt.changedTouches[i].identifier);
+              }
+            }
+         }
+         
+         
+         
+         setInterval(monitorCursors, 15);
+         
+         function monitorCursors () {  
+		  
+			  //begin assembling canvas text
+			  var message = 'Cursor position:'
+		 
+			  //add the cursor position to the canvas text
+			  writeMessage(canvas, message);
+		 		
+		 	  //process mouse ups/touch ends... send multiple times to lessen the chance of loss
+		 	  for (i = 0; i < cursorLifts.length; i++) {
+		 	    jsonBuffer.e.push(cursorLifts[i][0]);
+		 	    cursorLifts[i][1]++;
+		 	    positionCnt++;
+		 	    if(cursorLifts[i][1] > 5) {
+		 	      cursorLifts.splice(i,1);
+		 	      i--;
+		 	    }
+		 	  }
+		  
+		 
+			  //process cursor positions and add them to our JSON transmission
+			  for (i = 0; i < cursorUpdates.length; i++) {
+		 
+				var cursor = cursorTracker[cursorUpdates[i]];
+				var id = cursorUpdates[i];
+				if(id == 'mouse') {
+				  id = 255;
+			    } else {
+			      id %= 255;
+			      id = Math.abs(id);
+			    }
+			  
+				//adjust cursor coordinates to our LED coordinates
+				if ( !cursor ) {break;}
+		 		var force_update = false;
+		 		
+				var newx = adjust_x(cursor.newx);
+				var newy = adjust_y(cursor.newy);
+				var newf = Math.round(cursor.newf*255);
+				var newa = alpha;
+				var newb = beta;
+				var newg = gamma;
+				var oldx = newx;
+				var oldy = newy;
+				var oldf = newf;
+		 		if(cursor.oldx) {
+					oldx = adjust_x(cursor.oldx);
+					oldy = adjust_y(cursor.oldy);
+				    oldf = Math.round(cursor.oldf*255);
+				} else {
+					force_update = true;
+				}
+				if ( !(newx == oldx && newy == oldy && newf == oldf) || force_update ) {
+		 
+				  //add any drags to the position transmission
+			  
+				  positionCnt++;
+		 
+				  //the actual JSON bit
+				  jsonBuffer.l.push([newx,newy,oldx,oldy,newf,id]);
+				  
+				  //immediately send if we get too many packets
+				  //I suspect that some devices (iPhone) throttle the setInterval
+				  //  thing to preserve power which creates one huge death packet
+		 		  if (positionCnt > 5 ) {
+					websocket.send(JSON.stringify(jsonBuffer));
+					positionCnt = 0;
+					jsonBuffer = {'l':[],'e':[]};
+				  }
+				  
+				  //record the new positions in our tracking object
+				  cursor.oldx = cursor.newx;
+				  cursor.oldy = cursor.newy;
+				  cursor.oldf = cursor.newf;
+			  
+				}
+			  }
+          
+          
+
+                   
+          //send JSON transmission if there have been any position changes
+          //limit transmissions to 60 per second
+          if (positionCnt > 0 ) {
+            websocket.send(JSON.stringify(jsonBuffer));
+            positionCnt = 0;
+            jsonBuffer = {'l':[],'e':[]};
+          }
+          cursorUpdates = [];
+         };
+      </script>
+   </body>
+</html>

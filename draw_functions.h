@@ -999,13 +999,15 @@ static inline __attribute__ ((always_inline)) void draw_line_ybuffer(VECTOR3 a, 
 //DRAW LINE FINE
 
 
-static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_object[], int32_t x1, int32_t y1, int32_t x2, int32_t y2, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true) {
+static void draw_line_fine(CRGB crgb_object[], const VECTOR3& a, const VECTOR3& b, const CRGB& rgb, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true) {
   
+  int32_t z_depth = a.z;
+
   //add one pixel to compensate for rounding errors between -1 and 0
-  x1+=256;
-  y1+=256;
-  x2+=256;
-  y2+=256;
+  int32_t x1 = a.x+256;
+  int32_t y1 = a.y+256;
+  int32_t x2 = b.x+256;
+  int32_t y2 = b.y+256;
   
   //avoid vertical and horizontal lines by fudging a bit
   if (x1 == x2 ) {
@@ -1128,6 +1130,10 @@ static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_obje
         //record stuff in our x and y buffers for other functions to use
         if (i >= 0 && i < MATRIX_WIDTH) {
 
+          // int temp = Hy;
+          // Ly = Hy;
+          // Hy = Ly;
+
           if (Hy <= x_buffer[i][0]) {
             x_buffer[i][0] = _min(x_buffer[i][0], Hy);
 
@@ -1214,6 +1220,10 @@ static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_obje
       drawXYZ2(crgb_object,  Hx, i, z_depth, rgb, ((b2*v1)>>8) + ((b2*v2)>>8), ignore_z );
       drawXYZ2(crgb_object,  Lx, i, z_depth, rgb, ((b *v1)>>8) + ((b *v2)>>8), ignore_z );
   
+      // int temp = Hx;
+      // Lx = Hx;
+      // Hx = Lx;
+      
       //record stuff in our x and y buffers for other functions to use
       if (i >= 0 && i < MATRIX_HEIGHT) {
         y_buffer_min = _min(i,y_buffer_min);
@@ -1245,23 +1255,117 @@ static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_obje
 } //draw_line_fine()
 
 void y_buffer_fill(CRGB crgb_object[], const CRGB& rgb, const int32_t& z_depth) {
+
+        int32_t x_min = MATRIX_WIDTH;
+        int32_t x_max = -1;
+
+        int32_t x_cnt = 0;
+        int32_t x_min_avg = 0;
+        int32_t x_max_avg = 0;
+        
+        for (int i = _max(y_buffer_min, 0); i <= _min(y_buffer_max,MATRIX_HEIGHT-1); i++) {
+
+          x_min_avg += _max(y_buffer[i][0], 0);
+          x_max_avg += _min(y_buffer[i][1], MATRIX_WIDTH-1);
+          x_cnt++;
+          
+          if (y_buffer[i][0] < x_min) {
+            x_min = y_buffer[i][0];
+          }
+          if (y_buffer[i][1] > x_max) {
+            x_max = y_buffer[i][1];
+          }
+        }
+
+        int32_t y_min = MATRIX_HEIGHT;
+        int32_t y_max = -1;
+
+        int32_t y_cnt = 0;
+        int32_t y_min_avg = 0;
+        int32_t y_max_avg = 0;
+
+        for (int i = _max(x_min, 0); i <= _min(x_max,MATRIX_WIDTH-1); i++) {
+
+          y_min_avg += _max(x_buffer[i][0],0);
+          y_max_avg += _min(x_buffer[i][1],MATRIX_HEIGHT-1);
+          y_cnt++;
+
+          if (x_buffer[i][0] < y_min) {
+            y_min = x_buffer[i][0];
+          }
+          if (x_buffer[i][1] > y_max) {
+            y_max = x_buffer[i][1];
+          }
+        }
+
+
+        int32_t x_center = x_min;
+        int32_t y_center = y_min;
+
+        if (x_cnt != 0) {
+          x_center = (x_min_avg + x_max_avg + x_cnt) / (x_cnt*2);
+        }
+
+        if (y_cnt != 0) {
+          y_center = (y_min_avg + y_max_avg + y_cnt) / (y_cnt*2);
+        }
+
+        //drawXYZ(leds, x_center, y_center, 100000, CRGB(255,255,255));
+
   for (int y = _max(y_buffer_min, 0); y <= _min(y_buffer_max,MATRIX_HEIGHT-1); y++) {
     if (y_buffer[y][0] <= y_buffer[y][1]) {
+      
+        int32_t x_min2 = y_buffer[y][0];
+        int32_t x_max2 = y_buffer[y][1];
+        
+        
+        int32_t x_dist = _max(x_center-x_min2, x_max2-x_center);
+
       for (int x = y_buffer[y][0]; x <= y_buffer[y][1]; x++) {
-        drawXYZ(crgb_object, x, y, z_depth, rgb);
+
+        int32_t y_min2 = x_buffer[x][0];
+        int32_t y_max2 = x_buffer[x][1];
+
+        int32_t x_pos = (x - x_min2);
+        int32_t y_pos = (y - y_min2);
+
+        int32_t y_dist = _max(y_center-y_min2, y_max2-y_center);
+
+        uint8_t x_amount = 255;
+
+        if (x_dist != 0) {
+          x_amount = _clamp8(255-(abs(x_dist-x_pos)*255)/x_dist);
+          x_amount = gamma8_encode(x_amount);
+        }
+        uint8_t y_amount = 255;
+        if (y_dist != 0) {
+          y_amount = _clamp8(255-(abs(y_dist-y_pos)*255)/y_dist);
+          y_amount = gamma8_encode(y_amount);
+        }
+        drawXY_blend_gamma( crgb_object, x, y, z_depth, rgb,  (x_amount*y_amount)/255  );
+        //drawXYZ(crgb_object, x, y, z_depth, rgb);
       }
     }
   }
 }
+
+static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_object[], const int32_t& x1, const int32_t& y1, const int32_t& x2, const int32_t& y2, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true) {
+  VECTOR3 a(x1,y1,z_depth);
+  VECTOR3 b(x2,y2,z_depth);
+  draw_line_fine(crgb_object, a, b, rgb, val, val2, trim, ignore_z);
+}
+
 
 static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_object[], const int32_t& x1, const int32_t& y1, const int32_t& x2, const int32_t& y2, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const int& z_depth = -10000, const uint8_t& val2 = 255, const bool& trim = false) {
   CRGB rgb = CHSV(hue,sat,255);
   draw_line_fine(crgb_object, x1, y1, x2, y2, rgb, z_depth, val, val2, trim);
 }
 
+
 static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_object[], const VECTOR3& a, const VECTOR3& b, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true) {
   draw_line_fine(crgb_object, a.x, a.y, b.x, b.y, rgb, z_depth, val, val2, trim, ignore_z);
 }
+
 
 //DRAW CURVE
 

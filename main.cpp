@@ -49,6 +49,14 @@ uint32_t debug_micros1 = 0;
 
 #include "text.h"
 
+#include <server_https.hpp>
+#include <fstream>
+#include <server_wss.hpp>
+
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/property_tree/ptree.hpp>
+using namespace boost::property_tree;
+
 uint32_t debug_time = 0;
 uint32_t debug_count = 0;
 
@@ -184,7 +192,103 @@ void update_matrix() {
 
 int main(int argc, char **argv){	
 
+	
+  using namespace std;
+  using HttpsServer = SimpleWeb::Server<SimpleWeb::HTTPS>;
 
+  HttpsServer https_server("server.crt", "server.key");
+
+  https_server.config.port = 8080;
+
+  https_server.resource["^/draw$"]["GET"] = [](shared_ptr<HttpsServer::Response> response, shared_ptr<HttpsServer::Request> request) {
+    fstream infile; 
+    infile.open("draw.html");
+    response->write(infile);
+    infile.close();
+  };
+
+  https_server.default_resource["GET"] = [](shared_ptr<HttpsServer::Response> response, shared_ptr<HttpsServer::Request> request) {
+        response->write("hello");
+  };
+
+  https_server.on_error = [](shared_ptr<HttpsServer::Request> /*request*/, const SimpleWeb::error_code & /*ec*/) {
+    // Handle errors here
+    // Note that connection timeouts will also call this handle with ec set to SimpleWeb::errc::operation_canceled
+  };
+
+  thread https_server_thread([&https_server]() {
+  	https_server.start();
+  });
+
+
+
+
+  using WssServer = SimpleWeb::SocketServer<SimpleWeb::WSS>;
+  // WebSocket Secure (WSS)-server at port 8080 using 1 thread
+  WssServer wss_server("server.crt", "server.key");
+  wss_server.config.port = 8081;
+
+  auto &echo = wss_server.endpoint["^/socket$"];
+  
+
+  echo.on_message = [](shared_ptr<WssServer::Connection> connection, shared_ptr<WssServer::InMessage> in_message) {
+
+    try {
+      ptree pt;
+      read_json(*in_message, pt);
+	  int cnt = 0;
+	  for(auto &i : pt.get_child("a")) {
+		switch (cnt) {
+			case 0:
+				rotation_alpha = i.second.get_value<float>();
+				break;
+			case 1:
+				rotation_beta = i.second.get_value<float>();
+				break;
+			case 2:
+				rotation_gamma = i.second.get_value<float>();
+				break;
+		}
+		cnt++;
+	  }
+    }
+    catch(const exception &e) {
+    }
+
+  };
+
+  echo.on_open = [](shared_ptr<WssServer::Connection> connection) {
+    cout << "Server: Opened connection " << connection.get() << endl;
+  };
+
+  // See RFC 6455 7.4.1. for status codes
+  echo.on_close = [](shared_ptr<WssServer::Connection> connection, int status, const string & /*reason*/) {
+    cout << "Server: Closed connection " << connection.get() << " with status code " << status << endl;
+  };
+
+  // Can modify handshake response header here if needed
+  echo.on_handshake = [](shared_ptr<WssServer::Connection> /*connection*/, SimpleWeb::CaseInsensitiveMultimap & /*response_header*/) {
+    return SimpleWeb::StatusCode::information_switching_protocols; // Upgrade to websocket
+  };
+
+  // See http://www.boost.org/doc/libs/1_55_0/doc/html/boost_asio/reference.html, Error Codes for error code meanings
+  echo.on_error = [](shared_ptr<WssServer::Connection> connection, const SimpleWeb::error_code &ec) {
+    cout << "Server: Error in connection " << connection.get() << ". "
+         << "Error: " << ec << ", error message: " << ec.message() << endl;
+  };
+
+  thread wss_server_thread([&wss_server]() {
+    // Start WSS-server
+    wss_server.start();
+  });
+
+
+
+
+
+
+
+	
 	// for (int i = -120000; i > -190000; i-=1024) {
 	// 	uint16_t c = matt_compress8(i);
 	// 	int d = matt_decompress8(c);
@@ -303,7 +407,16 @@ int main(int argc, char **argv){
             SDL_DestroyWindow(window);
         }
     }
+
+	https_server.stop();
+	wss_server.stop();
+	
 	socket.close();
+
     SDL_Quit();
+
+	//wait for server threads to finish
+	https_server_thread.join();
+	wss_server_thread.join();
     return 0; 
 }
