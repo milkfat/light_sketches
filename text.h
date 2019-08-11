@@ -17,6 +17,7 @@ uint8_t text_saturation = 255;
 uint8_t text_brightness = 96;
 uint8_t font_scaler = 48;
 bool scrolling_text_enabled = 0;
+int drawing_enabled = 1;
 
 void add_character(char c) {
     display_text.push_back(c);
@@ -39,31 +40,30 @@ void handle_text() {
     cube_ang2 = cube_ang;
     cube_ang3 = cube_ang;
 
-    //add canvas to LEDS
-    // for (int i = 0; i < NUM_LEDS; i++) {
-    //     leds[i] += canvas[i];
-    //   }
+    
 
-    //add our temp canvas to LEDS
-    // for (int i = 0; i < NUM_LEDS; i++) {
-    //     leds[i] += temp_canvas[i];
-    //     temp_canvas[i] = CRGB::Black;
-    //   }
+    if (drawing_enabled) {
 
-    // if (drawing_enabled) {
-    //   //debug, draw line
-    //   //leds[XY(round(cursor_position_x/256.0), round(cursor_position_y/256.0))].b = 255;
-    //   long derpx = -2*256; //(4*256L)+201;
-    //   long derpy = -2*256; //50*256L+45;
-    //   //long derpy = 50*256L;
-    //   draw_line_fine(leds, derpx, derpy,cursor_position_x, cursor_position_y);
-    //   for (int i = 0; i < NUM_POINTERS; i++) {
-    //     if (pointers[i].down) {
-    //       drawXY(leds,pointers[i].x, pointers[i].y, 96);
-    //     }
-    //   }
-    //   //draw_line(leds, derpx/255L, derpy/255L+20,cursor_position_x/255L, cursor_position_y/255L+20);
-    // }
+
+      //add our temp canvas to LEDS
+      for (int i = 0; i < NUM_LEDS; i++) {
+        leds[i] += temp_canvas[i];
+        temp_canvas[i] = CRGB::Black;
+      }
+
+      //debug, draw line
+      //leds[XY(round(cursor_position_x/256.0), round(cursor_position_y/256.0))].b = 255;
+      long derpx = -2*256; //(4*256L)+201;
+      long derpy = -2*256; //50*256L+45;
+      //long derpy = 50*256L;
+      //draw_line_fine(leds, derpx, derpy,cursor_position_x, cursor_position_y);
+      for (int i = 0; i < NUM_POINTERS; i++) {
+        if (pointers[i].down) {
+          drawXY(leds,pointers[i].x, pointers[i].y, 96, 255, 255);
+        }
+      }
+      //draw_line(leds, derpx/255L, derpy/255L+20,cursor_position_x/255L, cursor_position_y/255L+20);
+    }
 
     update_since_text = 0;
 

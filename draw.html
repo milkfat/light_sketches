@@ -112,32 +112,81 @@
           context.fillStyle = 'black';
           context.fillRect(canvas.width/5, canvas.height/8, canvas.width/5, canvas.height*6/8);
          }
-         function getButton() {
-          return {
-            text:'clear',
-            l:canvas.width*5/6,
-            t:canvas.height/40,
-            w:canvas.width/6,
-            h:canvas.height*3/40,
-            f:function() {websocket.send('{"cc":1}')},
-          }
+
+         
+         var buttonColors = {
+           'clear':'aqua',
+           'motion':'aqua',
+           'draw':'aqua'
          }
+
+         var depressedButtons = {}
+
+         var toggledButtons = {'motion':false,'draw':false}
+
+         function getButtons() {
+          return [
+            {
+              text:'clear',
+              l:canvas.width*5/6,
+              t:canvas.height/40,
+              w:canvas.width/6,
+              h:canvas.height*3/40,
+              f:function() {websocket.send('{"cc":1}')},
+            },
+            {
+              text:'motion',
+              l:canvas.width*5/6,
+              t:canvas.height*5/40,
+              w:canvas.width/6,
+              h:canvas.height*3/40,
+              f:function() {toggledButtons['motion'] = !toggledButtons['motion']},
+            },
+            {
+              text:'draw',
+              l:canvas.width*5/6,
+              t:canvas.height*10/40,
+              w:canvas.width/6,
+              h:canvas.height*3/40,
+              f:function() {toggledButtons['draw'] = !toggledButtons['draw'];websocket.send('{"dr":'+( (toggledButtons['draw']) ? 1 : 0 ) +'}')},
+            }
+          ]
+         }
+         
+
          function drawButtons() {
-          context.fillStyle = 'blue';
-          var button = getButton();
-          context.fillRect(button.l, button.t, button.w, button.h);
+          for (var i in cursorTracker) {
+            checkButton(cursorTracker[i].newx,cursorTracker[i].newy,false);
+          }
+          var Buttons = getButtons();
           context.font = '16pt Calibri';
-          context.fillStyle = 'black';
-          context.fillText(button.text, button.l+20, button.t+20);
+          for (var i in Buttons) {
+            var button = Buttons[i];
+            context.fillStyle = buttonColors[button.text];
+            if (depressedButtons[button.text]) {
+              context.fillStyle = 'deepskyblue';
+            }
+            context.fillRect(button.l, button.t, button.w, button.h);
+            if (toggledButtons[button.text]) {
+              context.fillStyle = 'blue';
+              context.fillRect(button.l, button.t, 10, button.h);
+            }
+            context.fillStyle = 'black';
+            context.fillText(button.text, button.l+20, button.t+20);
+          }
+          depressedButtons = {};
          }
          
          //check for button presses
-         function checkButtons(x, y) {
-               var button = getButton();
+         function checkButton(x, y, exec = true) {
+          var Buttons = getButtons();
+          for (var i in Buttons) {
+            var button = Buttons[i];
                if (x > button.l && y > button.t && x < (button.l+button.w) && y < button.t+button.h ) {
-                 button.f();  
-                 return;     
+                 if (exec) {button.f();}   
+                 depressedButtons[button.text]=true; 
                }
+            }
          }
          
          function writeMessage(canvas, message) {
@@ -222,7 +271,7 @@
 			  alpha    = parseFloat(event.alpha.toPrecision(4));
 			  beta     = parseFloat(event.beta.toPrecision(4));
 			  gamma    = parseFloat(event.gamma.toPrecision(4));
-			  if (!(oldalpha == alpha && oldbeta == beta && oldgamma == gamma) && new Date().getTime() - 15 > time_then) {
+			  if (toggledButtons['motion'] && !(oldalpha == alpha && oldbeta == beta && oldgamma == gamma) && new Date().getTime() - 15 > time_then) {
 			    time_then = new Date().getTime() + 0;
 			  	jsonBuffer.a = [alpha,beta,gamma];
 			    positionCnt++;
@@ -259,17 +308,17 @@
            
            //add any new mouse clicks to our tracking object
 		   
-			 var cp = getMousePos(canvas, evt);
-			 cursorTracker.mouse = {};
-			 cursorTracker.mouse.newx = cp.x;
-			 cursorTracker.mouse.newy = cp.y;
-			 cursorTracker.mouse.newf = 0;
-			 cursorTracker.mouse.oldf = 0;
-			 mousedown = 1;
-			 cursorUpdates.push('mouse'); 
-			 checkButtons(cp.x, cp.y);
-			 //remove the mouse from our cursorLift object
-             for (i = 0; i < cursorLifts.length; i++) {
+            var cp = getMousePos(canvas, evt);
+            cursorTracker.mouse = {};
+            cursorTracker.mouse.newx = cp.x;
+            cursorTracker.mouse.newy = cp.y;
+            cursorTracker.mouse.newf = 0;
+            cursorTracker.mouse.oldf = 0;
+            mousedown = 1;
+            cursorUpdates.push('mouse'); 
+            checkButton(cp.x, cp.y);
+            //remove the mouse from our cursorLift object
+            for (i = 0; i < cursorLifts.length; i++) {
               if (cursorLifts[i][0] == 255) {
                 cursorLifts.splice(i,1);
                 i--;
@@ -317,7 +366,7 @@
               cursorTracker[touchId].newf = tp.f;
               cursorTracker[touchId].oldf = tp.f;
               cursorUpdates.push(evt.changedTouches[i].identifier);
-			  checkButtons(tp.x, tp.y);
+			        checkButton(tp.x, tp.y);
             }
           
            
@@ -428,7 +477,7 @@
 				  //record the new positions in our tracking object
 				  cursor.oldx = cursor.newx;
 				  cursor.oldy = cursor.newy;
-				  cursor.oldf = cursor.newf;
+          cursor.oldf = cursor.newf;
 			  
 				}
 			  }
