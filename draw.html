@@ -117,7 +117,9 @@
          var buttonColors = {
            'clear':'aqua',
            'motion':'aqua',
-           'draw':'aqua'
+           'draw':'aqua',
+           'alt':'aqua',
+           'next':'aqua'
          }
 
          var depressedButtons = {}
@@ -145,10 +147,26 @@
             {
               text:'draw',
               l:canvas.width*5/6,
-              t:canvas.height*10/40,
+              t:canvas.height*9/40,
               w:canvas.width/6,
               h:canvas.height*3/40,
               f:function() {toggledButtons['draw'] = !toggledButtons['draw'];websocket.send('{"dr":'+( (toggledButtons['draw']) ? 1 : 0 ) +'}')},
+            },
+            {
+              text:'alt',
+              l:canvas.width*5/6,
+              t:canvas.height*13/40,
+              w:canvas.width/6,
+              h:canvas.height*3/40,
+              f:function() {websocket.send('{"skalt":1}')},
+            },
+            {
+              text:'next',
+              l:canvas.width*5/6,
+              t:canvas.height*17/40,
+              w:canvas.width/6,
+              h:canvas.height*3/40,
+              f:function() {websocket.send('{"sknext":1}')},
             }
           ]
          }

@@ -493,7 +493,10 @@ static inline __attribute__ ((always_inline)) void drawXY_blend_gamma(CRGB crgb_
         z_buffer[x][y] = z_depth; 
       }
       
-      uint8_t bri = _clamp8(100 - z/768);
+      //uint8_t bri = _clamp8(100 - z/768);
+      uint32_t bri = _max(camera_scaler - z/256,0);
+      bri /= 2;
+      bri = _min(bri,255);
       bri = (bri*bri)>>8;
       bri = 255-bri;
       
@@ -517,8 +520,11 @@ static inline __attribute__ ((always_inline)) void drawXYZ(CRGB crgb_object[], c
 
       z_buffer[x][y] = z/16; 
 
-      
-      uint8_t bri = _clamp8(100 - z/768);
+
+      //uint8_t bri = _clamp8(100 - z/768);
+      uint32_t bri = _max(camera_scaler - z/256,0);
+      bri /= 2;
+      bri = _min(bri,255);
       bri = (bri*bri)>>8;
       
       bri = 255-bri;

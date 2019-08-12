@@ -292,6 +292,7 @@ int main(int argc, char **argv){
                 break;
 		    }
 		    cnt++;
+			button2_down = true;
 		  }
 
 		  if (drawing_enabled) {
@@ -311,6 +312,7 @@ int main(int argc, char **argv){
 	  try {
         for ( auto &i : pt.get_child("e") ) {
           _remove_pointer( i.second.get_value<uint8_t>() );
+		  button2_down = false;
         }
       } catch (const exception &e) {
 
@@ -318,6 +320,16 @@ int main(int argc, char **argv){
 
 	  try {
         drawing_enabled = pt.get<int>("dr");
+      } catch (const exception &e) {
+      }
+
+	  try {
+        next_sketch = pt.get<int>("skalt");
+      } catch (const exception &e) {
+      }
+	  
+	  try {
+        spacebar = pt.get<int>("sknext");
       } catch (const exception &e) {
       }
 

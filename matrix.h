@@ -312,7 +312,7 @@ static void draw_quad(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& d, const VECT
     matrix.rotate_x(norm,32);
     matrix.rotate_y(norm,32);
 
-    
+    //shading according to surface normal
     uint8_t bri = _min(_max((norm.z*7)/8,0)+32,255);
 
     CRGB rgb = rgb_in;
@@ -394,6 +394,8 @@ int16_t get_current_cube() {
 static void draw_cube(const VECTOR3& p, const VECTOR3& d = VECTOR3(256,256,256), const VECTOR3_8& r = VECTOR3_8(0,0,0), const CHSV& hsv = CHSV(0,0,255), const bool& persist=false) {
   
   int16_t current_cube = get_current_cube();
+  int16_t most_recent_cube = recent_cube;
+  recent_cube = current_cube;
 
   if (current_cube != -1) {
     CUBE* c = &cubes[current_cube];
@@ -420,8 +422,8 @@ static void draw_cube(const VECTOR3& p, const VECTOR3& d = VECTOR3(256,256,256),
         
         //place the current cube next to the most recent cube in the list
         //sorting should be faster when cubes are added in local groups (similar Z coordinate)
-        c->prev = current_cube-1;
-        c->next = cubes[current_cube-1].next;
+        c->prev = most_recent_cube;
+        c->next = cubes[most_recent_cube].next;
 
         //slide to the right if necessary
         while (c->next != -1 && c->z > cubes[c->next].z) {
@@ -576,7 +578,6 @@ static void draw_cubes() {
         draw_cached_cube(cube,cnt);
         cnt++;
         if (cubes[cube].persist) {
-
             cubes[cube].d.x = (cubes[cube].d.x*(50+(fmix32(cube)%32))) / 100;
             cubes[cube].d.y = (cubes[cube].d.y*(50+(fmix32(cube)%32))) / 100;
             cubes[cube].d.z = (cubes[cube].d.z*(50+(fmix32(cube)%32))) / 100;
@@ -603,6 +604,7 @@ static void draw_cubes() {
     }
     first_cube = new_first_cube;
     last_cube = new_last_cube;
+    recent_cube = first_cube;
 } //draw_cubes()
 
 
