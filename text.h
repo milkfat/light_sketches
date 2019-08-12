@@ -17,7 +17,7 @@ uint8_t text_saturation = 255;
 uint8_t text_brightness = 96;
 uint8_t font_scaler = 48;
 bool scrolling_text_enabled = 0;
-int drawing_enabled = 1;
+int drawing_enabled = 0;
 
 void add_character(char c) {
     display_text.push_back(c);

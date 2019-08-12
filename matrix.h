@@ -319,10 +319,10 @@ static void draw_quad(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& d, const VECT
     color_scale(rgb, bri);
     reset_y_buffer();
     reset_x_buffer();
-    draw_line_fine(leds, a, b, rgb, z_depth-16, 255, 255, true, false);
-    draw_line_fine(leds, b, c, rgb, z_depth-16, 255, 255, true, false);
-    draw_line_fine(leds, c, d, rgb, z_depth-16, 255, 255, true, false);
-    draw_line_fine(leds, d, a, rgb, z_depth-16, 255, 255, true, false);
+    draw_line_fine(leds, a, b, rgb, z_depth-16, 255, 255, true, false, true);
+    draw_line_fine(leds, b, c, rgb, z_depth-16, 255, 255, true, false, true);
+    draw_line_fine(leds, c, d, rgb, z_depth-16, 255, 255, true, false, true);
+    draw_line_fine(leds, d, a, rgb, z_depth-16, 255, 255, true, false, true);
     
 
     for (int x = 0; x < MATRIX_WIDTH; x++) {
@@ -374,6 +374,7 @@ CUBE* cubes;
 
 int16_t first_cube = -1;
 int16_t last_cube = -1;
+int16_t recent_cube = -1;
 
 
 
@@ -389,7 +390,7 @@ int16_t get_current_cube() {
 
 
 
-//find cube's z depth and sort it into our buffer
+//find cube's z depth and sort it into our buffer (ascending Z order, back-to-front)
 static void draw_cube(const VECTOR3& p, const VECTOR3& d = VECTOR3(256,256,256), const VECTOR3_8& r = VECTOR3_8(0,0,0), const CHSV& hsv = CHSV(0,0,255), const bool& persist=false) {
   
   int16_t current_cube = get_current_cube();
@@ -408,22 +409,58 @@ static void draw_cube(const VECTOR3& p, const VECTOR3& d = VECTOR3(256,256,256),
     hsv2rgb_rainbow(hsv, c->rgb);
 
     if (first_cube == -1) {
+
+        //buffer is empty, this is the first cube
         first_cube = current_cube;
         last_cube = current_cube;
         c->prev = -1;
         c->next = -1;
+
     } else {
-        cubes[last_cube].next = current_cube;
-        c->prev = last_cube;
-        c->next = -1;
-        last_cube = current_cube;
+        
+        //place the current cube next to the most recent cube in the list
+        //sorting should be faster when cubes are added in local groups (similar Z coordinate)
+        c->prev = current_cube-1;
+        c->next = cubes[current_cube-1].next;
+
+        //slide to the right if necessary
+        while (c->next != -1 && c->z > cubes[c->next].z) {
+            c->prev = c->next;
+            c->next = cubes[c->next].next;
+        }
+
+        //slide to the left if necessary
+        while (c->prev != -1 && c->z < cubes[c->prev].z) {
+            c->next = c->prev;
+            c->prev = cubes[c->prev].prev;
+        }
+
+        //cube becomes the last cube in the list
+        if (c->next == -1) {
+            last_cube = current_cube;
+            cubes[c->prev].next = current_cube;
+            return;
+        }
+
+        //cube becomes the first cube in the list
+        if (c->prev == -1) {
+            first_cube = current_cube;
+            cubes[c->next].prev = current_cube;
+            return;
+        }
+
+        //cube is inserted into the middle of the list
+        cubes[c->prev].next = current_cube;
+        cubes[c->next].prev = current_cube;
+
+
     }    
 
   }
 
 } //draw_cube()
 
-static void draw_cached_cube(const int16_t& cp) {
+static void draw_cached_cube(const int16_t& cp, int16_t bri) {
 
   CUBE* c = &cubes[cp];
 
@@ -527,59 +564,17 @@ static void draw_cached_cube(const int16_t& cp) {
 } //draw_cached_cube()
 
 
-void sort_cubes() {
-    int16_t cube = first_cube;
-    while (cube != -1) {
-        int16_t next_cube = cubes[cube].next;
-
-        int16_t current_position = cubes[cube].next;
-
-        while (current_position != -1 && cubes[cube].z > cubes[current_position].z) {
-            current_position = cubes[current_position].next;
-        }
-
-        if (current_position != cubes[cube].next) {
-
-            //update old neighbors
-            if (cube == first_cube) {
-                first_cube = cubes[cube].next;
-            } else {
-                cubes[cubes[cube].prev].next = cubes[cube].next;
-            }
-            cubes[cubes[cube].next].prev = cubes[cube].prev;
-
-            
-            if (current_position == -1) {
-                //move to end
-                cubes[last_cube].next = cube;
-                cubes[cube].next = -1;
-                cubes[cube].prev = last_cube;
-                last_cube = cube;
-
-            } else {
-
-                //update new neighbors
-                cubes[cube].next = current_position;
-                cubes[cube].prev = cubes[current_position].prev;
-                cubes[cubes[current_position].prev].next = cube;
-                cubes[current_position].prev = cube;
-
-            } 
-        }
-        cube = next_cube;
-    }
-} //sort_cubes()
 
 static void draw_cubes() {
     
-    sort_cubes();
-
     int16_t cube = first_cube;
     int16_t new_first_cube = -1;
     int16_t new_last_cube = -1;
+    int16_t cnt = 0;
     while (cube != -1) {
         int16_t next_cube = cubes[cube].next;
-        draw_cached_cube(cube);
+        draw_cached_cube(cube,cnt);
+        cnt++;
         if (cubes[cube].persist) {
 
             cubes[cube].d.x = (cubes[cube].d.x*(50+(fmix32(cube)%32))) / 100;

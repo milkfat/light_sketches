@@ -1048,7 +1048,7 @@ static inline __attribute__ ((always_inline)) void draw_line_ybuffer(VECTOR3 a, 
 //DRAW LINE FINE
 
 
-static void draw_line_fine(CRGB crgb_object[], const VECTOR3& a, const VECTOR3& b, const CRGB& rgb, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true) {
+static void draw_line_fine_base(CRGB crgb_object[], const VECTOR3& a, const VECTOR3& b, const CRGB& rgb, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true, const bool& wide_fill = true) {
   
   int32_t z_depth = a.z;
 
@@ -1179,9 +1179,11 @@ static void draw_line_fine(CRGB crgb_object[], const VECTOR3& a, const VECTOR3& 
         //record stuff in our x and y buffers for other functions to use
         if (i >= 0 && i < MATRIX_WIDTH) {
 
-          // int temp = Hy;
-          // Ly = Hy;
-          // Hy = Ly;
+          if (!wide_fill) {
+            int temp = Hy;
+            Ly = Hy;
+            Hy = Ly;
+          }
 
           if (Hy <= x_buffer[i][0]) {
             x_buffer[i][0] = _min(x_buffer[i][0], Hy);
@@ -1269,9 +1271,11 @@ static void draw_line_fine(CRGB crgb_object[], const VECTOR3& a, const VECTOR3& 
       drawXYZ2(crgb_object,  Hx, i, z_depth, rgb, ((b2*v1)>>8) + ((b2*v2)>>8), ignore_z );
       drawXYZ2(crgb_object,  Lx, i, z_depth, rgb, ((b *v1)>>8) + ((b *v2)>>8), ignore_z );
   
-      // int temp = Hx;
-      // Lx = Hx;
-      // Hx = Lx;
+      if (!wide_fill) {
+        int temp = Hx;
+        Lx = Hx;
+        Hx = Lx;
+      }
       
       //record stuff in our x and y buffers for other functions to use
       if (i >= 0 && i < MATRIX_HEIGHT) {
@@ -1398,10 +1402,10 @@ void y_buffer_fill(CRGB crgb_object[], const CRGB& rgb, const int32_t& z_depth) 
   }
 }
 
-static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_object[], const int32_t& x1, const int32_t& y1, const int32_t& x2, const int32_t& y2, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true) {
+static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_object[], const int32_t& x1, const int32_t& y1, const int32_t& x2, const int32_t& y2, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true, const bool wide_fill = true) {
   VECTOR3 a(x1,y1,z_depth);
   VECTOR3 b(x2,y2,z_depth);
-  draw_line_fine(crgb_object, a, b, rgb, val, val2, trim, ignore_z);
+  draw_line_fine_base(crgb_object, a, b, rgb, val, val2, trim, ignore_z, wide_fill);
 }
 
 
@@ -1411,8 +1415,8 @@ static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_obje
 }
 
 
-static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_object[], const VECTOR3& a, const VECTOR3& b, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true) {
-  draw_line_fine(crgb_object, a.x, a.y, b.x, b.y, rgb, z_depth, val, val2, trim, ignore_z);
+static inline __attribute__ ((always_inline)) void draw_line_fine(CRGB crgb_object[], const VECTOR3& a, const VECTOR3& b, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true, const bool& wide_fill = true) {
+  draw_line_fine(crgb_object, a.x, a.y, b.x, b.y, rgb, z_depth, val, val2, trim, ignore_z, wide_fill);
 }
 
 
