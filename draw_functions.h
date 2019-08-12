@@ -1,5 +1,9 @@
 //various functions shared amongst lighting sketches
 
+bool spacebar = false;
+bool next_sketch = false;
+bool reset_sketch = false;
+bool typing_mode = false;
 
 #ifndef _min
 #define _min(a,b) ((a)<(b)?(a):(b))

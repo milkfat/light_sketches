@@ -100,19 +100,20 @@
            state.className = "fail";
            state.innerHTML = "Communication error";
          }
+
          function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             drawBoxes();
             drawButtons();
          }
+
          function drawBoxes() {
           context.fillStyle = 'black';
           context.fillRect(canvas.width*3/5, canvas.height/8, canvas.width/5, canvas.height*6/8);
           context.fillStyle = 'black';
           context.fillRect(canvas.width/5, canvas.height/8, canvas.width/5, canvas.height*6/8);
          }
-
          
          var buttonColors = {
            'clear':'aqua',
@@ -169,6 +170,7 @@
               f:function() {websocket.send('{"sknext":1}')},
             }
           ]
+
          }
          
 
@@ -176,8 +178,10 @@
           for (var i in cursorTracker) {
             checkButton(cursorTracker[i].newx,cursorTracker[i].newy,false);
           }
+
           var Buttons = getButtons();
           context.font = '16pt Calibri';
+          
           for (var i in Buttons) {
             var button = Buttons[i];
             context.fillStyle = buttonColors[button.text];
@@ -192,7 +196,9 @@
             context.fillStyle = 'black';
             context.fillText(button.text, button.l+20, button.t+20);
           }
+
           depressedButtons = {};
+
          }
          
          //check for button presses
@@ -208,25 +214,25 @@
          }
          
          function writeMessage(canvas, message) {
-          context.clearRect(0, 0, canvas.width, canvas.height);
-          drawBoxes();
-          drawButtons();
-          context.font = '12pt Calibri';
-          context.fillStyle = 'red';
-		  //context.fillText(absolute, 10, 75);
-		  context.fillText('alpha: ' + alpha, 10, 100);
-		  context.fillText('beta: ' + beta, 10, 125);
-		  context.fillText('gamma: ' + gamma, 10, 150);
-		  //context.fillText('accel: ', 10, 175);
-		  //context.fillText('x: ' + acceleration.x, 10, 200);
-		  //context.fillText('y: ' + acceleration.y, 10, 225);
-		  //context.fillText('z: ' + acceleration.z, 10, 250);
-		     //context.fillText(accelerationIncludingGravity, 10, 200);
-		  //context.fillText('rotate: ', 10, 275);
-		  //context.fillText('alpha: ' + rototationRate.alpha, 10, 300);
-		  //context.fillText('beta: ' + rototationRate.beta, 10, 325);
-		  //context.fillText('gamma: ' + rototationRate.gamma, 10, 350);
-		     //context.fillText(interval, 10, 250)
+           context.clearRect(0, 0, canvas.width, canvas.height);
+           drawBoxes();
+           drawButtons();
+           context.font = '12pt Calibri';
+           context.fillStyle = 'red';
+           //context.fillText(absolute, 10, 75);
+           context.fillText('alpha: ' + alpha, 10, 100);
+           context.fillText('beta: ' + beta, 10, 125);
+           context.fillText('gamma: ' + gamma, 10, 150);
+           //context.fillText('accel: ', 10, 175);
+           //context.fillText('x: ' + acceleration.x, 10, 200);
+           //context.fillText('y: ' + acceleration.y, 10, 225);
+           //context.fillText('z: ' + acceleration.z, 10, 250);
+           //context.fillText(accelerationIncludingGravity, 10, 200);
+           //context.fillText('rotate: ', 10, 275);
+           //context.fillText('alpha: ' + rototationRate.alpha, 10, 300);
+           //context.fillText('beta: ' + rototationRate.beta, 10, 325);
+           //context.fillText('gamma: ' + rototationRate.gamma, 10, 350);
+           //context.fillText(interval, 10, 250)
          }
          
          //functions to adjust canvas coordinates to LED coordinates
@@ -285,36 +291,37 @@
          var time_then = new Date().getTime() + 0;
          
          function handleOrientation(event) {
-			  //absolute = event.absolute;
-			  alpha    = parseFloat(event.alpha.toPrecision(4));
-			  beta     = parseFloat(event.beta.toPrecision(4));
-			  gamma    = parseFloat(event.gamma.toPrecision(4));
-			  if (toggledButtons['motion'] && !(oldalpha == alpha && oldbeta == beta && oldgamma == gamma) && new Date().getTime() - 15 > time_then) {
-			    time_then = new Date().getTime() + 0;
-			  	jsonBuffer.a = [alpha,beta,gamma];
-			    positionCnt++;
-			  	oldalpha = alpha;
-			  	oldbeta = beta;
-			  	oldgamma = gamma;
-			  }
-			  //console.log('absolute: ' + absolute + ' alpha: ' + alpha + 'beta: ' + beta + 'gamma: ' + gamma)
-			  // Do stuff with the new orientation data
-			}
-	     //var acceleration;
-		 //var accelerationIncludingGravity;
-		 //var rototationRate;
-		 //var interval;
-			
-		 //function handleMotion(event) {
-		//	acceleration = event.acceleration;
-		//	//console.log(JSON.stringify(acceleration));
-		//	accelerationIncludingGravity = DeviceMotionEvent.accelerationIncludingGravity;
-		//	//console.log(JSON.stringify(accelerationIncludingGravity));
-		//	rototationRate = event.rotationRate;
-		//	//console.log(JSON.stringify(rototationRate));
-		//	interval = event.interval;
-		//	//console.log(JSON.stringify(interval));
-		 //}
+           //absolute = event.absolute;
+           alpha    = parseFloat(event.alpha.toPrecision(4));
+           beta     = parseFloat(event.beta.toPrecision(4));
+           gamma    = parseFloat(event.gamma.toPrecision(4));
+           if (toggledButtons['motion'] && !(oldalpha == alpha && oldbeta == beta && oldgamma == gamma) && new Date().getTime() - 15 > time_then) {
+             time_then = new Date().getTime() + 0;
+             jsonBuffer.a = [alpha,beta,gamma];
+             positionCnt++;
+             oldalpha = alpha;
+             oldbeta = beta;
+             oldgamma = gamma;
+           }
+            //console.log('absolute: ' + absolute + ' alpha: ' + alpha + 'beta: ' + beta + 'gamma: ' + gamma)
+            // Do stuff with the new orientation data
+         }
+         
+	      //var acceleration;
+        //var accelerationIncludingGravity;
+        //var rototationRate;
+        //var interval;
+          
+        //function handleMotion(event) {
+        //	acceleration = event.acceleration;
+        //	//console.log(JSON.stringify(acceleration));
+        //	accelerationIncludingGravity = DeviceMotionEvent.accelerationIncludingGravity;
+        //	//console.log(JSON.stringify(accelerationIncludingGravity));
+        //	rototationRate = event.rotationRate;
+        //	//console.log(JSON.stringify(rototationRate));
+        //	interval = event.interval;
+        //	//console.log(JSON.stringify(interval));
+		    //}
          
          
          
