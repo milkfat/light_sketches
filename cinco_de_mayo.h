@@ -1,3 +1,5 @@
+#ifndef LIGHTS_CINCO_DE_MAYO_H
+#define LIGHTS_CINCO_DE_MAYO_H
 
 //CINCO DE MAYO
 
@@ -272,3 +274,5 @@ class CINCO_DE_MAYO: public LIGHT_SKETCH {
 };
 
 LIGHT_SKETCHES::REGISTER<CINCO_DE_MAYO> cinco_de_mayo("cinco_de_mayo");
+
+#endif

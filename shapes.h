@@ -1,4 +1,5 @@
-
+#ifndef LIGHTS_SHAPES_H
+#define LIGHTS_SHAPES_H
 
 //SHAPES
 
@@ -149,3 +150,5 @@ class SHAPES: public LIGHT_SKETCH {
 LIGHT_SKETCHES::REGISTER<SHAPES> shapes("shapes");
 
 //END SHAPES
+
+#endif

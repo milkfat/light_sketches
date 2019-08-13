@@ -1,3 +1,6 @@
+#ifndef LIGHTS_ARDUINO_FUNCTIONS_H
+#define LIGHTS_ARDUINO_FUNCTIONS_H
+
 //getLocalTime function from ESP32 ... and Windows?
 void getLocalTime(struct tm * &timeinfo) {
       time_t rawtime;
@@ -44,3 +47,5 @@ int random(int a) {
 auto sq = [](auto num) {
     return num*num;
 };
+
+#endif

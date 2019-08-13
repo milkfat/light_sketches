@@ -1,3 +1,6 @@
+#ifndef LIGHTS_FASTLED_FUNCTIONS_H
+#define LIGHTS_FASTLED_FUNCTIONS_H
+
 #ifndef _min
 #define _min(a,b) ((a)<(b)?(a):(b))
 #endif
@@ -780,3 +783,5 @@ CRGB& nblend( CRGB& existing, CRGB& overlay, fract8 amountOfOverlay )
 void memset8(void * ptr, uint8_t value, uint16_t num) {
     memset(ptr, value, num);
 }
+
+#endif

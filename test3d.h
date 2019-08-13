@@ -1,4 +1,5 @@
-
+#ifndef LIGHTS_TEST3D_H
+#define LIGHTS_TEST3D_H
 //3D
 
 #include "phos.h"
@@ -1462,3 +1463,5 @@ void handle_fireworks() {
 
 LIGHT_SKETCHES::REGISTER<TEST3D> test3d("test3d");
 //3D
+
+#endif

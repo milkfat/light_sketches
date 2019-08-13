@@ -1,3 +1,5 @@
+#ifndef LIGHTS_PHOS_H
+#define LIGHTS_PHOS_H
 
 class PHOS {
     public:
@@ -134,3 +136,5 @@ class PHOS {
         }
     }
 };   
+
+#endif

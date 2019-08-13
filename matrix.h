@@ -1,3 +1,6 @@
+#ifndef LIGHTS_MATRIX_H
+#define LIGHTS_MATRIX_H
+
 //A class for performing 3D rotation
 
 class MATRIX {
@@ -607,11 +610,4 @@ static void draw_cubes() {
     recent_cube = first_cube;
 } //draw_cubes()
 
-
-
-
-
-
-
-
-
+#endif

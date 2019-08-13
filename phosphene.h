@@ -1,3 +1,5 @@
+#ifndef LIGHTS_PHOSPHENE_H
+#define LIGHTS_PHOSPHENE_H
 
 class PHOSPHENE: public LIGHT_SKETCH {
   public:
@@ -154,3 +156,5 @@ class PHOSPHENE: public LIGHT_SKETCH {
 
 
 LIGHT_SKETCHES::REGISTER<PHOSPHENE> phosphene("phosphene");
+
+#endif

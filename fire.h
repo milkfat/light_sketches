@@ -1,3 +1,6 @@
+#ifndef LIGHTS_FIRE_H
+#define LIGHTS_FIRE_H
+
 //FIRE
 
 //this class uses malloc for the grid, because it gets HUGE with large displays
@@ -924,3 +927,5 @@ class FIRE2: public LIGHT_SKETCH {
 
 
 LIGHT_SKETCHES::REGISTER<FIRE2> fire2("fire2");
+
+#endif

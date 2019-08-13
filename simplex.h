@@ -1,3 +1,5 @@
+#ifndef LIGHTS_SIMPLEX_NOISE_H
+#define LIGHTS_SIMPLEX_NOISE_H
 
 //SIMPLEX NOISE
 
@@ -338,3 +340,5 @@ class SIMPLEX: public LIGHT_SKETCH {
 };
 
 LIGHT_SKETCHES::REGISTER<SIMPLEX> simplex("simplex");
+
+#endif

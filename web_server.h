@@ -1,3 +1,8 @@
+#ifndef ARDUINO
+
+#ifndef LIGHTS_WEB_SERVER_H
+#define LIGHTS_WEB_SERVER_H
+
 class HTTPS_SERVER {
     
     SimpleWeb::Server<SimpleWeb::HTTPS> server = {"server.crt", "server.key"};
@@ -11,6 +16,7 @@ class HTTPS_SERVER {
     }
 
     void start() {
+
       using namespace std;
       using HttpsServer = SimpleWeb::Server<SimpleWeb::HTTPS>;
     
@@ -222,3 +228,7 @@ class WSS_SERVER {
 };
 
 WSS_SERVER wss_server;
+
+#endif
+
+#endif

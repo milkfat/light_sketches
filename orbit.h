@@ -1,3 +1,5 @@
+#ifndef LIGHTS_ORBIT_H
+#define LIGHTS_ORBIT_H
 
 //ORBIT
 
@@ -95,3 +97,5 @@ class ORBIT: public LIGHT_SKETCH {
 };
 
 LIGHT_SKETCHES::REGISTER<ORBIT> orbit("orbit");
+
+#endif

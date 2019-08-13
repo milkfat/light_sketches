@@ -1,3 +1,5 @@
+#ifndef LIGHTS_TEST2D_H
+#define LIGHTS_TEST2D_H
 
 //TEST2D
 
@@ -231,3 +233,5 @@ class TEST2D: public LIGHT_SKETCH {
 
 LIGHT_SKETCHES::REGISTER<TEST2D> test2d("test2d");
 //END TEST2D
+
+#endif

@@ -1,3 +1,5 @@
+#ifndef LIGHTS_WAVES_H
+#define LIGHTS_WAVES_H
 
 //WAVES
 
@@ -144,3 +146,5 @@ class WAVES: public LIGHT_SKETCH {
 };
 
 LIGHT_SKETCHES::REGISTER<WAVES> waves("waves");
+
+#endif

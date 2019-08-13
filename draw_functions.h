@@ -1,3 +1,6 @@
+#ifndef LIGHTS_DRAW_FUNCTIONS_H
+#define LIGHTS_DRAW_FUNCTIONS_H
+
 //various functions shared amongst lighting sketches
 
 bool spacebar = false;
@@ -2305,3 +2308,4 @@ typedef class cint18
 } cint18;
 
   
+#endif

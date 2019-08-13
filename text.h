@@ -1,3 +1,5 @@
+#ifndef LIGHTS_TEXT_H
+#define LIGHTS_TEXT_H
 
   //TEXT STUFF
 
@@ -469,3 +471,5 @@ void handle_text() {
   draw_cubes();
   old_display_text=display_text;
 } //handle_text()
+
+#endif

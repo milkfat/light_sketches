@@ -1,3 +1,5 @@
+#ifndef LIGHTS_BALLS_2D_H
+#define LIGHTS_BALLS_2D_H
 
 //BALLS 2D
 
@@ -922,3 +924,5 @@ unsigned long BALLS2D::debug_time2 = millis();
 LIGHT_SKETCHES::REGISTER<BALLS2D> balls2d("balls2d");
 
 //END BALLS 2D
+
+#endif

@@ -1,3 +1,6 @@
+#ifndef LIGHTS_MATTCLOCK_H
+#define LIGHTS_MATTCLOCK_H
+
 //#define CLOCK_HORIZONTAL
 #define SEGMENT_LENGTH 20
 #define SEGMENT_SPACING 4
@@ -910,3 +913,5 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
 
 LIGHT_SKETCHES::REGISTER<MATTCLOCK> mattclock("mattclock");
+
+#endif

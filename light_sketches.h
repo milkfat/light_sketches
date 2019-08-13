@@ -1,3 +1,6 @@
+#ifndef LIGHTS_LIGHT_SKETCHES_H
+#define LIGHTS_LIGHT_SKETCHES_H
+
 //Memory for light sketches is allocated dynamically, but only once.
 //We allocate the amount of memory required to store the largest sketch.
 //All sketches then share the same memory (only one sketch is active at a time).
@@ -342,19 +345,21 @@ bool LIGHT_SKETCHES::need_to_allocate = true;
 
 LIGHT_SKETCHES light_sketches;
 
-//#include "balls_squishy.h"
-//#include "balls2d.h"
-//#include "cinco_de_mayo.h"
+#include "balls_squishy.h"
+#include "balls2d.h"
+#include "cinco_de_mayo.h"
 #include "curvy.h"
-//#include "fire.h"
-//#include "growcircle.h"
-//#include "mattclock.h"
-//#include "metaballs.h"
-//#include "orbit.h"
-//#include "neon.h"
-//#include "shapes.h"
-//#include "simplex.h"
-//#include "test2d.h"
+#include "fire.h"
+#include "growcircle.h"
+#include "mattclock.h"
+#include "metaballs.h"
+#include "orbit.h"
+#include "neon.h"
+#include "shapes.h"
+#include "simplex.h"
+#include "test2d.h"
 #include "test3d.h"
-//#include "phosphene.h"
-//#include "waves.h"
+#include "phosphene.h"
+#include "waves.h"
+
+#endif

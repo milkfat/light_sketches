@@ -1,3 +1,6 @@
+#ifndef LIGHTS_NEON_H
+#define LIGHTS_NEON_H
+
 //NEON
 
 #if MATRIX_WIDTH > MATRIX_HEIGHT
@@ -207,3 +210,5 @@ class NEON: public LIGHT_SKETCH {
 
 LIGHT_SKETCHES::REGISTER<NEON> neon("neon");
 //END NEON
+
+#endif

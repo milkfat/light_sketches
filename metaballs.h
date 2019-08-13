@@ -1,3 +1,6 @@
+#ifndef LIGHTS_METABALLS_H
+#define LIGHTS_METABALLS_H
+
 //METABALLS
 #define NUM_METABALLS 100
 //#define METABALLS_QUARTER_RES
@@ -352,3 +355,5 @@ class METABALLS: public LIGHT_SKETCH {
 };
 
 LIGHT_SKETCHES::REGISTER<METABALLS> metaballs("metaballs");
+
+#endif

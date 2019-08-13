@@ -1,3 +1,5 @@
+#ifndef LIGHTS_BALLS_SQUISHY_H
+#define LIGHTS_BALLS_SQUISHY_H
 
 //BALLS SQUISHY
 
@@ -735,3 +737,5 @@ unsigned long BALLS_SQUISHY::debug_time2 = millis();
 
 LIGHT_SKETCHES::REGISTER<BALLS_SQUISHY> balls_squishy("balls_squishy");
 //END BALLS 2D
+
+#endif

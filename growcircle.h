@@ -1,4 +1,5 @@
-
+#ifndef LIGHTS_GROWCIRCLE_H
+#define LIGHTS_GROWCIRCLE_H
 
 //GROWING CIRCLE THING
 
@@ -73,12 +74,14 @@ class GROWCIRCLE: public LIGHT_SKETCH {
 
 
       //initial light levels
-      for (int i = 0; i < NUM_LEDS; i++) {
-        levels[i] = random(circles[0].level_min, circles[0].level_max + 1);
-        level_deltas[i] = random(1, 5);
-        level_deltas[i] = (level_deltas[i] * level_deltas[i]) / 4;
-        if (random(2) == 0) {
-          level_deltas[i] *= -1;
+      for (int c = 0; c < NUM_LEDS; c++) {
+        for (int i = 0; i < NUM_LEDS; i++) {
+          levels[i] = random(circles[c].level_min, circles[c].level_max + 1);
+          level_deltas[i] = random(1, 5);
+          level_deltas[i] = (level_deltas[i] * level_deltas[i]) / 4;
+          if (random(2) == 0) {
+            level_deltas[i] *= -1;
+          }
         }
       }
 
@@ -289,3 +292,5 @@ class GROWCIRCLE: public LIGHT_SKETCH {
 
 LIGHT_SKETCHES::REGISTER<GROWCIRCLE> growcircle("growcircle");
 //END GROWING CIRCLE THING
+
+#endif

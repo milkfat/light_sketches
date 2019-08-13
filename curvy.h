@@ -1,3 +1,6 @@
+#ifndef LIGHTS_CURVY_H
+#define LIGHTS_CURVY_H
+
 //CURVY
 
 #if MATRIX_WIDTH > MATRIX_HEIGHT
@@ -1326,3 +1329,5 @@ void draw_jelly(JELLY& jelly) {
 
 LIGHT_SKETCHES::REGISTER<CURVY> curvy("curvy");
 //END CURVY
+
+#endif
