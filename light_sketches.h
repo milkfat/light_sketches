@@ -38,6 +38,7 @@ class REGISTER_BASE {
     virtual void reset() = 0;
     virtual void destroy() = 0;
     virtual void create() = 0;
+    virtual char* name() = 0;
 };
 
 
@@ -281,6 +282,10 @@ class LIGHT_SKETCHES {
       light_sketches[current_light_sketch]->reset();
     }
 
+    char* name() {
+      return light_sketches[current_light_sketch]->name();
+    }
+
     void next_effect() {
       light_sketches[current_light_sketch]->next_effect();
     }
@@ -300,9 +305,11 @@ class LIGHT_SKETCHES {
     template <class T>
     class REGISTER: public REGISTER_BASE {
       private:
+        char sketch_name[20];
         T * sketch = nullptr;
       public:
         REGISTER (char const * name) {
+          strcpy(sketch_name, name);
           light_sketches[number_of_light_sketches] = this;
           number_of_light_sketches++;
           unsigned int s = sizeof(T);
@@ -322,6 +329,9 @@ class LIGHT_SKETCHES {
         }
         void reset() {
           sketch->reset();
+        }
+        char* name() {
+          return sketch_name;
         }
         void create() {
             //construct our new light sketch object in the reserved memory location 

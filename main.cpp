@@ -228,8 +228,8 @@ int main(int argc, char **argv){
 						debug_count=1;
 						uint32_t debug_micros0_avg = debug_micros0/debug_count;
 						uint32_t debug_micros1_avg = debug_micros1/debug_count;
-						std::cout << (debug_micros1_avg/(debug_micros0_avg+1.f)) << " " << debug_micros1_avg << " " << debug_micros0_avg << "\n";
-						std::cout << "avg iterations: " << (iteration_cnt/iteration_calls) << "\n";
+						//std::cout << (debug_micros1_avg/(debug_micros0_avg+1.f)) << " " << debug_micros1_avg << " " << debug_micros0_avg << "\n";
+						//std::cout << "avg iterations: " << (iteration_cnt/iteration_calls) << "\n";
 						max_iterations = 0;
 						iteration_cnt = 0;
 						iteration_calls = 1;
@@ -249,6 +249,7 @@ int main(int argc, char **argv){
 				if (spacebar) {
 					spacebar = false; 
 					light_sketches.next_sketch();
+        			std::cout << "Current sketch: " << light_sketches.name() << "\n";
 				}
 				if (next_sketch) {
 					next_sketch = false; 

@@ -4,22 +4,25 @@
 //WAVES
 
 class WAVES: public LIGHT_SKETCH {
-    public:
-        WAVES () {setup();}
-        ~WAVES () {}
-        private:
-    uint8_t current_variation = 0;
-
-    class pixel {
-      public:
-        int16_t spd = 0;
-        int16_t height = 0;
-        uint8_t cnt = 0;
-    };
-
-    pixel grid[HEIGHTMAP_HEIGHT][HEIGHTMAP_WIDTH];
 
   public:
+    WAVES () {setup();}
+    ~WAVES () {}
+  
+  private:
+
+  uint8_t current_variation = 0;
+  class pixel {
+    public:
+      int16_t spd = 0;
+      int16_t height = 0;
+      uint8_t cnt = 0;
+  };
+
+  pixel grid[HEIGHTMAP_HEIGHT][HEIGHTMAP_WIDTH];
+
+  public:
+
     void next_effect() {
       current_variation++;
       current_variation %= 1;
@@ -35,97 +38,131 @@ class WAVES: public LIGHT_SKETCH {
     unsigned long time0 = millis();
     unsigned long frame_time = millis();
     bool tap = false;
+    uint8_t phase = 0;
     void loop() {
       if (millis() - 16 > frame_time) {
         frame_time = millis();
 
         LED_show();
         LED_black();
-        static int rx = 0;
-        static int ry = 0;
-        if ( millis() - 500 > time0 ) {
+        static int rx = random(0, HEIGHTMAP_WIDTH);
+        static int ry = random(0, HEIGHTMAP_HEIGHT);
+        if ( millis() > time0 ) {
 
           tap = true;
 
-          if ( millis() - 650 > time0 ) {
-            tap = false;
-            time0 = millis();
-            rx = random(0, HEIGHTMAP_WIDTH);
-            ry = random(0, HEIGHTMAP_HEIGHT);
-          }
         }
 
-        //update speeds (transfer forces between adjacent nodes)
-        for (int x = 0; x < HEIGHTMAP_WIDTH; x++) {
-          for (int y = 0; y < HEIGHTMAP_HEIGHT; y++) {
+        uint8_t calc_cnt = 0;
 
-            int force = 0;
+        while (calc_cnt != 3) {
+          calc_cnt++;
 
-            if ( y < (HEIGHTMAP_HEIGHT - 1) ) {
-              //top right
+          static uint8_t damp_cnt = 0;
+          damp_cnt++;
+          damp_cnt %= 4;
+
+          //update speeds (transfer forces between adjacent nodes)
+          for (int x = 0; x < HEIGHTMAP_WIDTH; x++) {
+            for (int y = 0; y < HEIGHTMAP_HEIGHT; y++) {
+
+              int force = 0;
+
+              if ( y < (HEIGHTMAP_HEIGHT - 1) ) {
+                //top right
+                if ( x > 0 ) {
+                  force += grid[y + 1][x - 1].height - grid[y][x].height;
+                }
+                //top
+                force += grid[y + 1][x].height - grid[y][x].height;
+                //top left
+                if ( x < (HEIGHTMAP_WIDTH - 1) ) {
+                  force += grid[y + 1][x + 1].height - grid[y][x].height;
+                }
+              }
+
+
+              if ( y > 0 ) {
+                //bottom left
+                if ( x > 0 ) {
+                  force += grid[y - 1][x - 1].height - grid[y][x].height;
+                }
+                //bottom
+                force += grid[y - 1][x].height - grid[y][x].height;
+                //bottom right
+                if ( x < (HEIGHTMAP_WIDTH - 1) ) {
+                  force += grid[y - 1][x + 1].height - grid[y][x].height;
+                }
+              }
+
+
+              //left
               if ( x > 0 ) {
-                force += grid[y + 1][x - 1].height - grid[y][x].height;
+                force += grid[y][x - 1].height - grid[y][x].height;
               }
-              //top
-              force += grid[y + 1][x].height - grid[y][x].height;
-              //top left
+              //right
               if ( x < (HEIGHTMAP_WIDTH - 1) ) {
-                force += grid[y + 1][x + 1].height - grid[y][x].height;
+                force += grid[y][x + 1].height - grid[y][x].height;
               }
-            }
+
+              //centering force
+              if (tap && x == rx && y == ry) {
+                static int previous_force_mag = 0;
+                int force_mag = abs(force);
+
+                //phase 0 = neighbor cells are accelerating downward
+                if (phase == 0 && force_mag < previous_force_mag) {
+                  phase = 1;
+                }
+
+                //phase 1 = neighbor cells are decelerating downward
+                if ( phase == 1 && force_mag > previous_force_mag) {
+                  //neighbor cells have reached their lowest point and have started moving upward
+                  //we remove our "tap"
+                  tap = false;
+                  time0 = millis() + random(1000);
+                  rx = random(0, HEIGHTMAP_WIDTH);
+                  ry = random(0, HEIGHTMAP_HEIGHT);
+                  previous_force_mag = 0;
+                  phase = 0;
+                } else if (phase!=2 ) {
+                  force += -100000 - grid[y][x].height;
+                  previous_force_mag = force_mag;
+                }
 
 
-            if ( y > 0 ) {
-              //bottom left
-              if ( x > 0 ) {
-                force += grid[y - 1][x - 1].height - grid[y][x].height;
+              } else {
+                force += 0 - grid[y][x].height / 12;
               }
-              //bottom
-              force += grid[y - 1][x].height - grid[y][x].height;
-              //bottom right
-              if ( x < (HEIGHTMAP_WIDTH - 1) ) {
-                force += grid[y - 1][x + 1].height - grid[y][x].height;
+
+              for (uint8_t i = 0; i < NUM_POINTERS; i++) {
+                if (pointers[i].down && abs(x - pointers[i].x) <= 1 && abs(y - pointers[i].y) <= 1) {
+                  force += -100 * pointers[i].pressure - grid[y][x].height;
+                }
               }
-            }
 
-
-            //left
-            if ( x > 0 ) {
-              force += grid[y][x - 1].height - grid[y][x].height;
-            }
-            //right
-            if ( x < (HEIGHTMAP_WIDTH - 1) ) {
-              force += grid[y][x + 1].height - grid[y][x].height;
-            }
-
-            //centering force
-            if (tap && x == rx && y == ry) {
-              force += -30000 - grid[y][x].height;
-            } else if (tap && abs(x - rx) <= 1 && abs(y - ry) <= 1) {
-              force += -10000 - grid[y][x].height;
-            } else {
-              force += 0 - grid[y][x].height / 4;
-            }
-
-            for (uint8_t i = 0; i < NUM_POINTERS; i++) {
-              if (pointers[i].down && abs(x - pointers[i].x) <= 1 && abs(y - pointers[i].y) <= 1) {
-                force += -100 * pointers[i].pressure - grid[y][x].height;
+              //dampen
+              if (!damp_cnt) {
+                grid[y][x].spd *= .99;
               }
+
+              //add force
+              grid[y][x].spd = grid[y][x].spd + force / 100;
+
             }
-
-            //dampen
-            grid[y][x].spd *= .99;
-
-            //add force
-            grid[y][x].spd = grid[y][x].spd + force / 20;
-
           }
+
+          for (int x = 0; x < HEIGHTMAP_WIDTH; x++) {
+            for (int y = 0; y < HEIGHTMAP_HEIGHT; y++) {
+              grid[y][x].height = _min(_max(grid[y][x].height + grid[y][x].spd, -32768), 32767);
+            }
+          }
+
         }
 
         //update heights
         for (int x = 0; x < HEIGHTMAP_WIDTH; x++) {
           for (int y = 0; y < HEIGHTMAP_HEIGHT; y++) {
-            grid[y][x].height = _min(_max(grid[y][x].height + grid[y][x].spd, -32768), 32767);
 
             //draw LED
             //drawXY(leds, x, y, 160, 255, _min(_max(grid[x][y].height*2, -128),127)+128);

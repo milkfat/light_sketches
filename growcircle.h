@@ -74,7 +74,7 @@ class GROWCIRCLE: public LIGHT_SKETCH {
 
 
       //initial light levels
-      for (int c = 0; c < NUM_LEDS; c++) {
+      for (int c = 0; c < NUM_CIRCLES_GROWCIRCLE; c++) {
         for (int i = 0; i < NUM_LEDS; i++) {
           levels[i] = random(circles[c].level_min, circles[c].level_max + 1);
           level_deltas[i] = random(1, 5);

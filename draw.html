@@ -151,7 +151,7 @@
               t:canvas.height*9/40,
               w:canvas.width/6,
               h:canvas.height*3/40,
-              f:function() {toggledButtons['draw'] = !toggledButtons['draw'];websocket.send('{"dr":'+( (toggledButtons['draw']) ? 1 : 0 ) +'}')},
+              f:function() {toggledButtons['draw'] = !toggledButtons['draw'];jsonBuffer["dr"] = ( (toggledButtons['draw']) ? 1 : 0 ) },
             },
             {
               text:'alt',
@@ -292,9 +292,9 @@
          
          function handleOrientation(event) {
            //absolute = event.absolute;
-           alpha    = parseFloat(event.alpha.toPrecision(4));
-           beta     = parseFloat(event.beta.toPrecision(4));
-           gamma    = parseFloat(event.gamma.toPrecision(4));
+           alpha    = event.alpha;
+           beta     = event.beta;
+           gamma    = event.gamma;
            if (toggledButtons['motion'] && !(oldalpha == alpha && oldbeta == beta && oldgamma == gamma) && new Date().getTime() - 15 > time_then) {
              time_then = new Date().getTime() + 0;
              jsonBuffer.a = [alpha,beta,gamma];
@@ -515,6 +515,63 @@
           if (positionCnt > 0 ) {
             websocket.send(JSON.stringify(jsonBuffer));
             positionCnt = 0;
+
+            let buffer = new ArrayBuffer(3072);
+            var data = new Uint8Array(buffer);
+            var offset = 0;
+            for (var item in jsonBuffer) {
+              if (item == "l") {
+                for(var item2 in jsonBuffer[item]) {
+                  data[offset] = item.charCodeAt();
+                  offset++;
+                  for(var item3 in jsonBuffer[item][item2]) {
+                    data[offset] = jsonBuffer[item][item2][item3];
+                    offset++;
+                  }
+                }
+              }
+
+              if (item == "e") {
+                for (item2 in jsonBuffer[item]) {
+                  data[offset] = item.charCodeAt();
+                  offset++;
+                  data[offset] = jsonBuffer[item][item2];
+                  offset++;
+                }
+              }
+              console.log(item);
+              if (item == "dr") {
+                data[offset] = "d".charCodeAt();
+                offset++;
+                data[offset] = jsonBuffer[item];
+                offset++;
+              }
+
+              if (item == "a") {
+                data[offset] = item.charCodeAt();
+                console.log(item);
+                offset++;
+                for (item2 in jsonBuffer[item]) {
+
+                  let buffer2 = new ArrayBuffer(4);
+                  var data2 = new Float32Array(buffer2);
+                  var data3 = new Uint8Array(buffer2);
+                  data2[0] = jsonBuffer[item][item2];
+
+
+                  data[offset] = data3[0];
+                  data[offset+1] = data3[1];
+                  data[offset+2] = data3[2];
+                  data[offset+3] = data3[3];
+                  offset+=4;
+
+                  console.log(data2[0]);
+                  console.log(data3);
+                }
+              }
+
+            }
+            websocket.send(buffer.slice(0, offset));
             jsonBuffer = {'l':[],'e':[]};
           }
           cursorUpdates = [];

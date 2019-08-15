@@ -64,7 +64,7 @@ class WSS_SERVER {
   public:
 
     void stop() {
-	  server.stop();
+	    server.stop();
       thread.join();
     }
 
@@ -79,123 +79,103 @@ class WSS_SERVER {
     
 
       echo.on_message = [](shared_ptr<WssServer::Connection> connection, shared_ptr<WssServer::InMessage> in_message) {
-
-        try {
-        ptree pt;
-        read_json(*in_message, pt);
-        int cnt = 0;
-        try {
-            for(auto &i : pt.get_child("a")) {
-                switch (cnt) {
-                    case 0:
-                        rotation_alpha = i.second.get_value<float>();
-                        break;
-                    case 1:
-                        rotation_beta = i.second.get_value<float>();
-                        break;
-                    case 2:
-                        rotation_gamma = i.second.get_value<float>();
-                        break;
-                }
-                cnt++;
-            }
-        } catch (const exception &e) {
-
-        }
-
-        try {
-            uint8_t offset = 0;
-            int cnt = 0;
-
-            int x = 0;
-            int y = 0;
-            int x1 = 0;
-            int y1 = 0;
-            uint8_t p = 0;
-            uint8_t id = 0;
-            //if (clientNum == 0) {
-            //  offset = 16;
-            //}
-            for ( auto &i : pt.get_child("l") ) {
-            for ( auto &j : i.second.get_child("") ) {
-                switch (cnt) {
-                case 0:
-                    x = j.second.get_value<int>();
-                    break;
-                case 1:
-                    y = j.second.get_value<int>();
-                    break;
-                case 2:
-                    x1 = j.second.get_value<int>();
-                    break;
-                case 3:
-                    y1 = j.second.get_value<int>();
-                    break;
-                case 4:
-                    p = j.second.get_value<uint8_t>();
-                    break;
-                case 5:
-                    id = j.second.get_value<uint8_t>();
-                    break;
-                }
-                cnt++;
-                button2_down = true;
-            }
-
-            if (drawing_enabled) {
-                draw_line_fine(temp_canvas, (x+offset)*256, y*256, (x1+offset)*256, y1*256, 255, 255, p);
-            }
         
-            update_pointer(x+offset,y,x1+offset,y1,p,id);
+
+        if (in_message->peek() != '{') {
+          
+          //treat our message as binary
+          char c;
+          while (in_message->get(c)) {        
+            switch (c) {
+              
+              case 'l':
+                {
+                  //read cursor location
+                  uint8_t offset = 0;
+                  int x;
+                  int y;
+                  int x1;
+                  int y1;
+                  uint8_t p;
+                  uint8_t id;
+
+                  x = (int)in_message->get();
+                  y = (int)in_message->get();
+                  x1 = (int)in_message->get();
+                  y1 = (int)in_message->get();
+                  p = (int)in_message->get();
+                  id = (int)in_message->get();
+                  button2_down = true;
+
+                  if (drawing_enabled) {
+                      draw_line_fine(temp_canvas, (x+offset)*256, y*256, (x1+offset)*256, y1*256, 255, 255, p);
+                  }
+              
+                  update_pointer(x+offset,y,x1+offset,y1,p,id);
+                }
+                break;
+              
+              case 'e':
+                //read cursor lifts (end)
+                _remove_pointer( (int)in_message->get() );
+                button2_down = false;
+                break;
+
+              case 'a':
+                //read orientation data from device (angles)
+                in_message->read((char*)&rotation_alpha, 4);
+                in_message->read((char*)&rotation_beta, 4);
+                in_message->read((char*)&rotation_gamma, 4);
+                break;
+
+              case 'd':
+                drawing_enabled = (int)in_message->get();
+                break;
+
+            }
+          }
+
+          //process binary
+        }
+        else {
+          try {
+            ptree pt;
+            read_json(*in_message, pt);
+            std::ostringstream buf; 
+            write_json (buf, pt, false);
+            std::cout << buf.str();
+            int cnt = 0;
+            
 
 
+            
+
+            try {
+                next_sketch = pt.get<int>("skalt");
+            } catch (const exception &e) {
             }
             
-        } catch (const exception &e) {
-
-        }
-
-
-        try {
-            for ( auto &i : pt.get_child("e") ) {
-            _remove_pointer( i.second.get_value<uint8_t>() );
-            button2_down = false;
+            try {
+                spacebar = pt.get<int>("sknext");
+            } catch (const exception &e) {
             }
-        } catch (const exception &e) {
 
-        }
-
-        try {
-            drawing_enabled = pt.get<int>("dr");
-        } catch (const exception &e) {
-        }
-
-        try {
-            next_sketch = pt.get<int>("skalt");
-        } catch (const exception &e) {
-        }
-        
-        try {
-            spacebar = pt.get<int>("sknext");
-        } catch (const exception &e) {
-        }
-
-        
-        //clear canvas
-        try {
-            if (pt.get<int>("cc")) {
-            for (int i = 0; i < NUM_LEDS; i++) {
-                temp_canvas[i] = CRGB::Black;
+            
+            //clear canvas
+            try {
+                if (pt.get<int>("cc")) {
+                for (int i = 0; i < NUM_LEDS; i++) {
+                    temp_canvas[i] = CRGB::Black;
+                }
+                }
+            } catch (const exception &e) {
             }
+
+            
+            
+            } catch (const exception &e) {
             }
-        } catch (const exception &e) {
         }
-
-        
-        
-        } catch (const exception &e) {
-        }
-
       };
 
       echo.on_open = [](shared_ptr<WssServer::Connection> connection) {
