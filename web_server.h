@@ -22,9 +22,9 @@ class HTTPS_SERVER {
     
       server.config.port = 8080;
 
-      server.resource["^/draw$"]["GET"] = [](shared_ptr<HttpsServer::Response> response, shared_ptr<HttpsServer::Request> request) {
+      server.resource["^/([^/]+)$"]["GET"] = [](shared_ptr<HttpsServer::Response> response, shared_ptr<HttpsServer::Request> request) {
         fstream infile; 
-        infile.open("draw.html");
+        infile.open(request->path_match[1].str());
         response->write(infile);
         infile.close();
       };
