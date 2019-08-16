@@ -104,8 +104,7 @@
          function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            drawBoxes();
-            drawButtons();
+            updateCanvas();
          }
 
          function drawBoxes() {
@@ -116,21 +115,22 @@
          }
          
          var buttonColors = {
-           'clear':'aqua',
-           'motion':'aqua',
-           'draw':'aqua',
-           'alt':'aqua',
-           'next':'aqua'
+           'CLEAR':'lightgrey',
+           'MOTION':'lightgrey',
+           'DRAW':'lightgrey',
+           'ALT':'lightgrey',
+           'NEXT':'lightgrey'
          }
 
          var depressedButtons = {}
+         var previousDepressedButtons = {}
 
-         var toggledButtons = {'motion':false,'draw':false}
+         var toggledButtons = {'MOTION':false,'DRAW':false}
 
          function getButtons() {
           return [
             {
-              text:'clear',
+              text:'CLEAR',
               l:canvas.width*5/6,
               t:canvas.height/40,
               w:canvas.width/6,
@@ -138,23 +138,23 @@
               f:function() {websocket.send('{"cc":1}')},
             },
             {
-              text:'motion',
+              text:'MOTION',
               l:canvas.width*5/6,
               t:canvas.height*5/40,
               w:canvas.width/6,
               h:canvas.height*3/40,
-              f:function() {toggledButtons['motion'] = !toggledButtons['motion']},
+              f:function() {toggledButtons['MOTION'] = !toggledButtons['MOTION']},
             },
             {
-              text:'draw',
+              text:'DRAW',
               l:canvas.width*5/6,
               t:canvas.height*9/40,
               w:canvas.width/6,
               h:canvas.height*3/40,
-              f:function() {toggledButtons['draw'] = !toggledButtons['draw'];jsonBuffer["dr"] = ( (toggledButtons['draw']) ? 1 : 0 ) },
+              f:function() {toggledButtons['DRAW'] = !toggledButtons['DRAW'];jsonBuffer["dr"] = ( (toggledButtons['DRAW']) ? 1 : 0 ) },
             },
             {
-              text:'alt',
+              text:'ALT',
               l:canvas.width*5/6,
               t:canvas.height*13/40,
               w:canvas.width/6,
@@ -162,7 +162,7 @@
               f:function() {websocket.send('{"skalt":1}')},
             },
             {
-              text:'next',
+              text:'NEXT',
               l:canvas.width*5/6,
               t:canvas.height*17/40,
               w:canvas.width/6,
@@ -175,54 +175,111 @@
          
 
          function drawButtons() {
-          for (var i in cursorTracker) {
-            checkButton(cursorTracker[i].newx,cursorTracker[i].newy,false);
-          }
 
           var Buttons = getButtons();
-          context.font = '16pt Calibri';
+          context.font = '24pt Calibri';
           
           for (var i in Buttons) {
             var button = Buttons[i];
-            context.fillStyle = buttonColors[button.text];
+            
+            context.shadowColor = 'black';
+            var gradient = context.createLinearGradient(0,button.t,0,button.t+button.h);
+              gradient.addColorStop(0, 'white');
+              gradient.addColorStop(1, 'black');
             if (depressedButtons[button.text]) {
-              context.fillStyle = 'deepskyblue';
+              context.shadowBlur = 4;
+              context.shadowOffsetX = 1;
+              context.shadowOffsetY = 1;
+              button.l+=2;
+              button.t+=2;
+            } else {
+              context.shadowBlur = 8;
+              context.shadowOffsetX = 3;
+              context.shadowOffsetY = 3;
             }
-            context.fillRect(button.l, button.t, button.w, button.h);
-            if (toggledButtons[button.text]) {
-              context.fillStyle = 'blue';
-              context.fillRect(button.l, button.t, 10, button.h);
-            }
-            context.fillStyle = 'black';
-            context.fillText(button.text, button.l+20, button.t+20);
-          }
+            context.fillStyle = gradient;
+            context.beginPath();
+            context.moveTo(button.l+button.w,button.t);
+            context.lineTo(button.l+15, button.t);
+            context.quadraticCurveTo(button.l, button.t, button.l, button.t+15);
+            context.lineTo(button.l, button.t+button.h-15);
+            context.quadraticCurveTo(button.l, button.t+button.h, button.l+15, button.t+button.h);
+            context.lineTo(button.l+button.w, button.t+button.h);
+            context.closePath();
+            context.fill();
+            context.shadowColor = 'transparent';
 
-          depressedButtons = {};
+            //context.filter = 'blur(2px)';
+            context.fillStyle = buttonColors[button.text];
+            
+            
+            var outlinepx = 0;
+            var curvepx = 0;
+
+
+            context.save();
+            context.clip();
+            context.filter = 'blur(5px)';
+            context.beginPath();
+            context.moveTo(button.l+button.w+10,button.t+outlinepx);
+            context.lineTo(button.l+15+curvepx, button.t+outlinepx);
+            context.quadraticCurveTo(button.l+outlinepx, button.t+outlinepx, button.l+outlinepx, button.t+15+curvepx);
+            context.lineTo(button.l+outlinepx, button.t+button.h-15-curvepx);
+            context.quadraticCurveTo(button.l+outlinepx, button.t+button.h-outlinepx, button.l+15+curvepx, button.t+button.h-outlinepx);
+            context.lineTo(button.l+button.w+10, button.t+button.h-outlinepx);
+            context.closePath();
+            context.fill();
+            context.filter = 'none';
+
+            if (toggledButtons[button.text]) {
+
+              var gradient = context.createLinearGradient(button.l,0,button.l+15,0);
+              gradient.addColorStop(0, 'rgba(0,128,0,255)');
+              gradient.addColorStop(1, 'rgba(0,128,0,0)');
+              context.fillStyle = gradient;
+
+              context.filter = 'blur(5px)';
+              context.beginPath();
+              context.moveTo(button.l+10, button.t);
+              context.quadraticCurveTo(button.l, button.t, button.l, button.t+15);
+              context.lineTo(button.l, button.t+button.h-15);
+              context.quadraticCurveTo(button.l, button.t+button.h, button.l+10, button.t+button.h);
+              context.closePath();
+              context.fill();
+              context.filter = 'none';
+            }
+            context.restore();
+            context.fillStyle = 'black';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText(button.text, button.l+button.w/2+outlinepx+5, button.t+button.h/2, button.w-outlinepx-10);
+          }
 
          }
          
          //check for button presses
-         function checkButton(x, y, exec = true) {
+         function checkButton(x, y, runFunc = true) {
           var Buttons = getButtons();
           for (var i in Buttons) {
             var button = Buttons[i];
                if (x > button.l && y > button.t && x < (button.l+button.w) && y < button.t+button.h ) {
-                 if (exec) {button.f();}   
-                 depressedButtons[button.text]=true; 
+                 if (runFunc) {button.f();}   
+                 depressedButtons[button.text]=true;
                }
             }
          }
          
          function writeMessage(canvas, message) {
-           context.clearRect(0, 0, canvas.width, canvas.height);
+           context.fillStyle = 'grey';
+           context.fillRect(0, 0, canvas.width, canvas.height);
            drawBoxes();
            drawButtons();
            context.font = '12pt Calibri';
            context.fillStyle = 'red';
            //context.fillText(absolute, 10, 75);
-           context.fillText('alpha: ' + alpha, 10, 100);
-           context.fillText('beta: ' + beta, 10, 125);
-           context.fillText('gamma: ' + gamma, 10, 150);
+           context.fillText('alpha: ' + alpha, 10, 15);
+           context.fillText('beta: ' + beta, 10, 30);
+           context.fillText('gamma: ' + gamma, 10, 45);
            //context.fillText('accel: ', 10, 175);
            //context.fillText('x: ' + acceleration.x, 10, 200);
            //context.fillText('y: ' + acceleration.y, 10, 225);
@@ -234,6 +291,14 @@
            //context.fillText('gamma: ' + rototationRate.gamma, 10, 350);
            //context.fillText(interval, 10, 250)
          }
+
+        function updateCanvas() {
+          //begin assembling canvas text
+          var message = 'Cursor position:'
+    
+          //add the cursor position to the canvas text
+          writeMessage(canvas, message);
+        }
          
          //functions to adjust canvas coordinates to LED coordinates
          function adjust_x(x) {
@@ -341,7 +406,6 @@
             cursorTracker.mouse.oldf = 0;
             mousedown = 1;
             cursorUpdates.push('mouse'); 
-            checkButton(cp.x, cp.y);
             //remove the mouse from our cursorLift object
             for (i = 0; i < cursorLifts.length; i++) {
               if (cursorLifts[i][0] == 255) {
@@ -391,7 +455,6 @@
               cursorTracker[touchId].newf = tp.f;
               cursorTracker[touchId].oldf = tp.f;
               cursorUpdates.push(evt.changedTouches[i].identifier);
-			        checkButton(tp.x, tp.y);
             }
           
            
@@ -427,154 +490,163 @@
          
          
          
-         setInterval(monitorCursors, 15);
+        setInterval(monitorCursors, 15);
          
-         function monitorCursors () {  
-		  
-			  //begin assembling canvas text
-			  var message = 'Cursor position:'
-		 
-			  //add the cursor position to the canvas text
-			  writeMessage(canvas, message);
-		 		
-		 	  //process mouse ups/touch ends... send multiple times to lessen the chance of loss
-		 	  for (i = 0; i < cursorLifts.length; i++) {
-		 	    jsonBuffer.e.push(cursorLifts[i][0]);
-		 	    cursorLifts[i][1]++;
-		 	    positionCnt++;
-		 	    if(cursorLifts[i][1] > 5) {
-		 	      cursorLifts.splice(i,1);
-		 	      i--;
-		 	    }
-		 	  }
-		  
-		 
-			  //process cursor positions and add them to our JSON transmission
-			  for (i = 0; i < cursorUpdates.length; i++) {
-		 
-				var cursor = cursorTracker[cursorUpdates[i]];
-				var id = cursorUpdates[i];
-				if(id == 'mouse') {
-				  id = 255;
-			    } else {
-			      id %= 255;
-			      id = Math.abs(id);
-			    }
-			  
-				//adjust cursor coordinates to our LED coordinates
-				if ( !cursor ) {break;}
-		 		var force_update = false;
-		 		
-				var newx = adjust_x(cursor.newx);
-				var newy = adjust_y(cursor.newy);
-				var newf = Math.round(cursor.newf*255);
-				var newa = alpha;
-				var newb = beta;
-				var newg = gamma;
-				var oldx = newx;
-				var oldy = newy;
-				var oldf = newf;
-		 		if(cursor.oldx) {
-					oldx = adjust_x(cursor.oldx);
-					oldy = adjust_y(cursor.oldy);
-				    oldf = Math.round(cursor.oldf*255);
-				} else {
-					force_update = true;
-				}
-				if ( !(newx == oldx && newy == oldy && newf == oldf) || force_update ) {
-		 
-				  //add any drags to the position transmission
-			  
-				  positionCnt++;
-		 
-				  //the actual JSON bit
-				  jsonBuffer.l.push([newx,newy,oldx,oldy,newf,id]);
-				  
-				  //immediately send if we get too many packets
-				  //I suspect that some devices (iPhone) throttle the setInterval
-				  //  thing to preserve power which creates one huge death packet
-		 		  if (positionCnt > 5 ) {
-					websocket.send(JSON.stringify(jsonBuffer));
-					positionCnt = 0;
-					jsonBuffer = {'l':[],'e':[]};
-				  }
-				  
-				  //record the new positions in our tracking object
-				  cursor.oldx = cursor.newx;
-				  cursor.oldy = cursor.newy;
-          cursor.oldf = cursor.newf;
-			  
-				}
-			  }
-          
-          
 
-                   
-          //send JSON transmission if there have been any position changes
-          //limit transmissions to 60 per second
-          if (positionCnt > 0 ) {
+        function monitorCursors () {
+
+          for (var i in cursorTracker) {
+            var runFunc = false;
+            if (cursorTracker[i].old === undefined) {
+              runFunc = true;
+              cursorTracker[i].old = true;
+            }
+            checkButton(cursorTracker[i].newx,cursorTracker[i].newy,runFunc);
+          }
+
+          if ( JSON.stringify(depressedButtons) != JSON.stringify(previousDepressedButtons) ) {
+            updateCanvas();
+            console.log(depressedButtons);
+            console.log(previousDepressedButtons);
+            console.log(cursorTracker);
+            console.log("");
+            previousDepressedButtons = depressedButtons;
+          }
+          depressedButtons = {};
+          
+          //process mouse ups/touch ends... send multiple times to lessen the chance of loss
+          for (i = 0; i < cursorLifts.length; i++) {
+            jsonBuffer.e.push(cursorLifts[i][0]);
+            cursorLifts[i][1]++;
+            positionCnt++;
+            if(cursorLifts[i][1] > 5) {
+              cursorLifts.splice(i,1);
+              i--;
+            }
+          }
+        
+      
+          //process cursor positions and add them to our JSON transmission
+          for (i = 0; i < cursorUpdates.length; i++) {
+      
+          var cursor = cursorTracker[cursorUpdates[i]];
+          var id = cursorUpdates[i];
+          if(id == 'mouse') {
+            id = 255;
+            } else {
+              id %= 255;
+              id = Math.abs(id);
+            }
+          
+          //adjust cursor coordinates to our LED coordinates
+          if ( !cursor ) {break;}
+          var force_update = false;
+          
+          var newx = adjust_x(cursor.newx);
+          var newy = adjust_y(cursor.newy);
+          var newf = Math.round(cursor.newf*255);
+          var newa = alpha;
+          var newb = beta;
+          var newg = gamma;
+          var oldx = newx;
+          var oldy = newy;
+          var oldf = newf;
+          if(cursor.oldx) {
+            oldx = adjust_x(cursor.oldx);
+            oldy = adjust_y(cursor.oldy);
+              oldf = Math.round(cursor.oldf*255);
+          } else {
+            force_update = true;
+          }
+          if ( !(newx == oldx && newy == oldy && newf == oldf) || force_update ) {
+      
+            //add any drags to the position transmission
+          
+            positionCnt++;
+      
+            //the actual JSON bit
+            jsonBuffer.l.push([newx,newy,oldx,oldy,newf,id]);
+            
+            //immediately send if we get too many packets
+            //I suspect that some devices (iPhone) throttle the setInterval
+            //  thing to preserve power which creates one huge death packet
+            if (positionCnt > 5 ) {
             websocket.send(JSON.stringify(jsonBuffer));
             positionCnt = 0;
+            jsonBuffer = {'l':[],'e':[]};
+            }
+            
+            //record the new positions in our tracking object
+            cursor.oldx = cursor.newx;
+            cursor.oldy = cursor.newy;
+            cursor.oldf = cursor.newf;
+          
+          }
+          }
+            
+            
 
-            let buffer = new ArrayBuffer(3072);
-            var data = new Uint8Array(buffer);
-            var offset = 0;
-            for (var item in jsonBuffer) {
-              if (item == "l") {
-                for(var item2 in jsonBuffer[item]) {
-                  data[offset] = item.charCodeAt();
-                  offset++;
-                  for(var item3 in jsonBuffer[item][item2]) {
-                    data[offset] = jsonBuffer[item][item2][item3];
+                    
+            //send JSON transmission if there have been any position changes
+            //limit transmissions to 60 per second
+            if (positionCnt > 0 ) {
+              websocket.send(JSON.stringify(jsonBuffer));
+              positionCnt = 0;
+
+              let buffer = new ArrayBuffer(3072);
+              var data = new Uint8Array(buffer);
+              var offset = 0;
+              for (var item in jsonBuffer) {
+                if (item == "l") {
+                  for(var item2 in jsonBuffer[item]) {
+                    data[offset] = item.charCodeAt();
+                    offset++;
+                    for(var item3 in jsonBuffer[item][item2]) {
+                      data[offset] = jsonBuffer[item][item2][item3];
+                      offset++;
+                    }
+                  }
+                }
+
+                if (item == "e") {
+                  for (item2 in jsonBuffer[item]) {
+                    data[offset] = item.charCodeAt();
+                    offset++;
+                    data[offset] = jsonBuffer[item][item2];
                     offset++;
                   }
                 }
-              }
+                if (item == "dr") {
+                  data[offset] = "d".charCodeAt();
+                  offset++;
+                  data[offset] = jsonBuffer[item];
+                  offset++;
+                }
 
-              if (item == "e") {
-                for (item2 in jsonBuffer[item]) {
+                if (item == "a") {
                   data[offset] = item.charCodeAt();
                   offset++;
-                  data[offset] = jsonBuffer[item][item2];
-                  offset++;
+                  for (item2 in jsonBuffer[item]) {
+
+                    let buffer2 = new ArrayBuffer(4);
+                    var data2 = new Float32Array(buffer2);
+                    var data3 = new Uint8Array(buffer2);
+                    data2[0] = jsonBuffer[item][item2];
+
+
+                    data[offset] = data3[0];
+                    data[offset+1] = data3[1];
+                    data[offset+2] = data3[2];
+                    data[offset+3] = data3[3];
+                    offset+=4;
+                  }
                 }
+
               }
-              console.log(item);
-              if (item == "dr") {
-                data[offset] = "d".charCodeAt();
-                offset++;
-                data[offset] = jsonBuffer[item];
-                offset++;
-              }
-
-              if (item == "a") {
-                data[offset] = item.charCodeAt();
-                console.log(item);
-                offset++;
-                for (item2 in jsonBuffer[item]) {
-
-                  let buffer2 = new ArrayBuffer(4);
-                  var data2 = new Float32Array(buffer2);
-                  var data3 = new Uint8Array(buffer2);
-                  data2[0] = jsonBuffer[item][item2];
-
-
-                  data[offset] = data3[0];
-                  data[offset+1] = data3[1];
-                  data[offset+2] = data3[2];
-                  data[offset+3] = data3[3];
-                  offset+=4;
-
-                  console.log(data2[0]);
-                  console.log(data3);
-                }
-              }
-
+              websocket.send(buffer.slice(0, offset));
+              jsonBuffer = {'l':[],'e':[]};
             }
-            websocket.send(buffer.slice(0, offset));
-            jsonBuffer = {'l':[],'e':[]};
-          }
-          cursorUpdates = [];
+            cursorUpdates = [];
          };
       </script>
    </body>
