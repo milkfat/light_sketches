@@ -4,6 +4,7 @@
       <style>
          html body {position: fixed;width:100%;height: 100%;margin: 0;border: 0;overflow:hidden;display: block;}
          p {display: none;}
+         @font-face {font-family: Proxima Nova Soft;src: url('3291C4_3_0.woff2') format('woff2');}
       </style>
    </head>
    <body>
@@ -29,11 +30,11 @@
                 };
              }
          
-           window.addEventListener("load", onLoad, false);
+           window.addEventListener("DOMContentLoaded", onLoad, false);
          }
          
          var canvas = document.getElementById('myCanvas');
-         var context = canvas.getContext('2d');
+         var ctx = canvas.getContext('2d');
          
          function fullScreen() {
 		  // Kind of painful, but this is how it works for now
@@ -74,7 +75,8 @@
             websocket.onmessage = function(evt) { onMessage(evt) };
             websocket.onerror = function(evt) { onError(evt) };
             window.addEventListener('resize', resizeCanvas, false);
-            resizeCanvas();
+            document.fonts.load('24pt Proxima Nova Soft').then(resizeCanvas);  
+            setInterval(monitorCursors, 15);  
          }
          
          function onOpen(evt) {
@@ -108,10 +110,10 @@
          }
 
          function drawBoxes() {
-          context.fillStyle = 'black';
-          context.fillRect(canvas.width*3/5, canvas.height/8, canvas.width/5, canvas.height*6/8);
-          context.fillStyle = 'black';
-          context.fillRect(canvas.width/5, canvas.height/8, canvas.width/5, canvas.height*6/8);
+          ctx.fillStyle = 'black';
+          ctx.fillRect(canvas.width*3/5, canvas.height/8, canvas.width/5, canvas.height*6/8);
+          ctx.fillStyle = 'black';
+          ctx.fillRect(canvas.width/5, canvas.height/8, canvas.width/5, canvas.height*6/8);
          }
          
          var buttonColors = {
@@ -177,82 +179,82 @@
          function drawButtons() {
 
           var Buttons = getButtons();
-          context.font = '24pt Calibri';
           
           for (var i in Buttons) {
             var button = Buttons[i];
             
-            context.shadowColor = 'black';
-            var gradient = context.createLinearGradient(0,button.t,0,button.t+button.h);
+            ctx.shadowColor = 'black';
+            var gradient = ctx.createLinearGradient(0,button.t,0,button.t+button.h);
               gradient.addColorStop(0, 'white');
               gradient.addColorStop(1, 'black');
             if (depressedButtons[button.text]) {
-              context.shadowBlur = 4;
-              context.shadowOffsetX = 1;
-              context.shadowOffsetY = 1;
+              ctx.shadowBlur = 4;
+              ctx.shadowOffsetX = 1;
+              ctx.shadowOffsetY = 1;
               button.l+=2;
               button.t+=2;
             } else {
-              context.shadowBlur = 8;
-              context.shadowOffsetX = 3;
-              context.shadowOffsetY = 3;
+              ctx.shadowBlur = 8;
+              ctx.shadowOffsetX = 3;
+              ctx.shadowOffsetY = 3;
             }
-            context.fillStyle = gradient;
-            context.beginPath();
-            context.moveTo(button.l+button.w,button.t);
-            context.lineTo(button.l+15, button.t);
-            context.quadraticCurveTo(button.l, button.t, button.l, button.t+15);
-            context.lineTo(button.l, button.t+button.h-15);
-            context.quadraticCurveTo(button.l, button.t+button.h, button.l+15, button.t+button.h);
-            context.lineTo(button.l+button.w, button.t+button.h);
-            context.closePath();
-            context.fill();
-            context.shadowColor = 'transparent';
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.moveTo(button.l+button.w,button.t);
+            ctx.lineTo(button.l+15, button.t);
+            ctx.quadraticCurveTo(button.l, button.t, button.l, button.t+15);
+            ctx.lineTo(button.l, button.t+button.h-15);
+            ctx.quadraticCurveTo(button.l, button.t+button.h, button.l+15, button.t+button.h);
+            ctx.lineTo(button.l+button.w, button.t+button.h);
+            ctx.closePath();
+            ctx.fill();
+            ctx.shadowColor = 'transparent';
 
-            //context.filter = 'blur(2px)';
-            context.fillStyle = buttonColors[button.text];
+            //ctx.filter = 'blur(2px)';
+            ctx.fillStyle = buttonColors[button.text];
             
             
             var outlinepx = 0;
             var curvepx = 0;
 
 
-            context.save();
-            context.clip();
-            context.filter = 'blur(5px)';
-            context.beginPath();
-            context.moveTo(button.l+button.w+10,button.t+outlinepx);
-            context.lineTo(button.l+15+curvepx, button.t+outlinepx);
-            context.quadraticCurveTo(button.l+outlinepx, button.t+outlinepx, button.l+outlinepx, button.t+15+curvepx);
-            context.lineTo(button.l+outlinepx, button.t+button.h-15-curvepx);
-            context.quadraticCurveTo(button.l+outlinepx, button.t+button.h-outlinepx, button.l+15+curvepx, button.t+button.h-outlinepx);
-            context.lineTo(button.l+button.w+10, button.t+button.h-outlinepx);
-            context.closePath();
-            context.fill();
-            context.filter = 'none';
+            ctx.save();
+            ctx.clip();
+            ctx.filter = 'blur(5px)';
+            ctx.beginPath();
+            ctx.moveTo(button.l+button.w+10,button.t+outlinepx);
+            ctx.lineTo(button.l+15+curvepx, button.t+outlinepx);
+            ctx.quadraticCurveTo(button.l+outlinepx, button.t+outlinepx, button.l+outlinepx, button.t+15+curvepx);
+            ctx.lineTo(button.l+outlinepx, button.t+button.h-15-curvepx);
+            ctx.quadraticCurveTo(button.l+outlinepx, button.t+button.h-outlinepx, button.l+15+curvepx, button.t+button.h-outlinepx);
+            ctx.lineTo(button.l+button.w+10, button.t+button.h-outlinepx);
+            ctx.closePath();
+            ctx.fill();
+            ctx.filter = 'none';
 
             if (toggledButtons[button.text]) {
 
-              var gradient = context.createLinearGradient(button.l,0,button.l+15,0);
+              var gradient = ctx.createLinearGradient(button.l,0,button.l+15,0);
               gradient.addColorStop(0, 'rgba(0,128,0,255)');
               gradient.addColorStop(1, 'rgba(0,128,0,0)');
-              context.fillStyle = gradient;
+              ctx.fillStyle = gradient;
 
-              context.filter = 'blur(5px)';
-              context.beginPath();
-              context.moveTo(button.l+10, button.t);
-              context.quadraticCurveTo(button.l, button.t, button.l, button.t+15);
-              context.lineTo(button.l, button.t+button.h-15);
-              context.quadraticCurveTo(button.l, button.t+button.h, button.l+10, button.t+button.h);
-              context.closePath();
-              context.fill();
-              context.filter = 'none';
+              ctx.filter = 'blur(5px)';
+              ctx.beginPath();
+              ctx.moveTo(button.l+10, button.t);
+              ctx.quadraticCurveTo(button.l, button.t, button.l, button.t+15);
+              ctx.lineTo(button.l, button.t+button.h-15);
+              ctx.quadraticCurveTo(button.l, button.t+button.h, button.l+10, button.t+button.h);
+              ctx.closePath();
+              ctx.fill();
+              ctx.filter = 'none';
             }
-            context.restore();
-            context.fillStyle = 'black';
-            context.textAlign = 'center';
-            context.textBaseline = 'middle';
-            context.fillText(button.text, button.l+button.w/2+outlinepx+5, button.t+button.h/2, button.w-outlinepx-10);
+            ctx.restore();
+            ctx.fillStyle = 'black';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '24pt Proxima Nova Soft';
+            ctx.fillText(button.text, button.l+button.w/2+outlinepx+5, button.t+button.h/2, button.w-outlinepx-10);
           }
 
          }
@@ -270,26 +272,26 @@
          }
          
          function writeMessage(canvas, message) {
-           context.fillStyle = 'grey';
-           context.fillRect(0, 0, canvas.width, canvas.height);
+           ctx.fillStyle = 'grey';
+           ctx.fillRect(0, 0, canvas.width, canvas.height);
            drawBoxes();
            drawButtons();
-           context.font = '12pt Calibri';
-           context.fillStyle = 'red';
-           //context.fillText(absolute, 10, 75);
-           context.fillText('alpha: ' + alpha, 10, 15);
-           context.fillText('beta: ' + beta, 10, 30);
-           context.fillText('gamma: ' + gamma, 10, 45);
-           //context.fillText('accel: ', 10, 175);
-           //context.fillText('x: ' + acceleration.x, 10, 200);
-           //context.fillText('y: ' + acceleration.y, 10, 225);
-           //context.fillText('z: ' + acceleration.z, 10, 250);
-           //context.fillText(accelerationIncludingGravity, 10, 200);
-           //context.fillText('rotate: ', 10, 275);
-           //context.fillText('alpha: ' + rototationRate.alpha, 10, 300);
-           //context.fillText('beta: ' + rototationRate.beta, 10, 325);
-           //context.fillText('gamma: ' + rototationRate.gamma, 10, 350);
-           //context.fillText(interval, 10, 250)
+           ctx.font = '12pt Calibri';
+           ctx.fillStyle = 'red';
+           //ctx.fillText(absolute, 10, 75);
+           ctx.fillText('alpha: ' + alpha, 10, 15);
+           ctx.fillText('beta: ' + beta, 10, 30);
+           ctx.fillText('gamma: ' + gamma, 10, 45);
+           //ctx.fillText('accel: ', 10, 175);
+           //ctx.fillText('x: ' + acceleration.x, 10, 200);
+           //ctx.fillText('y: ' + acceleration.y, 10, 225);
+           //ctx.fillText('z: ' + acceleration.z, 10, 250);
+           //ctx.fillText(accelerationIncludingGravity, 10, 200);
+           //ctx.fillText('rotate: ', 10, 275);
+           //ctx.fillText('alpha: ' + rototationRate.alpha, 10, 300);
+           //ctx.fillText('beta: ' + rototationRate.beta, 10, 325);
+           //ctx.fillText('gamma: ' + rototationRate.gamma, 10, 350);
+           //ctx.fillText(interval, 10, 250)
          }
 
         function updateCanvas() {
@@ -490,7 +492,6 @@
          
          
          
-        setInterval(monitorCursors, 15);
          
 
         function monitorCursors () {
@@ -506,10 +507,10 @@
 
           if ( JSON.stringify(depressedButtons) != JSON.stringify(previousDepressedButtons) ) {
             updateCanvas();
-            console.log(depressedButtons);
-            console.log(previousDepressedButtons);
-            console.log(cursorTracker);
-            console.log("");
+            // console.log(depressedButtons);
+            // console.log(previousDepressedButtons);
+            // console.log(cursorTracker);
+            // console.log("");
             previousDepressedButtons = depressedButtons;
           }
           depressedButtons = {};
