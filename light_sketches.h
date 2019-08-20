@@ -286,6 +286,14 @@ class LIGHT_SKETCHES {
       return light_sketches[current_light_sketch]->name();
     }
 
+    const char* names(uint8_t pos) {
+      if (pos < number_of_light_sketches) {
+        return light_sketches[pos]->name();
+      } else {
+        return nullptr;
+      }
+    }
+
     void next_effect() {
       light_sketches[current_light_sketch]->next_effect();
     }
@@ -294,6 +302,16 @@ class LIGHT_SKETCHES {
         salloc();
         light_sketches[current_light_sketch]->destroy();
         current_light_sketch++;
+        if (current_light_sketch >= number_of_light_sketches) {
+          current_light_sketch = 0;
+        }
+        light_sketches[current_light_sketch]->create();
+    }
+
+    void set_sketch(int i) {
+        salloc();
+        light_sketches[current_light_sketch]->destroy();
+        current_light_sketch=i;
         if (current_light_sketch >= number_of_light_sketches) {
           current_light_sketch = 0;
         }

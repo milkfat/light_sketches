@@ -68,6 +68,25 @@ class WSS_SERVER {
       thread.join();
     }
 
+    void wssCurrentSketch () {
+      char out_message[100] = "{\"current_sketch\":\"";
+      uint16_t offset = 19;
+      for (int j = 0; j < 20; j++) {
+        char c = light_sketches.name()[j];
+        if (!c) break;
+        out_message[offset] = c;
+        offset++;
+      }
+      out_message[offset] = '"';
+      offset++;
+      out_message[offset] = '}';
+      offset++;
+      out_message[offset] = '\0';
+      
+      for(auto &a_connection : server.get_connections())
+        a_connection->send(out_message);
+    }
+
     void start() {
     
       using namespace std;
@@ -76,10 +95,10 @@ class WSS_SERVER {
       server.config.port = 8081;
 
       auto &echo = server.endpoint["^/socket$"];
-    
+
+      
 
       echo.on_message = [](shared_ptr<WssServer::Connection> connection, shared_ptr<WssServer::InMessage> in_message) {
-        
 
         if (in_message->peek() != '{') {
           
@@ -92,19 +111,19 @@ class WSS_SERVER {
                 {
                   //read cursor location
                   uint8_t offset = 0;
-                  int x;
-                  int y;
-                  int x1;
-                  int y1;
-                  uint8_t p;
-                  uint8_t id;
+                  int16_t x;
+                  int16_t y;
+                  int16_t x1;
+                  int16_t y1;
+                  int16_t p;
+                  int16_t id;
 
-                  x = (int)in_message->get();
-                  y = (int)in_message->get();
-                  x1 = (int)in_message->get();
-                  y1 = (int)in_message->get();
-                  p = (int)in_message->get();
-                  id = (int)in_message->get();
+                  in_message->read((char*)&x, 2);
+                  in_message->read((char*)&y, 2);
+                  in_message->read((char*)&x1, 2);
+                  in_message->read((char*)&y1, 2);
+                  in_message->read((char*)&p, 2);
+                  in_message->read((char*)&id, 2);
                   button2_down = true;
 
                   if (drawing_enabled) {
@@ -130,6 +149,52 @@ class WSS_SERVER {
 
               case 'd':
                 drawing_enabled = (int)in_message->get();
+                break;
+
+              case 'n':
+					      spacebar=(int)in_message->get();
+                break;
+
+              case 'v':
+					      next_sketch=(int)in_message->get();
+                break;
+
+              case 'z':
+					      in_message->getline(next_sketch_name,20,'\0');
+                break;
+
+              case 'c': //send configuration
+                {
+                  char out_message[1000] = "{\"light_sketches\":[";
+                  uint16_t offset = 19;
+                  for (int i = 0; i < MAX_NUMBER_OF_LIGHT_SKETCHES; i++) {
+                    out_message[offset] = '"';
+                    offset++;
+                    if (light_sketches.names(i) != nullptr) {
+                      for (int j = 0; j < 20; j++) {
+                        if (light_sketches.names(i)[j]) {
+                          out_message[offset] = light_sketches.names(i)[j];
+                          offset++;
+                        }
+                      }
+                    }
+                    out_message[offset] = '"';
+                    offset++;
+                    out_message[offset] = ',';
+                    offset++;
+                  }
+                  offset--;
+                  out_message[offset] = ']';
+                  offset++;
+                  out_message[offset] = '}';
+                  connection->send(out_message, [](const SimpleWeb::error_code &ec) {
+                    if(ec) {
+                      cout << "Server: Error sending message. " <<
+                          // See http://www.boost.org/doc/libs/1_55_0/doc/html/boost_asio/reference.html, Error Codes for error code meanings
+                          "Error: " << ec << ", error message: " << ec.message() << endl;
+                    }
+                  });
+                }
                 break;
 
             }
@@ -178,8 +243,9 @@ class WSS_SERVER {
         }
       };
 
-      echo.on_open = [](shared_ptr<WssServer::Connection> connection) {
+      echo.on_open = [this](shared_ptr<WssServer::Connection> connection) {
         cout << "Server: Opened connection " << connection.get() << endl;
+        this->wssCurrentSketch();
       };
 
       // See RFC 6455 7.4.1. for status codes

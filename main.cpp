@@ -228,7 +228,7 @@ int main(int argc, char **argv){
 						debug_count=1;
 						uint32_t debug_micros0_avg = debug_micros0/debug_count;
 						uint32_t debug_micros1_avg = debug_micros1/debug_count;
-						//std::cout << (debug_micros1_avg/(debug_micros0_avg+1.f)) << " " << debug_micros1_avg << " " << debug_micros0_avg << "\n";
+						//std::cout << (debug_micros1_avg/(debug_micros0_avg+1.f)) << " " << debug_micros1_avg << "` " << debug_micros0_avg << "\n";
 						//std::cout << "avg iterations: " << (iteration_cnt/iteration_calls) << "\n";
 						max_iterations = 0;
 						iteration_cnt = 0;
@@ -249,7 +249,19 @@ int main(int argc, char **argv){
 				if (spacebar) {
 					spacebar = false; 
 					light_sketches.next_sketch();
+					wss_server.wssCurrentSketch();
         			std::cout << "Current sketch: " << light_sketches.name() << "\n";
+				}
+				if (next_sketch_name[0]) {
+					std::cout << "Next sketch name: " << next_sketch_name << "\n";
+					for (int i = 0; i < 20; i++) {
+						if (light_sketches.names(i) && strcmp(next_sketch_name, light_sketches.names(i)) == 0) {
+							light_sketches.set_sketch(i);
+							wss_server.wssCurrentSketch();
+							break;
+						}
+					}
+					next_sketch_name[0]='\0';
 				}
 				if (next_sketch) {
 					next_sketch = false; 

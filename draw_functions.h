@@ -5,6 +5,7 @@
 
 bool spacebar = false;
 bool next_sketch = false;
+char next_sketch_name[20] = "";
 bool reset_sketch = false;
 bool typing_mode = false;
 

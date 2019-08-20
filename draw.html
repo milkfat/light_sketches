@@ -1,14 +1,21 @@
 <!DOCTYPE html><html>
    <head>
+      <meta name="apple-mobile-web-app-capable" content="yes">
+      <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
       <title>DRAW!</title>
       <style>
          html body {position: fixed;width:100%;height: 100%;margin: 0;border: 0;overflow:hidden;display: block;}
          p {display: none;}
+         #myCanvas0 {z-index: 0;}
+         #myCanvas1 {z-index: -1;}
+         #myCanvas2 {z-index: -2;}
          @font-face {font-family: Proxima Nova Soft;src: url('3291C4_3_0.woff2') format('woff2');}
       </style>
    </head>
    <body>
-      <canvas id='myCanvas' style='position:absolute; left:0px; top:0px;'></canvas>
+      <canvas id='myCanvas0' style='position:absolute; left:0px; top:0px;'></canvas>
+      <canvas id='myCanvas1' style='position:absolute; left:0px; top:0px;'></canvas>
+      <canvas id='myCanvas2' style='position:absolute; left:0px; top:0px;'></canvas>
       <p id = 'status'>Not connected</p>
       <p>Users connected: <span id = 'connected'>0
          </span>
@@ -33,8 +40,12 @@
            window.addEventListener("DOMContentLoaded", onLoad, false);
          }
          
-         var canvas = document.getElementById('myCanvas');
+         var canvas = document.getElementById('myCanvas0');
+         var canvas1 = document.getElementById('myCanvas1');
+         var canvas2 = document.getElementById('myCanvas2');
          var ctx = canvas.getContext('2d');
+         var ctx1 = canvas1.getContext('2d');
+         var ctx2 = canvas2.getContext('2d');
          
          function fullScreen() {
 		  // Kind of painful, but this is how it works for now
@@ -82,6 +93,10 @@
          function onOpen(evt) {
             state.className = "success";
             state.innerHTML = "Connected to server";
+            let buffer = new ArrayBuffer(1);
+            var data = new Uint8Array(buffer);
+            data[0] = 'c'.charCodeAt();
+            websocket.send(buffer);
          }
          
          function onClose(evt) {
@@ -93,9 +108,14 @@
             setTimeout(function(){onLoad()}, 500);
          }
          
-         
+         var config={};
          function onMessage(evt) {
             var message = evt.data;
+            var message_json = JSON.parse(message);
+            for (var item in message_json) {
+              config[item] = message_json[item]; 
+            }
+            updateCanvas();
          }
          
          function onError(evt) {
@@ -106,10 +126,15 @@
          function resizeCanvas() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
+            canvas1.width = window.innerWidth;
+            canvas1.height = window.innerHeight;
+            canvas2.width = window.innerWidth;
+            canvas2.height = window.innerHeight;
             updateCanvas();
          }
 
          function drawBoxes() {
+          let ctx = ctx2;
           ctx.fillStyle = 'black';
           ctx.fillRect(canvas.width*3/5, canvas.height/8, canvas.width/5, canvas.height*6/8);
           ctx.fillStyle = 'black';
@@ -134,15 +159,15 @@
             {
               text:'CLEAR',
               l:canvas.width*5/6,
-              t:canvas.height/40,
+              t:canvas.height/8,
               w:canvas.width/6,
               h:canvas.height*3/40,
-              f:function() {websocket.send('{"cc":1}')},
+              f:function() {jsonBuffer["cc"]=1},
             },
             {
               text:'MOTION',
               l:canvas.width*5/6,
-              t:canvas.height*5/40,
+              t:canvas.height*1/10+canvas.height/8,
               w:canvas.width/6,
               h:canvas.height*3/40,
               f:function() {toggledButtons['MOTION'] = !toggledButtons['MOTION']},
@@ -150,7 +175,7 @@
             {
               text:'DRAW',
               l:canvas.width*5/6,
-              t:canvas.height*9/40,
+              t:canvas.height*2/10+canvas.height/8,
               w:canvas.width/6,
               h:canvas.height*3/40,
               f:function() {toggledButtons['DRAW'] = !toggledButtons['DRAW'];jsonBuffer["dr"] = ( (toggledButtons['DRAW']) ? 1 : 0 ) },
@@ -158,26 +183,27 @@
             {
               text:'ALT',
               l:canvas.width*5/6,
-              t:canvas.height*13/40,
+              t:canvas.height*3/10+canvas.height/8,
               w:canvas.width/6,
               h:canvas.height*3/40,
-              f:function() {websocket.send('{"skalt":1}')},
+              f:function() {jsonBuffer["skalt"]=1},
             },
             {
               text:'NEXT',
               l:canvas.width*5/6,
-              t:canvas.height*17/40,
+              t:canvas.height*4/10+canvas.height/8,
               w:canvas.width/6,
               h:canvas.height*3/40,
-              f:function() {websocket.send('{"sknext":1}')},
+              f:function() {jsonBuffer["sknext"]=1},
             }
           ]
 
          }
          
-
-         function drawButtons() {
-
+         var updateButtons = false;
+          function drawButtons() {
+          let ctx = ctx1;
+          ctx.clearRect(canvas.width*5/6-50,0,canvas.width*5/6+60,canvas.height*2/3);
           var Buttons = getButtons();
           
           for (var i in Buttons) {
@@ -185,14 +211,20 @@
             
             ctx.shadowColor = 'black';
             var gradient = ctx.createLinearGradient(0,button.t,0,button.t+button.h);
-              gradient.addColorStop(0, 'white');
-              gradient.addColorStop(1, 'black');
+            gradient.addColorStop(0, 'white');
+            gradient.addColorStop(1, 'black');
             if (depressedButtons[button.text]) {
               ctx.shadowBlur = 4;
               ctx.shadowOffsetX = 1;
               ctx.shadowOffsetY = 1;
-              button.l+=2;
-              button.t+=2;
+              if(!previousDepressedButtons[button.text]) {
+                button.l+=1;
+                button.t+=1;
+                updateButtons = true;
+              } else {
+                button.l+=2;
+                button.t+=2;
+              }
             } else {
               ctx.shadowBlur = 8;
               ctx.shadowOffsetX = 3;
@@ -253,9 +285,103 @@
             ctx.fillStyle = 'black';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.font = '24pt Proxima Nova Soft';
+            ctx.font = '2em Proxima Nova Soft';
             ctx.fillText(button.text, button.l+button.w/2+outlinepx+5, button.t+button.h/2, button.w-outlinepx-10);
           }
+
+         }
+
+         var menuVerticalOffset = 0;
+         var menuTarget = 0;
+         var menuActual = 0;
+         function toggleMenu() {
+           if(menuTarget == 0) {
+             menuTarget = 200;
+           } else {
+             menuTarget = 0;
+           }
+         }
+
+         var updateMenu = false;
+         function drawMenu() {
+            let ctx = ctx1;
+            var menuHeight = canvas.height*3/4;
+            menuVerticalOffset = -menuHeight*menuTarget/200
+            updateMenu = false;
+            if (menuTarget > menuActual) {
+              menuActual+=10;
+              updateMenu = true;
+            } else if (menuTarget < menuActual) {
+              menuActual-=10;
+              updateMenu = true;
+            }
+
+            //ease In Out
+            if (menuActual >= 100) {
+              var temp = 200-menuActual;
+              menuVerticalOffset = ((-temp*temp)/200)*menuHeight/200;
+              menuVerticalOffset *= 2;
+              menuVerticalOffset = -menuHeight - menuVerticalOffset;
+            } else {
+              var temp = menuActual;
+              menuVerticalOffset = ((-temp*temp)/200)*menuHeight/200;
+              menuVerticalOffset *= 2;
+            }
+
+            ctx.clearRect(canvas.width/3-25, canvas.height, canvas.width/3+50, -(canvas.height*3/4+canvas.height/16+15));
+            ctx.save();
+            ctx.shadowColor = 'black';
+            var gradient = ctx.createLinearGradient(0,canvas.height*15/16+menuVerticalOffset,0,canvas.height+menuVerticalOffset);
+            gradient.addColorStop(0, 'white');
+            gradient.addColorStop(1, 'black');
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetX = -2;
+            ctx.shadowOffsetY = 2;
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.moveTo(canvas.width/3, canvas.height*2+menuVerticalOffset);
+            ctx.lineTo(canvas.width/3, canvas.height+menuVerticalOffset+15);
+            ctx.quadraticCurveTo(canvas.width/3, canvas.height+menuVerticalOffset, canvas.width/3+15, canvas.height+menuVerticalOffset);
+            ctx.lineTo(canvas.width*7/18, canvas.height+menuVerticalOffset);
+            ctx.lineTo(canvas.width*7/18, canvas.height*15/16+15+menuVerticalOffset);
+            ctx.quadraticCurveTo(canvas.width*7/18, canvas.height*15/16+menuVerticalOffset, canvas.width*7/18+15, canvas.height*15/16+menuVerticalOffset);
+            ctx.lineTo(canvas.width*11/18-15, canvas.height*15/16+menuVerticalOffset);
+            ctx.quadraticCurveTo(canvas.width*11/18, canvas.height*15/16+menuVerticalOffset, canvas.width*11/18, canvas.height*15/16+15+menuVerticalOffset);
+            ctx.lineTo(canvas.width*11/18, canvas.height+menuVerticalOffset);
+            ctx.lineTo(canvas.width*2/3-15, canvas.height+menuVerticalOffset);
+            ctx.quadraticCurveTo(canvas.width*2/3, canvas.height+menuVerticalOffset, canvas.width*2/3, canvas.height+menuVerticalOffset+15);
+            ctx.lineTo(canvas.width*2/3, canvas.height*2+menuVerticalOffset);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.shadowColor = 'transparent';
+            ctx.clip();
+            var gradient = ctx.createLinearGradient(0,canvas.height+menuVerticalOffset,0,canvas.height*2+menuVerticalOffset);
+            gradient.addColorStop(0, 'transparent');
+            gradient.addColorStop(0, 'white');
+            gradient.addColorStop(.1, 'black');
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            ctx.fillStyle = 'lightgrey'
+            ctx.filter = 'blur(5px)';
+            ctx.fill();
+            ctx.restore();
+
+            //TEXT
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '2em Proxima Nova Soft';
+            var textOffset = 0;
+            for (var item in config.light_sketches) {
+              ctx.fillStyle = 'black';
+              if (config.light_sketches[item] == config.current_sketch) {
+                ctx.fillStyle = 'red';
+              }
+              ctx.fillText(config.light_sketches[item], canvas.width/2, canvas.height+menuVerticalOffset+textOffset*72+36);
+              textOffset++;
+            }
 
          }
          
@@ -270,13 +396,35 @@
                }
             }
          }
+
+         function checkMenu(x, y, runFunc = true) {
+
+          if (x > canvas.width*7/18 && y > canvas.height*15/16+menuVerticalOffset && x < canvas.width*11/18 && y < canvas.height+menuVerticalOffset ) {
+            if (runFunc) {
+              toggleMenu();
+              updateMenu=true;
+              return;
+            }
+          }
+
+          if (x > canvas.width/3 && y > canvas.height*15/16+menuVerticalOffset && x < canvas.width*2/3 && y < canvas.height ) {
+            y-=canvas.height*15/16+menuVerticalOffset+18+72;
+            y/=72;
+            y = Math.round(y);
+            if (runFunc && y >=0 && y < 20) {
+              jsonBuffer["sketch_name"] = config.light_sketches[y];
+            }
+          }
+
+         }
          
          function writeMessage(canvas, message) {
-           ctx.fillStyle = 'grey';
-           ctx.fillRect(0, 0, canvas.width, canvas.height);
+           //ctx.fillStyle = 'grey';
+           ctx.clearRect(0, 0, canvas.width, canvas.height);
            drawBoxes();
            drawButtons();
-           ctx.font = '12pt Calibri';
+           drawMenu();
+           ctx.font = '1em Calibri';
            ctx.fillStyle = 'red';
            //ctx.fillText(absolute, 10, 75);
            ctx.fillText('alpha: ' + alpha, 10, 15);
@@ -362,7 +510,7 @@
            alpha    = event.alpha;
            beta     = event.beta;
            gamma    = event.gamma;
-           if (toggledButtons['motion'] && !(oldalpha == alpha && oldbeta == beta && oldgamma == gamma) && new Date().getTime() - 15 > time_then) {
+           if (toggledButtons['MOTION'] && !(oldalpha == alpha && oldbeta == beta && oldgamma == gamma) && new Date().getTime() - 15 > time_then) {
              time_then = new Date().getTime() + 0;
              jsonBuffer.a = [alpha,beta,gamma];
              positionCnt++;
@@ -503,18 +651,24 @@
               cursorTracker[i].old = true;
             }
             checkButton(cursorTracker[i].newx,cursorTracker[i].newy,runFunc);
+            checkMenu(cursorTracker[i].newx,cursorTracker[i].newy,runFunc);
           }
 
           if ( JSON.stringify(depressedButtons) != JSON.stringify(previousDepressedButtons) ) {
-            updateCanvas();
-            // console.log(depressedButtons);
-            // console.log(previousDepressedButtons);
-            // console.log(cursorTracker);
-            // console.log("");
+            drawButtons();
             previousDepressedButtons = depressedButtons;
+          } else if (updateButtons) {
+            //updateCanvas();
+            drawButtons();
+            previousDepressedButtons = depressedButtons;
+            updateButtons = false;
           }
           depressedButtons = {};
           
+          if (updateMenu) {
+            drawMenu();
+          }
+
           //process mouse ups/touch ends... send multiple times to lessen the chance of loss
           for (i = 0; i < cursorLifts.length; i++) {
             jsonBuffer.e.push(cursorLifts[i][0]);
@@ -555,7 +709,7 @@
           if(cursor.oldx) {
             oldx = adjust_x(cursor.oldx);
             oldy = adjust_y(cursor.oldy);
-              oldf = Math.round(cursor.oldf*255);
+            oldf = Math.round(cursor.oldf*255);
           } else {
             force_update = true;
           }
@@ -603,7 +757,13 @@
                     data[offset] = item.charCodeAt();
                     offset++;
                     for(var item3 in jsonBuffer[item][item2]) {
-                      data[offset] = jsonBuffer[item][item2][item3];
+                      let b = new ArrayBuffer(2);
+                      var d = new Int16Array(b);
+                      var d2 = new Uint8Array(b);
+                      d[0] = jsonBuffer[item][item2][item3];
+                      data[offset] = d2[0];
+                      offset++;
+                      data[offset] = d2[1];
                       offset++;
                     }
                   }
@@ -617,8 +777,41 @@
                     offset++;
                   }
                 }
+
                 if (item == "dr") {
                   data[offset] = "d".charCodeAt();
+                  offset++;
+                  data[offset] = jsonBuffer[item];
+                  offset++;
+                }
+
+                if (item == "sknext") {
+                  data[offset] = "n".charCodeAt();
+                  offset++;
+                  data[offset] = jsonBuffer[item];
+                  offset++;
+                }
+
+                if (item == "skalt") {
+                  data[offset] = "v".charCodeAt();
+                  offset++;
+                  data[offset] = jsonBuffer[item];
+                  offset++;
+                }
+
+                if (item == "sketch_name") {
+                  data[offset] = "z".charCodeAt();
+                  offset++;
+                  for (const c of jsonBuffer[item]) {
+                      data[offset] = c.charCodeAt();
+                      offset++;
+                  }
+                  data[offset] = 0;
+                  offset++;
+                }
+
+                if (item == "cc") {
+                  data[offset] = "c".charCodeAt();
                   offset++;
                   data[offset] = jsonBuffer[item];
                   offset++;
