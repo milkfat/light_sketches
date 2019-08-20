@@ -44,6 +44,7 @@
          var canvas1 = document.getElementById('myCanvas1');
          var canvas2 = document.getElementById('myCanvas2');
          var ctx = canvas.getContext('2d');
+         var ctx0 = ctx;
          var ctx1 = canvas1.getContext('2d');
          var ctx2 = canvas2.getContext('2d');
          
@@ -292,6 +293,9 @@
          }
 
          var menuVerticalOffset = 0;
+         var menuTextOffset = 0;
+         var menuTextDist = 0;
+         var menuSelected = false;
          var menuTarget = 0;
          var menuActual = 0;
          function toggleMenu() {
@@ -300,6 +304,7 @@
            } else {
              menuTarget = 0;
            }
+           updateMenu=true;
          }
 
          var updateMenu = false;
@@ -328,12 +333,13 @@
               menuVerticalOffset *= 2;
             }
 
-            ctx.clearRect(canvas.width/3-25, canvas.height, canvas.width/3+50, -(canvas.height*3/4+canvas.height/16+15));
             ctx.save();
+            ctx.clearRect(canvas.width/3-25, canvas.height, canvas.width/3+50, -(canvas.height*3/4+canvas.height/16+15));
             ctx.shadowColor = 'black';
             var gradient = ctx.createLinearGradient(0,canvas.height*15/16+menuVerticalOffset,0,canvas.height+menuVerticalOffset);
             gradient.addColorStop(0, 'white');
-            gradient.addColorStop(1, 'black');
+            gradient.addColorStop(.5, 'black');
+            gradient.addColorStop(1, 'white');
             ctx.shadowBlur = 8;
             ctx.shadowOffsetX = -2;
             ctx.shadowOffsetY = 2;
@@ -342,12 +348,14 @@
             ctx.moveTo(canvas.width/3, canvas.height*2+menuVerticalOffset);
             ctx.lineTo(canvas.width/3, canvas.height+menuVerticalOffset+15);
             ctx.quadraticCurveTo(canvas.width/3, canvas.height+menuVerticalOffset, canvas.width/3+15, canvas.height+menuVerticalOffset);
-            ctx.lineTo(canvas.width*7/18, canvas.height+menuVerticalOffset);
+            ctx.lineTo(canvas.width*7/18-15, canvas.height+menuVerticalOffset);
+            ctx.quadraticCurveTo(canvas.width*7/18, canvas.height+menuVerticalOffset, canvas.width*7/18, canvas.height-15+menuVerticalOffset);
             ctx.lineTo(canvas.width*7/18, canvas.height*15/16+15+menuVerticalOffset);
             ctx.quadraticCurveTo(canvas.width*7/18, canvas.height*15/16+menuVerticalOffset, canvas.width*7/18+15, canvas.height*15/16+menuVerticalOffset);
             ctx.lineTo(canvas.width*11/18-15, canvas.height*15/16+menuVerticalOffset);
             ctx.quadraticCurveTo(canvas.width*11/18, canvas.height*15/16+menuVerticalOffset, canvas.width*11/18, canvas.height*15/16+15+menuVerticalOffset);
-            ctx.lineTo(canvas.width*11/18, canvas.height+menuVerticalOffset);
+            ctx.lineTo(canvas.width*11/18, canvas.height-15+menuVerticalOffset);
+            ctx.quadraticCurveTo(canvas.width*11/18, canvas.height+menuVerticalOffset, canvas.width*11/18+15, canvas.height+menuVerticalOffset);
             ctx.lineTo(canvas.width*2/3-15, canvas.height+menuVerticalOffset);
             ctx.quadraticCurveTo(canvas.width*2/3, canvas.height+menuVerticalOffset, canvas.width*2/3, canvas.height+menuVerticalOffset+15);
             ctx.lineTo(canvas.width*2/3, canvas.height*2+menuVerticalOffset);
@@ -366,22 +374,36 @@
             ctx.fillStyle = 'lightgrey'
             ctx.filter = 'blur(5px)';
             ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.filter = 'blur(0px)';
             ctx.restore();
+         }
 
-            //TEXT
+         function drawMenuText() {
 
+            menuTextOffset = Math.min(menuTextOffset,36);
+            menuTextOffset = Math.max(menuTextOffset,-17*72-menuVerticalOffset)
+
+            let ctx = ctx0;
+            ctx.save();
+            ctx.beginPath();
+            ctx.clearRect(canvas.width/3, 0, canvas.width/3, canvas.height);
+            ctx.rect(canvas.width/3, canvas.height+menuVerticalOffset, canvas.width/3, -menuVerticalOffset);
+            ctx.clip();
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.font = '2em Proxima Nova Soft';
             var textOffset = 0;
             for (var item in config.light_sketches) {
-              ctx.fillStyle = 'black';
               if (config.light_sketches[item] == config.current_sketch) {
                 ctx.fillStyle = 'red';
+              } else {
+                ctx.fillStyle = 'blue';
               }
-              ctx.fillText(config.light_sketches[item], canvas.width/2, canvas.height+menuVerticalOffset+textOffset*72+36);
+              ctx.fillText(config.light_sketches[item], canvas.width/2, canvas.height+menuVerticalOffset+textOffset*72+36+menuTextOffset);
               textOffset++;
             }
+            ctx.restore();
 
          }
          
@@ -397,26 +419,37 @@
             }
          }
 
-         function checkMenu(x, y, runFunc = true) {
+         function checkMenu(x, y, runFunc, cursorNum) {
 
           if (x > canvas.width*7/18 && y > canvas.height*15/16+menuVerticalOffset && x < canvas.width*11/18 && y < canvas.height+menuVerticalOffset ) {
             if (runFunc) {
               toggleMenu();
-              updateMenu=true;
               return;
             }
           }
 
+         }
+
+         function checkMenuText(cursor, buttonClick, buttonLift) {
+           var x = cursor.newx;
+           var y = cursor.newy;
+
           if (x > canvas.width/3 && y > canvas.height*15/16+menuVerticalOffset && x < canvas.width*2/3 && y < canvas.height ) {
-            y-=canvas.height*15/16+menuVerticalOffset+18+72;
-            y/=72;
-            y = Math.round(y);
-            if (runFunc && y >=0 && y < 20) {
-              jsonBuffer["sketch_name"] = config.light_sketches[y];
+            var button_y = y - (canvas.height*15/16+menuVerticalOffset+18+72+menuTextOffset);
+            button_y/=72;
+            button_y = Math.round(button_y);
+            if (buttonClick && button_y >=0 && button_y < 20) {
+              cursor.target = "menu_text";
+              cursor.y_origin = y;
+              cursor.travel = 0;
+              cursor.offset_origin = menuTextOffset;
+            }
+            if (buttonLift && cursor.travel < 20 && button_y >=0 && button_y < 20) {
+              jsonBuffer["sketch_name"] = config.light_sketches[button_y];
             }
           }
 
-         }
+          }
          
          function writeMessage(canvas, message) {
            //ctx.fillStyle = 'grey';
@@ -424,6 +457,7 @@
            drawBoxes();
            drawButtons();
            drawMenu();
+           drawMenuText();
            ctx.font = '1em Calibri';
            ctx.fillStyle = 'red';
            //ctx.fillText(absolute, 10, 75);
@@ -544,24 +578,26 @@
          //function to calculate, track, and send any cursor changes to the server
          
          function emousedown (evt) {
-           evt.preventDefault();
-           
-           //add any new mouse clicks to our tracking object
-		   
-            var cp = getMousePos(canvas, evt);
-            cursorTracker.mouse = {};
-            cursorTracker.mouse.newx = cp.x;
-            cursorTracker.mouse.newy = cp.y;
-            cursorTracker.mouse.newf = 0;
-            cursorTracker.mouse.oldf = 0;
-            mousedown = 1;
-            cursorUpdates.push('mouse'); 
-            //remove the mouse from our cursorLift object
-            for (i = 0; i < cursorLifts.length; i++) {
-              if (cursorLifts[i][0] == 255) {
-                cursorLifts.splice(i,1);
-                i--;
-              } 
+           if (evt.button == 0) {
+            evt.preventDefault();
+            
+            //add any new mouse clicks to our tracking object
+        
+              var cp = getMousePos(canvas, evt);
+              cursorTracker.mouse = {};
+              cursorTracker.mouse.newx = cp.x;
+              cursorTracker.mouse.newy = cp.y;
+              cursorTracker.mouse.newf = 0;
+              cursorTracker.mouse.oldf = 0;
+              mousedown = 1;
+              cursorUpdates.push('mouse'); 
+              //remove the mouse from our cursorLift object
+              for (i = 0; i < cursorLifts.length; i++) {
+                if (cursorLifts[i][0] == 255) {
+                  cursorLifts.splice(i,1);
+                  i--;
+                } 
+              }
             }
          }
          
@@ -569,6 +605,7 @@
          
          function emouseup (evt) {
            evt.preventDefault(); 
+           checkMenuText(cursorTracker['mouse'],false,true);
            //remove any released clicks from tracking object
             delete cursorTracker['mouse'];
             mousedown = 0;
@@ -615,6 +652,7 @@
            evt.preventDefault();
            //remove any released touches from tracking object
             for(i=0;i<evt.changedTouches.length;i++) {
+              checkMenuText(cursorTracker[evt.changedTouches[i].identifier],false,true);
               delete cursorTracker[evt.changedTouches[i].identifier];
               cursorLifts.push([Math.abs(evt.changedTouches[i].identifier%255), 0]);
               //jsonBuffer.e.push(evt.changedTouches[i].identifier%255);
@@ -644,14 +682,32 @@
 
         function monitorCursors () {
 
+          menuSelected = false;
           for (var i in cursorTracker) {
+            cursor=cursorTracker[i];
             var runFunc = false;
-            if (cursorTracker[i].old === undefined) {
+            if (cursor.old === undefined) {
               runFunc = true;
-              cursorTracker[i].old = true;
+              cursor.old = true;
             }
-            checkButton(cursorTracker[i].newx,cursorTracker[i].newy,runFunc);
-            checkMenu(cursorTracker[i].newx,cursorTracker[i].newy,runFunc);
+            checkButton(cursor.newx,cursor.newy,runFunc);
+            checkMenu(cursor.newx,cursor.newy,runFunc,i);
+            checkMenuText(cursor,runFunc,false);
+
+            if (cursor.target == "menu_text") {
+              menuSelected=true;
+              menuTextDist = cursor.newy - cursor.oldy;
+              if(menuTextDist) {
+                cursor.travel += Math.abs(menuTextDist);
+              }
+              var newOffset = cursor.offset_origin + (cursor.newy - cursor.y_origin);
+              if ( !isNaN(newOffset) );
+              menuTextOffset = cursor.offset_origin + (cursor.newy - cursor.y_origin);
+              if(menuTextDist != 0) {
+                drawMenuText();
+              }
+            }
+
           }
 
           if ( JSON.stringify(depressedButtons) != JSON.stringify(previousDepressedButtons) ) {
@@ -667,6 +723,16 @@
           
           if (updateMenu) {
             drawMenu();
+            drawMenuText();
+          } else if (!menuSelected && menuTextDist != 0) {
+            menuTextDist*=.9;
+            if (Math.abs(menuTextDist) < .1) {
+              menuTextDist = 0;
+            }
+            if ( !isNaN(menuTextDist) ) {
+              menuTextOffset += menuTextDist;
+            }
+            drawMenuText();
           }
 
           //process mouse ups/touch ends... send multiple times to lessen the chance of loss
@@ -680,7 +746,6 @@
             }
           }
         
-      
           //process cursor positions and add them to our JSON transmission
           for (i = 0; i < cursorUpdates.length; i++) {
       
@@ -713,8 +778,9 @@
           } else {
             force_update = true;
           }
+
           if ( !(newx == oldx && newy == oldy && newf == oldf) || force_update ) {
-      
+
             //add any drags to the position transmission
           
             positionCnt++;
@@ -726,9 +792,9 @@
             //I suspect that some devices (iPhone) throttle the setInterval
             //  thing to preserve power which creates one huge death packet
             if (positionCnt > 5 ) {
-            websocket.send(JSON.stringify(jsonBuffer));
-            positionCnt = 0;
-            jsonBuffer = {'l':[],'e':[]};
+              websocket.send(JSON.stringify(jsonBuffer));
+              positionCnt = 0;
+              jsonBuffer = {'l':[],'e':[]};
             }
             
             //record the new positions in our tracking object
@@ -745,9 +811,11 @@
             //send JSON transmission if there have been any position changes
             //limit transmissions to 60 per second
             if (positionCnt > 0 ) {
-              websocket.send(JSON.stringify(jsonBuffer));
+              //send JSON websocket message
+              //websocket.send(JSON.stringify(jsonBuffer));
               positionCnt = 0;
 
+              //assemble binary message
               let buffer = new ArrayBuffer(3072);
               var data = new Uint8Array(buffer);
               var offset = 0;
@@ -837,6 +905,7 @@
                 }
 
               }
+              //send binary websocket message
               websocket.send(buffer.slice(0, offset));
               jsonBuffer = {'l':[],'e':[]};
             }
