@@ -137,12 +137,12 @@ class MATRIX {
                 x/=MATRIX_PRECISION;//half precision to double each axis of our available coordinate space
                 y/=MATRIX_PRECISION;
                 z/=MATRIX_PRECISION;
-                int32_t zCz = (z-Cz/MATRIX_PRECISION);
+                int32_t zCz = (z-Cz);
                 if (zCz == 0) {
                     zCz = 1;
                 }
-                x = ( x * ((Sz - Cz)/MATRIX_PRECISION) ) / zCz + ((MATRIX_WIDTH * 128)/MATRIX_PRECISION);
-                y = ( y * ((Sz - Cz)/MATRIX_PRECISION) ) / zCz + ((MATRIX_HEIGHT * 128)/MATRIX_PRECISION);
+                x = ( x * ((Sz - Cz)) ) / zCz + ((MATRIX_WIDTH * 128)/MATRIX_PRECISION);
+                y = ( y * ((Sz - Cz)) ) / zCz + ((MATRIX_HEIGHT * 128)/MATRIX_PRECISION);
                 x*=MATRIX_PRECISION;
                 y*=MATRIX_PRECISION;
                 z*=MATRIX_PRECISION;
@@ -167,16 +167,24 @@ class MATRIX {
         //find the 3D coordinate of a pixel on the screen
         //takes screen X,Y coordinate along with the desired Z coordinate
         //modifies X,Y to provide X,Y,Z coordinate
-        static inline __attribute__ ((always_inline)) bool reverse_perspective(int32_t p[3]) {
-            p[0]/=2;//half precision to double each axis of our available coordinate space
-            p[1]/=2;
-            p[2]/=2;
-            p[0] = ( ( p[0] - (MATRIX_WIDTH*128)/2 ) * (( p[2] - Cz )/2) ) / (( Sz - Cz )/2);
-            p[1] = ( ( p[1] - (MATRIX_HEIGHT*128)/2 ) * (( p[2] - Cz )/2) ) / (( Sz - Cz )/2);
-            p[0]*=2;
-            p[1]*=2;
-            p[2]*=2;
+        static inline __attribute__ ((always_inline)) bool reverse_perspective(int32_t& x, int32_t& y, int32_t& z) {
+            x/=MATRIX_PRECISION;//half precision to double each axis of our available coordinate space
+            y/=MATRIX_PRECISION;
+            z/=MATRIX_PRECISION;
+            x = ( ( x - (MATRIX_WIDTH*128)/MATRIX_PRECISION ) * (( z - Cz )) ) / (( Sz - Cz ));
+            y = ( ( y - (MATRIX_HEIGHT*128)/MATRIX_PRECISION ) * (( z - Cz )) ) / (( Sz - Cz ));
+            x*=MATRIX_PRECISION;
+            y*=MATRIX_PRECISION;
+            z*=MATRIX_PRECISION;
             return true;
+        }
+
+        static inline __attribute__ ((always_inline)) bool reverse_perspective(int32_t p[3]) {
+            return reverse_perspective(p[0], p[1], p[2]);
+        }
+
+        static inline __attribute__ ((always_inline)) bool reverse_perspective(VECTOR3& p) {
+            return reverse_perspective(p.x, p.y, p.z);
         }
 
         static inline __attribute__ ((always_inline)) void rotate_x(int32_t& x, int32_t& y, int32_t& z, int8_t& s, int8_t& c) {
@@ -204,6 +212,12 @@ class MATRIX {
             x = temp;
         }
 
+        static inline __attribute__ ((always_inline)) void rotate_y(int32_t& x, int32_t& y, int32_t& z, const uint8_t& ang) {
+            int8_t s = sin8(ang)-128;
+            int8_t c = cos8(ang)-128;
+            rotate_y(x, y, z, s, c);
+        }
+
         static inline __attribute__ ((always_inline)) void rotate_y(int32_t p[3], const uint8_t& ang) {
             int8_t s = sin8(ang)-128;
             int8_t c = cos8(ang)-128;
@@ -220,6 +234,13 @@ class MATRIX {
             int32_t temp = ( x*c - y*s ) / 128;
             y = ( x*s + y*c ) / 128;
             x = temp;
+        }
+
+
+        static inline __attribute__ ((always_inline)) void rotate_z(int32_t& x, int32_t& y, int32_t& z, const uint8_t& ang) {
+            int8_t s = sin8(ang)-128;
+            int8_t c = cos8(ang)-128;
+            rotate_z(x, y, z, s, c);
         }
 
         static inline __attribute__ ((always_inline)) void rotate_z(int32_t p[3], const uint8_t& ang) {
@@ -245,6 +266,19 @@ class MATRIX {
 
         static inline __attribute__ ((always_inline)) void scale_z(VECTOR3& p) {
             scale_z(p.z);
+        }
+
+
+        static inline __attribute__ ((always_inline)) void reverse_scale_z(int32_t& z) {
+            z -= z_scaler;
+        }
+        
+        static inline __attribute__ ((always_inline)) void reverse_scale_z(int32_t p[3]) {
+            reverse_scale_z(p[2]);
+        }
+
+        static inline __attribute__ ((always_inline)) void reverse_scale_z(VECTOR3& p) {
+            reverse_scale_z(p.z);
         }
         
 

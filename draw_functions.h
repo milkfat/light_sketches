@@ -198,6 +198,19 @@ uint16_t gamma16_d[256];
 //decode 8-bit gamma to 12-bit linear
 uint16_t gamma12_d[256];
 
+void build_gamma_tables() {
+  //create some lookup tables for color conversion
+  for (int i = 0; i < 256; i++) {
+    gamma8_e[i] = round(255.f * pow(i/255.f,1.f/2.2f));
+    gamma8_e_16_low[i] = round(255.f * pow(i/65535.f,1.f/2.2f));
+    gamma8_d[i] = round(255.f * pow(i/255.f,2.2f));
+    gamma16_d[i] = round(65535.f * pow(i/255.f,2.2f));
+    gamma12_d[i] = round(4095.f * pow(i/255.f,2.2f));
+    //std::cout << "i: " << i << " 12: " << gamma12_d[i] << "\n";
+    //std::cout << "i: " << i << " 8e: " << (uint)gamma8_e[i] << " 8e16low: " << (uint)gamma8_e_16_low[i] << " 8d: " << (uint)gamma8_d[i] << " 16d " << (uint)gamma16_d[i] << "\n";
+  }
+}
+
 
 
 static inline __attribute__ ((always_inline)) uint16_t gamma16_decode(const uint8_t& value) {
@@ -412,6 +425,7 @@ static inline __attribute__ ((always_inline)) int adjust (const int& p) {
 
 //return LED position from X,Y coordinates
 //return NUM_LEDS-1 (our safety "invisible" pixel) if coordinates are off-screen
+#ifndef XY_DEFINED
 static inline __attribute__ ((always_inline)) uint32_t XY(const int& x, const int& y) {
     if (x >= 0 && x < MATRIX_WIDTH && y >= 0 && y < MATRIX_HEIGHT) {
       int32_t location = y*MATRIX_WIDTH + x;
@@ -424,6 +438,7 @@ static inline __attribute__ ((always_inline)) uint32_t XY(const int& x, const in
       return NUM_LEDS-1;
     }
 }
+#endif
 
 static inline __attribute__ ((always_inline)) void drawXY_fine(CRGB crgb_object[], const int32_t& xpos, const int32_t& ypos, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255) {
   

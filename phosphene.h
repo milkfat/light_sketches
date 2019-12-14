@@ -86,7 +86,7 @@ class PHOSPHENE: public LIGHT_SKETCH {
             if ( ddd > 0 ) {
                 //grow faster as neighbors grow faster
                 out = me + (ddd*37)/100;
-            } else if (ddd < -2456) {
+            } else if (ddd < -4456) {
                 //drop off as neighbors drop off
                 out = me + (ddd*9)/10;
             } else {
@@ -117,7 +117,12 @@ class PHOSPHENE: public LIGHT_SKETCH {
             for (int x = 0; x < SIZE_X; x++) {
                 pixels[y][x] = 0;
                 delta[y][x] = 0;
-                setVal(x, y, random(16384));
+                uint32_t val=random(16384);
+                uint8_t n = inoise8(x*20, y*20, 0);
+                val = (val*n)/255;
+                val = (val*n)/255;
+                val = (val*n)/255;
+                setVal(x, y, val);
             }
         }        
     }

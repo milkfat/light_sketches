@@ -31,7 +31,7 @@ int32_t iteration_calls = 1;
 #include <boost/asio.hpp>
  
 SDL_Window* window = NULL;
-SDL_Renderer* renderer = NULL;
+SDL_Surface *screen = NULL; // even with SDL2, we can still bring ancient code back
 
 //functions from the FastLED library
 #include "fastled_functions.h"
@@ -66,6 +66,15 @@ uint32_t debug_count = 0;
 
 SDL_bool done = SDL_FALSE;
 
+void put_pixel(SDL_Surface * surface, int x, int y, uint32_t p) {	
+	uint8_t * pixel = (uint8_t*)screen->pixels;
+	pixel += (y * surface->pitch) + (x * sizeof(uint8_t) * 4);
+	((uint32_t*)pixel)[0] = p;
+	((uint32_t*)pixel)[1] = p;
+	((uint32_t*)pixel)[2] = p;
+	((uint32_t*)pixel)[3] = p;
+}
+
 //this function is called whenever the screen needs to be updated
 void update_matrix() {
 
@@ -73,64 +82,27 @@ void update_matrix() {
 
 	//draw stuff
 	SDL_Event event;
-
-	SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-
-	SDL_RenderClear(renderer);
-
-	SDL_SetRenderDrawColor(renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
-
   
     int32_t x_offset = (WINDOW_WIDTH - (MATRIX_WIDTH * 5))/2;
 	int32_t y_offset = (WINDOW_HEIGHT - (MATRIX_HEIGHT * 5))/2;
 	
+    uint32_t debug_before = micros();
+
     for (int x = 0; x < MATRIX_WIDTH; x++) {
         for (int y = 0; y < MATRIX_HEIGHT; y++) {
 			#define MIN_VAL 8
-			int r = (int)leds[XY(x,y)].r;
-			int g = (int)leds[XY(x,y)].g;
-			int b = (int)leds[XY(x,y)].b;
-			//r = sqrt(r*255);
-			//g = sqrt(g*255);
-			//b = sqrt(b*255);
-			//r = _max(r, MIN_VAL);
-			//g = _max(g, MIN_VAL);
-			//b = _max(b, MIN_VAL);
-            SDL_SetRenderDrawColor(renderer, r, g, b, SDL_ALPHA_OPAQUE);
-            //0,0 top left
-            
-            //SDL_RenderDrawLine(renderer, x_offset+x*5, WINDOW_HEIGHT-y_offset-y*5, x_offset+x*5+2, WINDOW_HEIGHT-y_offset-y*5);
-            //SDL_RenderDrawLine(renderer, x_offset+x*5, WINDOW_HEIGHT-y_offset-y*5-1, x_offset+x*5+2, WINDOW_HEIGHT-y_offset-y*5-1);
-            //SDL_RenderDrawLine(renderer, x_offset+x*5, WINDOW_HEIGHT-y_offset-y*5-2, x_offset+x*5+2, WINDOW_HEIGHT-y_offset-y*5-2);
-				SDL_RenderDrawPoint(renderer,x_offset+x*5+1,WINDOW_HEIGHT-y_offset-y*5-2+1);
-				SDL_Rect rect;
-				rect.x = x_offset+x*5;
-				rect.y = WINDOW_HEIGHT-y_offset-y*5-2;
-				rect.w = 3;
-				rect.h = 3;
-				//create a square
-				SDL_RenderDrawRect(renderer, &rect);
-			
+			uint8_t * pixel_location = (uint8_t*)&leds[XY(x,MATRIX_HEIGHT-1-y)].r;
+			uint32_t pixel_data = pixel_location[2] | pixel_location[1] << 8 | pixel_location[0] << 16;
+			for (int y2 = 0; y2 < 4; y2++) {
+					put_pixel(screen, x*5+0+x_offset, y*5+y2+y_offset, pixel_data);
+			}
 		}
     }
-/*
-	//debug stuff
-	uint32_t end_time = micros();
 
-	if (end_time - start_time > debug_count) {
-		debug_count = end_time - start_time;
-	}
-	
-	if (millis() > 1000 && millis() - 1000 > debug_time) {
-		std::cout << "Max frame time: " << debug_count << " Skipped frames: " << skipped_frames << "\n";
-		debug_time = millis();
-		debug_count = 0;
-		skipped_frames = 0;
+	debug_micros0 = micros() - debug_before;
 
-	}
-*/
-	//draw stuff
-	SDL_RenderPresent(renderer);
+
+	SDL_UpdateWindowSurface(window);
 
 	while (SDL_PollEvent(&event)) {
 		switch (event.type) {
@@ -214,35 +186,43 @@ int main(int argc, char **argv){
 	boost::system::error_code err;
 
 
+//	light_sketches.loop();	
 	//initialize our graphics window and do stuff
 	if (SDL_Init(SDL_INIT_VIDEO) == 0) {
-        
 
-        if (SDL_CreateWindowAndRenderer(WINDOW_WIDTH, WINDOW_HEIGHT, 0, &window, &renderer) == 0) {
+    // create the window like normal
+    window = SDL_CreateWindow("SDL2 Example", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WINDOW_WIDTH, WINDOW_HEIGHT, 0);
+
+    // but instead of creating a renderer, we can draw directly to the screen
+    screen = SDL_GetWindowSurface(window);
+
+        if (window) {
             
+			while (millis() < 1000) {};
+			light_sketches.loop();	
 			while (millis() < 1000) {};
 			
             while (!done) {
 				
 				if (millis()-1000 > debug_time && debug_micros0 > 0) {
-						debug_count=1;
-						uint32_t debug_micros0_avg = debug_micros0/debug_count;
-						uint32_t debug_micros1_avg = debug_micros1/debug_count;
-						//std::cout << (debug_micros1_avg/(debug_micros0_avg+1.f)) << " " << debug_micros1_avg << "` " << debug_micros0_avg << "\n";
-						//std::cout << "avg iterations: " << (iteration_cnt/iteration_calls) << "\n";
-						max_iterations = 0;
-						iteration_cnt = 0;
-						iteration_calls = 1;
-						debug_time = millis();
-						debug_micros0 = 0;
-						debug_micros1 = 0;
-					}
+					debug_count=1;
+					uint32_t debug_micros0_avg = debug_micros0/debug_count;
+					uint32_t debug_micros1_avg = debug_micros1/debug_count;
+					//std::cout << (debug_micros1_avg/(debug_micros0_avg+1.f)) << " " << debug_micros1_avg << "` " << debug_micros0_avg << "\n";
+					//std::cout << "avg iterations: " << (iteration_cnt/iteration_calls) << "\n";
+					std::cout << debug_micros0 << "\n";
+					//std::cout << "avg iterations: " << (iteration_cnt/iteration_calls) << "\n";
+					max_iterations = 0;
+					iteration_cnt = 0;
+					iteration_calls = 1;
+					debug_time = millis();
+					debug_micros0 = 0;
+					debug_micros1 = 0;
+				}
 
 				next_frame = next_frame + frames{1};
 				
-        uint32_t debug_time = micros();
 				light_sketches.loop();
-		debug_micros0 += micros() - debug_time;
 
 				handle_text();
 
@@ -271,8 +251,8 @@ int main(int argc, char **argv){
 					reset_sketch = false; 
 					light_sketches.reset();
 				}
-				 
 				
+				 			
 				/*
 				//send RGB data over UDP
 				
@@ -313,9 +293,6 @@ int main(int argc, char **argv){
             }
         }
 
-        if (renderer) {
-            SDL_DestroyRenderer(renderer);
-        }
         if (window) {
             SDL_DestroyWindow(window);
         }

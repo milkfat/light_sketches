@@ -9,7 +9,9 @@
 #define MATRIX_WIDTH 128
 #define MATRIX_HEIGHT 32
 #endif
+#ifndef NUM_LEDS
 #define NUM_LEDS (MATRIX_WIDTH*MATRIX_HEIGHT+1)
+#endif
 #define NUM_DOTS 8000
 
 #define MAX_NUMBER_OF_LIGHT_SKETCHES 20
@@ -63,15 +65,7 @@ class LIGHT_SKETCHES {
       if(need_to_allocate) {
 
         //create some lookup tables for color conversion
-        for (int i = 0; i < 256; i++) {
-          gamma8_e[i] = round(255.f * pow(i/255.f,1.f/2.2f));
-          gamma8_e_16_low[i] = round(255.f * pow(i/65535.f,1.f/2.2f));
-          gamma8_d[i] = round(255.f * pow(i/255.f,2.2f));
-          gamma16_d[i] = round(65535.f * pow(i/255.f,2.2f));
-          gamma12_d[i] = round(4095.f * pow(i/255.f,2.2f));
-          //std::cout << "i: " << i << " 12: " << gamma12_d[i] << "\n";
-          //std::cout << "i: " << i << " 8e: " << (uint)gamma8_e[i] << " 8e16low: " << (uint)gamma8_e_16_low[i] << " 8d: " << (uint)gamma8_d[i] << " 16d " << (uint)gamma16_d[i] << "\n";
-        }
+        build_gamma_tables();
 
         int leds_size = sizeof(CRGB) * (NUM_LEDS +1);
         int canvas_size = sizeof(CRGB) * (NUM_LEDS +1);
@@ -373,21 +367,22 @@ bool LIGHT_SKETCHES::need_to_allocate = true;
 
 LIGHT_SKETCHES light_sketches;
 
-#include "balls_squishy.h"
-#include "balls2d.h"
-#include "cinco_de_mayo.h"
+//#include "balls_squishy.h"
+//#include "balls2d.h"
+//#include "cinco_de_mayo.h"
 #include "curvy.h"
-#include "fire.h"
-#include "growcircle.h"
-#include "mattclock.h"
-#include "metaballs.h"
-#include "orbit.h"
+//#include "fire.h"
+//#include "growcircle.h"
+//#include "mattclock.h"
+//#include "metaballs.h"
+//#include "orbit.h"
 #include "neon.h"
-#include "shapes.h"
-#include "simplex.h"
-#include "test2d.h"
+//#include "shapes.h"
+//#include "simplex.h"
+#include "snowflakes.h"
+//#include "test2d.h"
 #include "test3d.h"
-#include "phosphene.h"
-#include "waves.h"
+//#include "phosphene.h"
+//#include "waves.h"
 
 #endif
