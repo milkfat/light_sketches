@@ -6,10 +6,12 @@ class SNOWFLAKES: public LIGHT_SKETCH {
   public:
     SNOWFLAKES () {setup();}
     ~SNOWFLAKES () {}
-#define NUM_SNOWFLAKES 50
+#define NUM_SNOWFLAKES 25
 
 
   private:
+
+    int current_effect = 0;
 
     struct SNOWFLAKE {
         uint8_t hue;
@@ -33,12 +35,12 @@ class SNOWFLAKES: public LIGHT_SKETCH {
 
 
     void flake_reset(SNOWFLAKE * flake, uint8_t on_screen) {
-            flake->age = 20;
+            flake->age = 60;
             flake->seed = random(65536);
 
             VECTOR3 p;
 
-            p.z = random(-1500*256,0*256);
+            p.z = random(-1000*256,0*256);
 
 
             if(on_screen) { //initial snowflake coordinates will be created on-screen
@@ -61,7 +63,7 @@ class SNOWFLAKES: public LIGHT_SKETCH {
                     //snowflakes originate at right of screen
                     p.x = MATRIX_WIDTH*256;
                     int r = random(MATRIX_HEIGHT);
-                    r = (r*r)/MATRIX_HEIGHT;
+                    //r = (r*r)/MATRIX_HEIGHT;
                     r = MATRIX_HEIGHT-r;
                     p.y = r*256;
                     matrix.reverse_perspective(p);
@@ -73,7 +75,7 @@ class SNOWFLAKES: public LIGHT_SKETCH {
                     //snowflakes originate at left of screen
                     p.x = 0;
                     int r = random(MATRIX_HEIGHT);
-                    r = (r*r)/MATRIX_HEIGHT;
+                    //r = (r*r)/MATRIX_HEIGHT;
                     r = MATRIX_HEIGHT-r;
                     p.y = r*256;
                     matrix.reverse_perspective(p);
@@ -123,6 +125,8 @@ class SNOWFLAKES: public LIGHT_SKETCH {
   public:
 
     void next_effect() {
+        current_effect++;
+        current_effect%=2;
     }
 
     void setup() {
@@ -222,6 +226,9 @@ class SNOWFLAKES: public LIGHT_SKETCH {
             int16_t v = ((flake->z/256+1500)*224)/1500+32;
             v = _min(_max(v,0), 255);
             CRGB rgb = CHSV(flake->hue,flake->sat,v);
+            if (current_effect == 1) {
+                rgb = CHSV(0,0,v);
+            }
 
             //rotation around each axis at a random rate
             flake->rx+= ((uint8_t)fmix32(flake->seed)-128)*2;
@@ -233,39 +240,38 @@ class SNOWFLAKES: public LIGHT_SKETCH {
             flake->y+=flake->vy;
             flake->z+=flake->vz;
 
+            //gravity
+            flake->vy -= 20;
 
-            //figure out acceleration due to gravity and air-resistance
+            //figure out air-resistance
+
+            //surface normal
+            //large y value means the flake is flat
             VECTOR3 normal = VECTOR3(0,0,256);
             matrix.rotate_x(normal, flake->rx/256);
             matrix.rotate_y(normal, flake->ry/256);
             matrix.rotate_z(normal, flake->rz/256);
             matrix.rotate(normal);
 
-            VECTOR3 normal2 = normal; //make a copy that we'll use later
+            //figure out the magnitude of our x and z components (horizontal motion)
+            //multiply by inverse y
+            int x_magnitude = (normal.x*-(0-normal.y))/256; // -128 to 128
+            int z_magnitude = (normal.z*-(0-normal.y))/256; // -128 to 128
 
-            //angle around y-axis
-            uint8_t angle_y = -(atan2(normal.x, normal.z)*256)/(2*PI)+64;
+            //air resistance is velocity squared
+            int vy2 = (flake->vy*flake->vy); // 0-65535
 
-            //normalize the angle around the y-axis
-            matrix.rotate_y(normal, -angle_y);
-            //rotate 90 degrees to always point down
-            matrix.rotate_z(normal, -64);
-            //we'll use the z-angle later
-            uint8_t angle_z = -(atan2(normal.x, normal.y)*256)/(2*PI)+64;
-            //restore the y-axis
-            matrix.rotate_y(normal, angle_y);
+            //combine magnitude with air resistance to find the desired velocity
+            int vx_wind = (x_magnitude*vy2)/((256*256));
+            int vz_wind = (z_magnitude*vy2)/((256*256));
 
-            //use the y value as our magnitude
-            //large y: pointing down, minimum air resistance, fast
-            //y = 0: flat, max air resistance, slow
-            normal.x = (normal.x * abs(normal.y)) / 128;
-            normal.z = (normal.z * abs(normal.y)) / 128;
-            normal.y = (normal.y * abs(normal.y)) / 128;
+            //adjust our current velocity toward our desired velocity (by a fraction)
+            flake->vx+= (vx_wind-flake->vx)/20;
+            flake->vz+= (vz_wind-flake->vz)/20;
 
-            //now we can add this value as our "acceleration" (not really treating it as acceleration though, just speed) due to gravity
-            flake->x += normal.x;
-            flake->y += normal.y;
-            flake->z += normal.z;
+            //finally adjust our y velocity for air resistance
+            //air resistance never fully goes to zero
+            flake->vy+= (((abs(normal.y)*235)/256+20)*vy2)/((256*256*256)/10);
 
 
 
