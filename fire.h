@@ -543,10 +543,10 @@ class FIRE2: public LIGHT_SKETCH {
             //draw flame
 
             if(draw_flame == 1 && burned_fuel > 9) {
-              drawXY(leds, x, y, _max(_min((burned_fuel*2)/6, 255), 0)/10, 255 - _max(_min(burned_fuel/2-255, 255), 32)/4, _max(_min(burned_fuel, 255)/2, 0));
-              //drawXY(leds, x*2+1, y*2, _max(_min((burned_fuel*2)/6, 255), 0)/10, 255 - _max(_min(burned_fuel/2-255, 255), 32)/4, _max(_min(burned_fuel/2, 255), 0));
-              //drawXY(leds, x*2, y*2+1, _max(_min((burned_fuel*2)/6, 255), 0)/10, 255 - _max(_min(burned_fuel/2-255, 255), 32)/4, _max(_min(burned_fuel/2, 255), 0));
-              //drawXY(leds, x*2+1, y*2+1, _max(_min((burned_fuel*2)/6, 255), 0)/10, 255 - _max(_min(burned_fuel/2-255, 255), 32)/4, _max(_min(burned_fuel/2, 255), 0));
+              drawXY(led_screen, x, y, _max(_min((burned_fuel*2)/6, 255), 0)/10, 255 - _max(_min(burned_fuel/2-255, 255), 32)/4, _max(_min(burned_fuel, 255)/2, 0));
+              //drawXY(led_screen, x*2+1, y*2, _max(_min((burned_fuel*2)/6, 255), 0)/10, 255 - _max(_min(burned_fuel/2-255, 255), 32)/4, _max(_min(burned_fuel/2, 255), 0));
+              //drawXY(led_screen, x*2, y*2+1, _max(_min((burned_fuel*2)/6, 255), 0)/10, 255 - _max(_min(burned_fuel/2-255, 255), 32)/4, _max(_min(burned_fuel/2, 255), 0));
+              //drawXY(led_screen, x*2+1, y*2+1, _max(_min((burned_fuel*2)/6, 255), 0)/10, 255 - _max(_min(burned_fuel/2-255, 255), 32)/4, _max(_min(burned_fuel/2, 255), 0));
             } else {
               //cell->vy *= .9f;
             }
@@ -580,12 +580,12 @@ class FIRE2: public LIGHT_SKETCH {
                 uint8_t s = 255 - (_max(_min(fuel2-255, 255), 32) >> 2);
                 uint8_t v = _max(_min(fuel2, 255), 0);
 
-                drawXY(leds, x, y, h, s, v); 
+                drawXY(led_screen, x, y, h, s, v); 
               }
                 
-              //drawXY(leds, x*2+1, y*2, _max(_min((cell->fuel-500)/15, 255), 0)/20, 255 - _max(_min((cell->fuel-500)/15-255, 255), 32)/4, _max(_min((cell->fuel-500)/15, 255), 0)); 
-              //drawXY(leds, x*2, y*2+1, _max(_min((cell->fuel-500)/15, 255), 0)/20, 255 - _max(_min((cell->fuel-500)/15-255, 255), 32)/4, _max(_min((cell->fuel-500)/15, 255), 0)); 
-              //drawXY(leds, x*2+1, y*2+1, _max(_min((cell->fuel-500)/15, 255), 0)/20, 255 - _max(_min((cell->fuel-500)/15-255, 255), 32)/4, _max(_min((cell->fuel-500)/15, 255), 0)); 
+              //drawXY(led_screen, x*2+1, y*2, _max(_min((cell->fuel-500)/15, 255), 0)/20, 255 - _max(_min((cell->fuel-500)/15-255, 255), 32)/4, _max(_min((cell->fuel-500)/15, 255), 0)); 
+              //drawXY(led_screen, x*2, y*2+1, _max(_min((cell->fuel-500)/15, 255), 0)/20, 255 - _max(_min((cell->fuel-500)/15-255, 255), 32)/4, _max(_min((cell->fuel-500)/15, 255), 0)); 
+              //drawXY(led_screen, x*2+1, y*2+1, _max(_min((cell->fuel-500)/15, 255), 0)/20, 255 - _max(_min((cell->fuel-500)/15-255, 255), 32)/4, _max(_min((cell->fuel-500)/15, 255), 0)); 
             }
 
 
@@ -593,10 +593,10 @@ class FIRE2: public LIGHT_SKETCH {
 
           //draw air and smoke for debugging
           if (draw_air) {
-            drawXY(leds, x, y, 96, 255, _min(_max((air)/100,0),255));
+            drawXY(led_screen, x, y, 96, 255, _min(_max((air)/100,0),255));
           }
           if (draw_smoke) {
-            drawXY(leds, x, y, 160, 255, _min(_max((smoke)/100,0),255));
+            drawXY(led_screen, x, y, 160, 255, _min(_max((smoke)/100,0),255));
           }
           //constrain to avoid huge stuff/overflow
            cell->fuel = _max(_min(fuel, FIRE_GRID_MAX), FIRE_GRID_MIN);
@@ -805,7 +805,7 @@ class FIRE2: public LIGHT_SKETCH {
           uint8_t s = 255 - (_max(_min(fuel2-255, 255), 32) >> 2);
           uint8_t v = _max(_min(fuel2, 255), 0);
 
-          drawXY(leds, x, y, h, s, v);  
+          drawXY(led_screen, x, y, h, s, v);  
         }
 
  */
@@ -816,7 +816,7 @@ class FIRE2: public LIGHT_SKETCH {
           int h = _max(_min(fuel2, 255), 0)/20;
           int s = 255 - _max(_min(fuel2-255, 255), 32)/4;
           int v = _max(_min(fuel2, 255), 0);
-          drawXY(leds, x, y, h, s, v); 
+          drawXY(led_screen, x, y, h, s, v); 
         }
 
         source_cell->smoke -= total_moved_smoke; //looked kind of neat without this line

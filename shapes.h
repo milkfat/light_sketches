@@ -59,7 +59,7 @@ class SHAPES: public LIGHT_SKETCH {
     }
 
     void vibrate() {
-      draw_line_fine(leds, x1, y1, x2, y2);
+      draw_line_fine(led_screen, x1, y1, x2, y2);
 
 
       if (effect_beat == 1) {

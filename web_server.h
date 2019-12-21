@@ -127,7 +127,10 @@ class WSS_SERVER {
                   button2_down = true;
 
                   if (drawing_enabled) {
-                      draw_line_fine(temp_canvas, (x+offset)*256, y*256, (x1+offset)*256, y1*256, 255, 255, p);
+                      CRGB * old_screen_buffer = led_screen.screen_buffer;
+                      led_screen.screen_buffer = temp_canvas;    
+                      draw_line_fine(led_screen, (x+offset)*256, y*256, (x1+offset)*256, y1*256, 255, 255, p);
+                      led_screen.screen_buffer = old_screen_buffer;    
                   }
               
                   update_pointer(x+offset,y,x1+offset,y1,p,id);

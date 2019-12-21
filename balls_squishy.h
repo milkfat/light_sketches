@@ -342,12 +342,12 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
             }
           }
         }
-        //blendXY(leds, draw_x, draw_y, hue, sat, 255);
+        //blendXY(led_screen, draw_x, draw_y, hue, sat, 255);
         if (draw_filled) {
           draw_circle_fine(draw_x, draw_y, balls[i].vr, hue, sat, 255, i, 16, i*32);
           draw_circle_fine(draw_x, draw_y, balls[i].vr, 0, 0, 0, i, 16, i*32);
           CRGB rgb = CHSV(hue,sat,255);
-          y_buffer_fill(leds, rgb, i*32+16);
+          y_buffer_fill(led_screen, rgb, i*32+16);
           reset_y_buffer();
           reset_x_buffer();
         } else {
@@ -609,7 +609,8 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
         balls[i].y = ((i+1)*SQUISHY_MATRIX_HEIGHT*256)/(NUM_BALLS+2);
         
         //balls[i].r = random(512,2048);
-        balls[i].r = random(950,1736);
+        //balls[i].r = random(950,1736);
+        balls[i].r = random(295,373);
         //balls[i].r = 1024;
         balls[i].m = balls[i].r;
         balls[i].vx = random(1, 200) - 100;
@@ -632,7 +633,7 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
 
     void loop() {
 //    CRGB rgb = CRGB(32,32,32);
-//    draw_line_fine(leds,(MATRIX_WIDTH-4)*256,0,(MATRIX_WIDTH-4)*256,(MATRIX_HEIGHT-1)*256,rgb);
+//    draw_line_fine(led_screen,(MATRIX_WIDTH-4)*256,0,(MATRIX_WIDTH-4)*256,(MATRIX_HEIGHT-1)*256,rgb);
       if (button1_click) {
         draw_filled = !draw_filled;
         reset_y_buffer();

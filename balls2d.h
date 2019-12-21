@@ -130,9 +130,9 @@ class BALLS2D: public LIGHT_SKETCH {
       //        for (int m = 0;m < NUM_LEDS;m++) {
       //              debug_canvas[m] = leds[m];
       //            }
-      //            blendXY(leds, balls[i].x, balls[i].y, 0, 0, 255);
+      //            blendXY(led_screen, balls[i].x, balls[i].y, 0, 0, 255);
       //            if (collision_buffer[earliest_collision].flag == 'B') {
-      //              blendXY(leds, balls[j].x, balls[j].y, 0, 0, 255);
+      //              blendXY(led_screen, balls[j].x, balls[j].y, 0, 0, 255);
       //            }
       //            LED_show();
       //            for (int m = 0;m < NUM_LEDS;m++) {
@@ -873,7 +873,7 @@ class BALLS2D: public LIGHT_SKETCH {
               }
             }
           }
-          //blendXY(leds, draw_x, draw_y, hue, sat, 255);
+          //blendXY(led_screen, draw_x, draw_y, hue, sat, 255);
           draw_circle_fine(draw_x, draw_y, balls[i].r, hue, sat, 255);
         }
 #ifdef DEBUG

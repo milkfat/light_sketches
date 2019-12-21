@@ -165,7 +165,7 @@ class WAVES: public LIGHT_SKETCH {
           for (int y = 0; y < HEIGHTMAP_HEIGHT; y++) {
 
             //draw LED
-            //drawXY(leds, x, y, 160, 255, _min(_max(grid[x][y].height*2, -128),127)+128);
+            //drawXY(led_screen, x, y, 160, 255, _min(_max(grid[x][y].height*2, -128),127)+128);
             height_map[y][x] = grid[y][x].height;
           }
         }

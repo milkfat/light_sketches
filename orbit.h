@@ -44,13 +44,13 @@ class ORBIT: public LIGHT_SKETCH {
         while ( cnt < 1 + (4500*count)/65535 ) {
             cnt++;
             VECTOR3 v(0,6740,0);
-            matrix.rotate_x(v,angle_x);
-            matrix.rotate_y(v,angle_y);
-            matrix.rotate_z(v,angle_z);
+            rotate_x(v,angle_x);
+            rotate_y(v,angle_y);
+            rotate_z(v,angle_z);
             //v.y += (v.y * sin8(count/4))/64;
             matrix.rotate(v);
-            matrix.scale_z(v);
-            matrix.perspective(v);
+            scale_z(v);
+            led_screen.perspective(v);
 
             color_add_linear16(leds[XY(v[0]/256, v[1]/256)].r, (65535 - (65279*count)/65535)/32);
             leds[XY(v[0]/256, v[1]/256)].g = leds[XY(v[0]/256, v[1]/256)].r;

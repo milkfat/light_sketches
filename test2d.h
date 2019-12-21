@@ -35,10 +35,10 @@ class TEST2D: public LIGHT_SKETCH {
           xpos += xvel;
           ypos += yvel;
           if (filter_particles == 1 ) {
-            blendXY(leds, xpos, ypos, hue, sat, 255);
+            blendXY(led_screen, xpos, ypos, hue, sat, 255);
           } else {
 
-            drawXY_fine(leds, xpos, ypos, hue, sat, 255);
+            drawXY_fine(led_screen, xpos, ypos, hue, sat, 255);
           }
           //        if (xpos >= (MATRIX_WIDTH-1)*255L-xvel) {
           //          xvel = -abs(xvel);

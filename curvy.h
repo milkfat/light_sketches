@@ -165,21 +165,21 @@ class CURVY: public LIGHT_SKETCH {
         // VECTOR3 a(25*256,150*256,0);
         // VECTOR3 b(-25*256,150*256,0);
         // VECTOR3 c(0,-25*256,0);
-        // matrix.rotate_z(a,rott);
-        // matrix.rotate_z(b,rott);
-        // matrix.rotate_z(c,rott);
-        // matrix.rotate_x(a,rott2);
-        // matrix.rotate_x(b,rott2);
-        // matrix.rotate_x(c,rott2);
+        // rotate_z(a,rott);
+        // rotate_z(b,rott);
+        // rotate_z(c,rott);
+        // rotate_x(a,rott2);
+        // rotate_x(b,rott2);
+        // rotate_x(c,rott2);
         // matrix.rotate(a);
         // matrix.rotate(b);
         // matrix.rotate(c);
-        // matrix.scale_z(a);
-        // matrix.scale_z(b);
-        // matrix.scale_z(c);
-        // matrix.perspective(a);
-        // matrix.perspective(b);
-        // matrix.perspective(c);
+        // scale_z(a);
+        // scale_z(b);
+        // scale_z(c);
+        // led_screen.perspective(a);
+        // led_screen.perspective(b);
+        // led_screen.perspective(c);
 
 
         // VECTOR3 norm_a(0,250,250);
@@ -188,18 +188,18 @@ class CURVY: public LIGHT_SKETCH {
         // //VECTOR3 norm_a(0,0,255);
         // //VECTOR3 norm_b(0,0,255);
         // //VECTOR3 norm_c(0,0,255);
-        // matrix.rotate_z(norm_a,rott);
-        // matrix.rotate_z(norm_b,rott);
-        // matrix.rotate_z(norm_c,rott);
-        // matrix.rotate_x(norm_a,rott2);
-        // matrix.rotate_x(norm_b,rott2);
-        // matrix.rotate_x(norm_c,rott2);
+        // rotate_z(norm_a,rott);
+        // rotate_z(norm_b,rott);
+        // rotate_z(norm_c,rott);
+        // rotate_x(norm_a,rott2);
+        // rotate_x(norm_b,rott2);
+        // rotate_x(norm_c,rott2);
         // matrix.rotate(norm_a);
         // matrix.rotate(norm_b);
         // matrix.rotate(norm_c);
-        // //matrix.rotate_x(norm_a,24);
-        // //matrix.rotate_x(norm_b,24);
-        // //matrix.rotate_x(norm_c,24);
+        // //rotate_x(norm_a,24);
+        // //rotate_x(norm_b,24);
+        // //rotate_x(norm_c,24);
         
 
         // draw_triangle(a, b, c, norm_a, norm_b, norm_c);
@@ -318,7 +318,7 @@ class CURVY: public LIGHT_SKETCH {
         p[2] = (p[2]*p[2])/400;
         p[2] = -p[2];
         p[2] *= 256;
-        matrix.reverse_perspective(p); //translate screen coordinates to 3D coordinates
+        led_screen.reverse_perspective(p); //translate screen coordinates to 3D coordinates
         p[0] += 70*48+256*16; //adjust for the size of the jelly (push it off the screen)
         jelly.x = p[0]; 
         jelly.y = p[1];
@@ -365,8 +365,8 @@ class CURVY: public LIGHT_SKETCH {
       int32_t v[3] = {0,256,0};
 
       //rotate the unit vector to figure out how far the jelly should move in each direction
-      matrix.rotate_z(v,jelly.az);
-      matrix.rotate_x(v,jelly.ax);
+      rotate_z(v,jelly.az);
+      rotate_x(v,jelly.ax);
 
       //update the jelly's position
       jelly.x += 2*(jelly_velocity*v[0])/256;
@@ -440,19 +440,19 @@ void draw_jelly(JELLY& jelly) {
         p2[2] = ( (jp2x+x_r2)*( s - 128 ) + jelly_points[2][2]*( c - 128 )  )/128;
 
         //rotate the jellyfish to particular orientation
-        matrix.rotate_y(p0,jelly.ay);
-        matrix.rotate_y(p1,jelly.ay);
-        matrix.rotate_y(p2,jelly.ay);
+        rotate_y(p0,jelly.ay);
+        rotate_y(p1,jelly.ay);
+        rotate_y(p2,jelly.ay);
 
         //rotate the jellyfish to particular orientation
-        matrix.rotate_z(p0,jelly.az);
-        matrix.rotate_z(p1,jelly.az);
-        matrix.rotate_z(p2,jelly.az);
+        rotate_z(p0,jelly.az);
+        rotate_z(p1,jelly.az);
+        rotate_z(p2,jelly.az);
 
         //rotate the jellyfish to particular orientation
-        matrix.rotate_x(p0,jelly.ax);
-        matrix.rotate_x(p1,jelly.ax);
-        matrix.rotate_x(p2,jelly.ax);
+        rotate_x(p0,jelly.ax);
+        rotate_x(p1,jelly.ax);
+        rotate_x(p2,jelly.ax);
 
         //translate to coordinates
         p0[0] += jelly.x;
@@ -483,14 +483,14 @@ void draw_jelly(JELLY& jelly) {
         matrix.rotate(p2);
 
         //some sort of screen scaling
-        matrix.scale_z(p0);
-        matrix.scale_z(p1);
-        matrix.scale_z(p2);
+        scale_z(p0);
+        scale_z(p1);
+        scale_z(p2);
 
         //map our 3d coordinates to screen coordinates
-        matrix.perspective(p0);
-        matrix.perspective(p1);
-        matrix.perspective(p2);
+        led_screen.perspective(p0);
+        led_screen.perspective(p1);
+        led_screen.perspective(p2);
 
         if (!jelly.on_screen) {
           if (p0[0] >= 0 && p0[0] < MATRIX_WIDTH*256 && p0[1] >= 0 && p0[1] < MATRIX_HEIGHT*256) {
@@ -747,10 +747,10 @@ void draw_jelly(JELLY& jelly) {
           matrix.rotate(p);
 
           //some sort of screen scaling
-          matrix.scale_z(p);
+          scale_z(p);
 
           //map our 3d coordinates to screen coordinates
-          matrix.perspective(p);
+          led_screen.perspective(p);
 
           if (!jelly.on_screen) {
           if (p[0] >= 0 && p[0] < MATRIX_WIDTH*256 && p[1] >= 0 && p[1] < MATRIX_HEIGHT*256) {
@@ -906,7 +906,7 @@ void draw_jelly(JELLY& jelly) {
           norm.y = 0;
           norm.z = 0;
         }
-        matrix.rotate_x(norm,-24);
+        rotate_x(norm,-24);
         return norm;
     }
 
@@ -920,17 +920,17 @@ void draw_jelly(JELLY& jelly) {
       int32_t z_depth = orig.z+norm.z;
 
 
-      //matrix.rotate_x(norm,32);
-      //matrix.rotate_y(norm,32);
+      //rotate_x(norm,32);
+      //rotate_y(norm,32);
 
       int bri = _min(_max(((255-norm.z)*3)/4, 0) + bri/4,220);
 
       CRGB rgb = CHSV(hue,sat,val);
       color_scale(rgb, bri);
 
-      //draw_line_fine(leds, a, b, rgb, z_depth, 255, 255, true);
-      //draw_line_fine(leds, b, c, rgb, z_depth, 255, 255, true);
-      //draw_line_fine(leds, c, a, rgb, z_depth, 255, 255, true);
+      //draw_line_fine(led_screen, a, b, rgb, z_depth, 255, 255, true);
+      //draw_line_fine(led_screen, b, c, rgb, z_depth, 255, 255, true);
+      //draw_line_fine(led_screen, c, a, rgb, z_depth, 255, 255, true);
       
       //CRGB rgb(0,0,0);
       //CRGB rgb2 = CHSV(hue,sat,val);
@@ -941,7 +941,7 @@ void draw_jelly(JELLY& jelly) {
           if (y_buffer[y][0] <= y_buffer[y][1]) {
 
           for (int x = y_buffer[y][0]; x <= y_buffer[y][1]; x++) {
-            drawXYZ(leds, x, y, orig.z, rgb);
+            drawXYZ(led_screen, x, y, orig.z, rgb);
           }
 
         }
@@ -978,9 +978,9 @@ void draw_jelly(JELLY& jelly) {
 
         // CRGB rgb(a_norm.x,a_norm.y,a_norm.z);
 
-        // draw_line_fine(leds, a, b, rgb, a.z, 255, 255, true);
-        // draw_line_fine(leds, b, c, rgb, a.z, 255, 255, true);
-        // draw_line_fine(leds, c, a, rgb, a.z, 255, 255, true);
+        // draw_line_fine(led_screen, a, b, rgb, a.z, 255, 255, true);
+        // draw_line_fine(led_screen, b, c, rgb, a.z, 255, 255, true);
+        // draw_line_fine(led_screen, c, a, rgb, a.z, 255, 255, true);
         
         //fill between the pixels of our lines
         for (int y = _max(y_buffer_min,0); y <= _min(y_buffer_max,MATRIX_HEIGHT-1); y++) {
@@ -1018,7 +1018,7 @@ void draw_jelly(JELLY& jelly) {
               new_rgb.g = (norm_bri*rgb.g)/256;
               new_rgb.b = (norm_bri*rgb.b)/256;
 
-              drawXYZ(leds, x, y, y_buffer2[y][0].position.z*256, new_rgb,false); //gamma
+              drawXYZ(led_screen, x, y, y_buffer2[y][0].position.z*256, new_rgb,false); //gamma
 
               x++;
             
@@ -1031,8 +1031,8 @@ void draw_jelly(JELLY& jelly) {
             }
             // CRGB rgb(  y_buffer2[y][0].ratio.x, y_buffer2[y][0].ratio.y, y_buffer2[y][0].ratio.z );
             // CRGB rgb2( y_buffer2[y][1].ratio.x, y_buffer2[y][1].ratio.y, y_buffer2[y][1].ratio.z );
-            // drawXYZ(leds, y_buffer2[y][0].position.x, y_buffer2[y][0].position.y, y_buffer2[y][0].position.z, rgb, true);
-            // drawXYZ(leds, y_buffer2[y][1].position.x, y_buffer2[y][1].position.y, y_buffer2[y][1].position.z, rgb2, true);
+            // drawXYZ(led_screen, y_buffer2[y][0].position.x, y_buffer2[y][0].position.y, y_buffer2[y][0].position.z, rgb, true);
+            // drawXYZ(led_screen, y_buffer2[y][1].position.x, y_buffer2[y][1].position.y, y_buffer2[y][1].position.z, rgb2, true);
 
           }
           //clear the buffer to be used for filling the triangle
@@ -1099,10 +1099,10 @@ void draw_jelly(JELLY& jelly) {
         p->y = fish_points[i].y*48;
         p->z = fish_points[i].z*64 + (inoise8(fish_points[i].x*2+fish.wiggle*8, 0, 0)-128)*16;
         //rotate around z-axis:
-        matrix.rotate_z(*p, fish.az);
+        rotate_z(*p, fish.az);
 
         //rotate around y-axis:
-        matrix.rotate_y(*p, fish.ay);
+        rotate_y(*p, fish.ay);
 
         //translate fish to position        
         p->x += fish.x;
@@ -1111,11 +1111,11 @@ void draw_jelly(JELLY& jelly) {
         p->z = -p->z;
         matrix.rotate(*p);
 
-        //matrix.scale_z(*p);
+        //scale_z(*p);
         
         detail_z = p->z;
 
-        matrix.perspective(*p,points_2d[i]);
+        led_screen.perspective(*p,points_2d[i]);
 
         //check to make sure at least one point is located on the screen
         if (!on_screen && points_2d[i].x > 0 && points_2d[i].x < MATRIX_WIDTH*256 && points_2d[i].y > 0 && points_2d[i].y < MATRIX_HEIGHT*256) {
@@ -1150,35 +1150,35 @@ void draw_jelly(JELLY& jelly) {
         //draw_triangle(points_2d[a],points_2d[b],points_2d[j],fish.hue,fish.sat,bri);
         //draw_triangle(points_2d[b],points_2d[g],points_2d[j],fish.hue,fish.sat,bri);
         VECTOR3 right(0,0,-255);
-        matrix.rotate_z(right, fish.az);
-        matrix.rotate_y(right, fish.ay);
+        rotate_z(right, fish.az);
+        rotate_y(right, fish.ay);
         matrix.rotate(right);
-        matrix.rotate_x(right,-24);
+        rotate_x(right,-24);
         VECTOR3 left(0,0,255);
-        matrix.rotate_z(left, fish.az);
-        matrix.rotate_y(left, fish.ay);
+        rotate_z(left, fish.az);
+        rotate_y(left, fish.ay);
         matrix.rotate(left);
-        matrix.rotate_x(left,-24);
+        rotate_x(left,-24);
         VECTOR3 up(0,-255,0);
-        matrix.rotate_z(up, fish.az);
-        matrix.rotate_y(up, fish.ay);
+        rotate_z(up, fish.az);
+        rotate_y(up, fish.ay);
         matrix.rotate(up);
-        matrix.rotate_x(up,-24);
+        rotate_x(up,-24);
         VECTOR3 down(0,255,0);
-        matrix.rotate_z(down, fish.az);
-        matrix.rotate_y(down, fish.ay);
+        rotate_z(down, fish.az);
+        rotate_y(down, fish.ay);
         matrix.rotate(down);
-        matrix.rotate_x(down,-24);
+        rotate_x(down,-24);
         VECTOR3 front(-255,0,0);
-        matrix.rotate_z(front, fish.az);
-        matrix.rotate_y(front, fish.ay);
+        rotate_z(front, fish.az);
+        rotate_y(front, fish.ay);
         matrix.rotate(front);
-        matrix.rotate_x(front,-24);
+        rotate_x(front,-24);
         VECTOR3 back(255,0,0);
-        matrix.rotate_z(back, fish.az);
-        matrix.rotate_y(back, fish.ay);
+        rotate_z(back, fish.az);
+        rotate_y(back, fish.ay);
         matrix.rotate(back);
-        matrix.rotate_x(right,-24);
+        rotate_x(right,-24);
 
         CRGB rgb = CHSV(fish.hue,fish.sat,bri);
 
@@ -1237,10 +1237,10 @@ void draw_jelly(JELLY& jelly) {
 
             // //correct 3d perspective
             
-            // matrix.perspective(p0);
-            // matrix.perspective(p1);
+            // led_screen.perspective(p0);
+            // led_screen.perspective(p1);
 
-            // draw_line_fine(leds, p0[0], p0[1], p1[0], p1[1], 255, 255, 255, -10000, 255, true);
+            // draw_line_fine(led_screen, p0[0], p0[1], p1[0], p1[1], 255, 255, 255, -10000, 255, true);
 
     } //void draw_fish(FISH& fish)
 
@@ -1274,9 +1274,9 @@ void draw_jelly(JELLY& jelly) {
           //swap X and Y axis if our display width is greater than the height
           uint8_t b = 96-i*8;
           #if MATRIX_WIDTH > MATRIX_HEIGHT
-          matt_curve8(leds, my_points[i], NUM_POINTS, 96, default_saturation, b, true, false, true, b, 255);
+          matt_curve8(led_screen, my_points[i], NUM_POINTS, 96, default_saturation, b, true, false, true, b, 255);
           #else
-          matt_curve8(leds, my_points[i], NUM_POINTS, 96, default_saturation, b, false, false, true, b, 255);
+          matt_curve8(led_screen, my_points[i], NUM_POINTS, 96, default_saturation, b, false, false, true, b, 255);
           #endif
 
           

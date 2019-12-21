@@ -3,10 +3,12 @@
 // #define MATRIX_WIDTH 360
 // #define MATRIX_HEIGHT 250
 
-#define WINDOW_WIDTH 300
+#define WINDOW_WIDTH 980
 #define WINDOW_HEIGHT 980
-#define MATRIX_WIDTH 32
-#define MATRIX_HEIGHT 192
+#define MATRIX_WIDTH 15
+#define MATRIX_HEIGHT 41
+#define SCREEN_WIDTH 192
+#define SCREEN_HEIGHT 192
     
 //misc libraries
 #include <iostream>
@@ -44,9 +46,40 @@ uint32_t debug_micros1 = 0;
 //     uint32_t debug_time2 = micros();
 //     debug_micros1 += micros() - debug_time2;
 
+void update_matrix();
+
 //load all the magical light sketches
+#define NUM_LEDS (MATRIX_WIDTH*MATRIX_HEIGHT+1)
+#include "draw_functions.h"
+VECTOR3 tree_coords[500];
+uint8_t tree_radians[500];
+CRGB * screen_buffer = new CRGB[SCREEN_WIDTH*SCREEN_HEIGHT+1];
+
 #include "light_sketches.h"
 
+PERSPECTIVE pc_screen(SCREEN_WIDTH, SCREEN_HEIGHT);
+void tree_thing() {
+    
+	pc_screen.update();
+
+	for (int i = 0; i < SCREEN_WIDTH*SCREEN_HEIGHT; i++) {
+			screen_buffer[i].r = 0;
+			screen_buffer[i].g = 0;
+			screen_buffer[i].b = 0;
+	}
+
+    for (int i = 0; i < 500; i++) {
+        VECTOR3 p = tree_coords[i];
+        p.y-=150*256;
+        MATRIX::rotate(p);
+        if (p.z >= 0) {
+            scale_z(p);
+            pc_screen.perspective(p);
+            blendXY(pc_screen,p,led_screen.screen_buffer[i]);
+        }
+    }        
+
+}
 #include "text.h"
 
 #include <server_https.hpp>
@@ -83,21 +116,25 @@ void update_matrix() {
 	//draw stuff
 	SDL_Event event;
   
-    int32_t x_offset = (WINDOW_WIDTH - (MATRIX_WIDTH * 5))/2;
-	int32_t y_offset = (WINDOW_HEIGHT - (MATRIX_HEIGHT * 5))/2;
+    int32_t x_offset = (WINDOW_WIDTH - (SCREEN_WIDTH * 5))/2;
+	int32_t y_offset = (WINDOW_HEIGHT - (SCREEN_HEIGHT * 5))/2;
 	
     uint32_t debug_before = micros();
 
-    for (int x = 0; x < MATRIX_WIDTH; x++) {
-        for (int y = 0; y < MATRIX_HEIGHT; y++) {
+	tree_thing();
+
+    for (int x = 0; x < SCREEN_WIDTH; x++) {
+        for (int y = 0; y < SCREEN_HEIGHT; y++) {
 			#define MIN_VAL 8
-			uint8_t * pixel_location = (uint8_t*)&leds[XY(x,MATRIX_HEIGHT-1-y)].r;
+			uint8_t * pixel_location = (uint8_t*)&pc_screen.screen_buffer[pc_screen.XY(x,SCREEN_HEIGHT-1-y)].r;
+			//uint8_t * pixel_location = (uint8_t*)&leds[led_screen.XY(x,SCREEN_HEIGHT-1-y)].r;
 			uint32_t pixel_data = pixel_location[2] | pixel_location[1] << 8 | pixel_location[0] << 16;
 			for (int y2 = 0; y2 < 4; y2++) {
 					put_pixel(screen, x*5+0+x_offset, y*5+y2+y_offset, pixel_data);
 			}
 		}
     }
+
 
 	debug_micros0 = micros() - debug_before;
 
@@ -138,11 +175,17 @@ void update_matrix() {
 					case SDLK_n: next_sketch=true; break;
 					case SDLK_r: reset_sketch=true; break;
 					case SDLK_d: debug_flag=true; break;
+					case SDLK_l: (event.key.keysym.mod & KMOD_SHIFT) ? rotation_alpha+=5 : rotation_alpha++; break;
+					case SDLK_j: (event.key.keysym.mod & KMOD_SHIFT) ? rotation_alpha-=5 : rotation_alpha--; break;
+					case SDLK_i: (event.key.keysym.mod & KMOD_SHIFT) ? rotation_beta+=5 : rotation_beta++; break;
+					case SDLK_k: (event.key.keysym.mod & KMOD_SHIFT) ? rotation_beta-=5 : rotation_beta--; break;
+					case SDLK_o: (event.key.keysym.mod & KMOD_SHIFT) ? rotation_gamma+=5 : rotation_gamma++; break;
+					case SDLK_u: (event.key.keysym.mod & KMOD_SHIFT) ? rotation_gamma-=5 : rotation_gamma--; break;
 					case SDLK_t: typing_mode=true; SDL_StartTextInput(); break;
-					case SDLK_LEFT:  camera_scaler--; std::cout << "camera: " << (int16_t)camera_scaler << "\n"; break;
-					case SDLK_RIGHT: camera_scaler++; std::cout << "camera: " << (int16_t)camera_scaler << "\n"; break;
-					case SDLK_UP:    screen_scaler--; std::cout << "screen: " << (int16_t)screen_scaler << "\n"; break;
-					case SDLK_DOWN:  screen_scaler++; std::cout << "screen: " << (int16_t)screen_scaler << "\n"; break; 
+					case SDLK_LEFT:  led_screen.camera_scaler--; std::cout << "camera: " << (int16_t)led_screen.camera_scaler << "\n"; break;
+					case SDLK_RIGHT: led_screen.camera_scaler++; std::cout << "camera: " << (int16_t)led_screen.camera_scaler << "\n"; break;
+					case SDLK_UP:    led_screen.screen_scaler--; std::cout << "screen: " << (int16_t)led_screen.screen_scaler << "\n"; break;
+					case SDLK_DOWN:  led_screen.screen_scaler++; std::cout << "screen: " << (int16_t)led_screen.screen_scaler << "\n"; break; 
 				}
 			}
 			break;
@@ -161,7 +204,17 @@ void update_matrix() {
 	
 }
 
-int main(int argc, char **argv){	
+int main(int argc, char **argv){
+
+	pc_screen.screen_buffer = screen_buffer;
+
+	for (int i = 0; i < 500; i++) {
+			tree_coords[i] = VECTOR3(0, -150*256, 30*256);
+			rotate_y(tree_coords[i], i*17);
+			tree_radians[i] = i*17;
+			tree_coords[i].y = (i*65535)/499;
+			std::cout << tree_coords[i].x << " " << tree_coords[i].y << " " << tree_coords[i].z << "\n";
+		}	
 
    https_server.start();
    wss_server.start();

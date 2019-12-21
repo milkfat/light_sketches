@@ -446,7 +446,7 @@ class TEST3D: public LIGHT_SKETCH {
         fs->age = 0;
         fs->x = 0;
         int32_t p[3] = {(MATRIX_WIDTH*256)/2,0,0};
-        matrix.reverse_perspective(p);
+        led_screen.reverse_perspective(p);
         fs->y = p[1]; //start "on the ground"
         fs->z = 0;
         uint8_t r = random(105);
@@ -709,12 +709,12 @@ class TEST3D: public LIGHT_SKETCH {
           rotate(p);
 
           //translate vectors to coordinates
-          matrix.scale_z(p[2]);
+          scale_z(p[2]);
 
           //correct 3d perspective
-          if (matrix.perspective(p)) {
+          if (led_screen.perspective(p)) {
             int16_t v_temp2 = (p[2] + 200 * 256L) / 256L;
-            blendXY(leds, p[0], p[1], pa->h, s, (_max(_min(v_temp2, 255), 0)*v)/255);
+            blendXY(led_screen, p[0], p[1], pa->h, s, (_max(_min(v_temp2, 255), 0)*v)/255);
           }
         }
       }
@@ -849,7 +849,7 @@ void handle_test_object() {
           }
 
           for (int i = 0; i < 4; i++) {
-            draw_line_fine(leds, square2[i][0] + 3 * 256, square2[i][1] + 50 * 256, square2[(i + 1) % 4][0] + 3 * 256, square2[(i + 1) % 4][1] + 50 * 256);
+            draw_line_fine(led_screen, square2[i][0] + 3 * 256, square2[i][1] + 50 * 256, square2[(i + 1) % 4][0] + 3 * 256, square2[(i + 1) % 4][1] + 50 * 256);
           }
 
           int32_t r0[3];
@@ -857,19 +857,19 @@ void handle_test_object() {
           rotate(linex[0], r0);
           rotate(linex[1], r1);
 
-          draw_line_fine(leds, r0[0] + 3 * 256, r0[1] + 50 * 256, r1[0] + 3 * 256, r1[1] + 50 * 256, 160);
+          draw_line_fine(led_screen, r0[0] + 3 * 256, r0[1] + 50 * 256, r1[0] + 3 * 256, r1[1] + 50 * 256, 160);
 
 
           rotate(liney[0], r0);
           rotate(liney[1], r1);
 
-          draw_line_fine(leds, r0[0] + 3 * 256, r0[1] + 50 * 256, r1[0] + 3 * 256, r1[1] + 50 * 256, 48);
+          draw_line_fine(led_screen, r0[0] + 3 * 256, r0[1] + 50 * 256, r1[0] + 3 * 256, r1[1] + 50 * 256, 48);
 
 
           rotate(linez[0], r0);
           rotate(linez[1], r1);
 
-          draw_line_fine(leds, r0[0] + 3 * 256, r0[1] + 50 * 256, r1[0] + 3 * 256, r1[1] + 50 * 256, 96);
+          draw_line_fine(led_screen, r0[0] + 3 * 256, r0[1] + 50 * 256, r1[0] + 3 * 256, r1[1] + 50 * 256, 96);
 
           rotation_alpha += 2;
           rotation_beta += .154;
@@ -1097,18 +1097,18 @@ void handle_grid() {
               rotate(pt, p1);
 
               //translate vectors to coordinates
-              matrix.scale_z(p0[2]);
-              matrix.scale_z(p1[2]);
+              scale_z(p0[2]);
+              scale_z(p1[2]);
 
               //correct 3d perspective
 
-              matrix.perspective(p0);
-              matrix.perspective(p1);
+              led_screen.perspective(p0);
+              led_screen.perspective(p1);
 
 
 
               //draw_line_fine2(leds, p0[0], p0[1], p1[0], p1[1], hue, sat, val);
-              draw_line_fine(leds, p0[0], p0[1], p1[0], p1[1], hue, sat, val, -10000, val, true);
+              draw_line_fine(led_screen, p0[0], p0[1], p1[0], p1[1], hue, sat, val, -10000, val, true);
 
             }
 
@@ -1163,8 +1163,8 @@ void handle_grid() {
               rotate(pt, p1);
 
               //translate vectors to coordinates
-              matrix.scale_z(p0[2]);
-              matrix.scale_z(p1[2]);
+              scale_z(p0[2]);
+              scale_z(p1[2]);
 
 
               //correct 3d perspective
@@ -1174,8 +1174,8 @@ void handle_grid() {
               //              p0[1] = (-150*256L * (p0[1] - 0)) / (-150*256L + p0[2]) + 0;
               //              p1[0] = (-150*256L * (p1[0] - 0))       / (-150*256L + p1[2]) + 0;
               //              p1[1] = (-150*256L * (p1[1] - 0)) / (-150*256L + p1[2]) + 0;
-              if ( matrix.perspective(p0) && matrix.perspective(p1) ) {
-                draw_line_fine(leds, p0[0], p0[1], p1[0], p1[1], hue, sat, val, -10000, val);
+              if ( led_screen.perspective(p0) && led_screen.perspective(p1) ) {
+                draw_line_fine(led_screen, p0[0], p0[1], p1[0], p1[1], hue, sat, val, -10000, val);
               }
             }
           }
@@ -1241,12 +1241,12 @@ void handle_snow() {
             rotate(p, p0);
 
             //translate vectors to coordinates
-            matrix.scale_z(p0[2]);
+            scale_z(p0[2]);
 
             //correct 3d perspective
               
-            if (matrix.perspective(p0)) {
-              blendXY(leds, p0[0], p0[1], 0, 0, _max(_min((p0[2] + 148 * 256L) / 256L, 255), 0));
+            if (led_screen.perspective(p0)) {
+              blendXY(led_screen, p0[0], p0[1], 0, 0, _max(_min((p0[2] + 148 * 256L) / 256L, 255), 0));
             }
 
           }
@@ -1280,17 +1280,17 @@ void handle_spiral() {
             rotate(p, p0);
 
             //translate vectors to coordinates
-            matrix.scale_z(p0[2]);
+            scale_z(p0[2]);
 
             //correct 3d perspective
 
             
-            matrix.perspective(p0);
+            led_screen.perspective(p0);
 
             coords[i][0] = p0[0];
             coords[i][1] = p0[1];
 
-            //blendXY(leds, p0[0], p0[1], 0, 0, _max(_min((150*256L-p0[2])/256L,255),0));
+            //blendXY(led_screen, p0[0], p0[1], 0, 0, _max(_min((150*256L-p0[2])/256L,255),0));
 
 
           }
@@ -1326,19 +1326,19 @@ void handle_tunnel() {
     rotate(v1, p1);
 
     //translate vectors to coordinates
-    matrix.scale_z(p0);
-    matrix.scale_z(p1);
+    scale_z(p0);
+    scale_z(p1);
 
     //correct 3d perspective
     
-    matrix.perspective(p0);
-    matrix.perspective(p1);
+    led_screen.perspective(p0);
+    led_screen.perspective(p1);
     uint8_t hue = i * (256/TUNNEL_DETAIL);
 
     if (i!=TUNNEL_DETAIL) {
-      draw_line_fine(leds, p0[0], p0[1], p1[0], p1[1], hue, 255, 0, -10000, 128, true);
+      draw_line_fine(led_screen, p0[0], p0[1], p1[0], p1[1], hue, 255, 0, -10000, 128, true);
       if ((i+stp2)%8 == 0 ) {
-        draw_line_fine(leds, p0[0], p0[1], p1[0], p1[1], hue, 255, 16, -10000, 255, true);
+        draw_line_fine(led_screen, p0[0], p0[1], p1[0], p1[1], hue, 255, 16, -10000, 255, true);
       }
     }
     //draw_line_fine(CRGB crgb_object[], int32_t x1, int32_t y1, int32_t x2, int32_t y2, uint8_t hue = 0, uint8_t sat = 255, uint8_t val = 255, int z_depth = -10000, uint8_t val2 = 255)
@@ -1351,17 +1351,17 @@ void handle_tunnel() {
         rotate(old_v1, p0);
         rotate(v1, p1);
         
-        matrix.scale_z(p0);
-        matrix.scale_z(p1);
+        scale_z(p0);
+        scale_z(p1);
         
-        matrix.perspective(p0);
-        matrix.perspective(p1);
+        led_screen.perspective(p0);
+        led_screen.perspective(p1);
 
         int thing = (255 - (255 / NUM_CIRCLES_TEST3D)) + (stp4/256) / NUM_CIRCLES_TEST3D - j * (255 / NUM_CIRCLES_TEST3D);
         thing = (thing*thing)/256L;
 
         draw_line_fine(
-            leds, 
+            led_screen, 
             p0[0], 
             p0[1], 
             p1[0], 

@@ -319,10 +319,10 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
       p1[2] += -180 * 256 + (200 * 256 * debug_scaler) / 256;
 
-      matrix.perspective(p0);
-      matrix.perspective(p1);
+      led_screen.perspective(p0);
+      led_screen.perspective(p1);
       
-      draw_line_fine(leds, p0[0], p0[1], p1[0], p1[1], hue, sat, val, -10000, val);
+      draw_line_fine(led_screen, p0[0], p0[1], p1[0], p1[1], hue, sat, val, -10000, val);
     } //draw_3d()
 
 
@@ -389,8 +389,8 @@ class MATTCLOCK: public LIGHT_SKETCH {
           p0[2] += -180 * 256 + (200 * 256 * debug_scaler) / 256;
           p1[2] += -180 * 256 + (200 * 256 * debug_scaler) / 256;
         
-          matrix.perspective(p0);
-          matrix.perspective(p1);
+          led_screen.perspective(p0);
+          led_screen.perspective(p1);
 
           draw_part = 1;
           if (p0[0] > p1[0]) {
@@ -418,7 +418,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
         }
 
       } else {
-        draw_line_fine(leds, x+x0, y-y0, x+x1, y-y1, 0, 255, 64, -10000, 64);
+        draw_line_fine(led_screen, x+x0, y-y0, x+x1, y-y1, 0, 255, 64, -10000, 64);
       }
 
     }
@@ -450,7 +450,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
         draw_3d(x+x0, y-y0, z, x+x1, y-y1, z);
 
       } else {
-        draw_line_fine(leds, x+x0, y-y0, x+x1, y-y1, 0, 255, 64, -10000, 64);
+        draw_line_fine(led_screen, x+x0, y-y0, x+x1, y-y1, 0, 255, 64, -10000, 64);
       }
 
     }
@@ -669,8 +669,8 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
     void next_effect() {
 
-      camera_scaler = 232;
-      screen_scaler = 100;
+      led_screen.camera_scaler = 232;
+      led_screen.screen_scaler = 100;
       
       if (current_effect == TEXT_CLOCK) {
         display_text = "";
@@ -691,8 +691,8 @@ class MATTCLOCK: public LIGHT_SKETCH {
         erase_delay = 100;
         draw_delay = 400;
       } else if (current_effect == TEXT_CLOCK) {
-        camera_scaler = 232;
-        screen_scaler = 169;
+        led_screen.camera_scaler = 232;
+        led_screen.screen_scaler = 169;
       }
     }
 
@@ -788,7 +788,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
           int y2 = (l2*cos16(a))/32768;
 
 
-          draw_line_fine(leds, clock_x+x, clock_y+y, clock_x+x2, clock_y+y2,0,0,12,-10000,12);
+          draw_line_fine(led_screen, clock_x+x, clock_y+y, clock_x+x2, clock_y+y2,0,0,12,-10000,12);
         }
 
 
@@ -818,9 +818,9 @@ class MATTCLOCK: public LIGHT_SKETCH {
         int hour_y = ( hour_length*(cos16(hour_angle)) ) /32768;
 
 
-        draw_line_fine(leds, clock_x, clock_y, clock_x+second_x, clock_y+second_y,0,0,32,-10000,32);
-        draw_line_fine(leds, clock_x, clock_y, clock_x+minute_x, clock_y+minute_y,160,0,64,-10000,64);
-        draw_line_fine(leds, clock_x, clock_y, clock_x+hour_x, clock_y+hour_y,90,0,64,-10000,64);
+        draw_line_fine(led_screen, clock_x, clock_y, clock_x+second_x, clock_y+second_y,0,0,32,-10000,32);
+        draw_line_fine(led_screen, clock_x, clock_y, clock_x+minute_x, clock_y+minute_y,160,0,64,-10000,64);
+        draw_line_fine(led_screen, clock_x, clock_y, clock_x+hour_x, clock_y+hour_y,90,0,64,-10000,64);
 
     } //draw analog clock
 
@@ -895,7 +895,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
           p0[2] += -180 * 256 + (200 * 256 * debug_scaler) / 256;
 
           //correct 3d perspective
-          matrix.perspective(p0);
+          led_screen.perspective(p0);
 
           wire_digit[i][0] = p0[0];
           wire_digit[i][1] = p0[1];

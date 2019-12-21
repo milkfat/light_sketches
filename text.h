@@ -58,10 +58,10 @@ void handle_text() {
       long derpx = -2*256; //(4*256L)+201;
       long derpy = -2*256; //50*256L+45;
       //long derpy = 50*256L;
-      //draw_line_fine(leds, derpx, derpy,cursor_position_x, cursor_position_y);
+      //draw_line_fine(led_screen, derpx, derpy,cursor_position_x, cursor_position_y);
       for (int i = 0; i < NUM_POINTERS; i++) {
         if (pointers[i].down) {
-          drawXY(leds,pointers[i].x, pointers[i].y, 96, 255, 255);
+          drawXY(led_screen,pointers[i].x, pointers[i].y, 96, 255, 255);
         }
       }
       //draw_line(leds, derpx/255L, derpy/255L+20,cursor_position_x/255L, cursor_position_y/255L+20);
@@ -188,16 +188,16 @@ void handle_text() {
                 v += (ystp-current_height)*256L;
                 if (text_mask == 0) {
                   if (text_filter == 1) {
-                    blendXY(leds, u+offsets[offset_pos]*256, v+offsets[offset_pos+1]*256, hue, text_saturation, text_brightness );
+                    blendXY(led_screen, u+offsets[offset_pos]*256, v+offsets[offset_pos+1]*256, hue, text_saturation, text_brightness );
                   } else {
-                    drawXY_fine(leds, u+offsets[offset_pos]*256, v+offsets[offset_pos+1]*256, hue, text_saturation, 96  );
+                    drawXY_fine(led_screen, u+offsets[offset_pos]*256, v+offsets[offset_pos+1]*256, hue, text_saturation, 96  );
                   }
                 } else {
                   int led_num = XY(x+offsets[offset_pos], ypos+ystp-current_height+offsets[offset_pos+1]);
                   led_mask[led_num] = 0;
                 }
                 
-                //blendXY(leds,(x+offsets[pos])*(36+255), (ypos+offsets[pos+1])*(36+255), hue, 255, bitRead(font8x8_basic[letter][y],x)*96  );
+                //blendXY(led_screen,(x+offsets[pos])*(36+255), (ypos+offsets[pos+1])*(36+255), hue, 255, bitRead(font8x8_basic[letter][y],x)*96  );
                 
               }
             }
@@ -312,30 +312,36 @@ void handle_text() {
                       if (text_effect != 4) {
                         
                         //normal text drawn outside of mask area
-                        blendXY(leds, u2, v2, hue, text_saturation, (text_brightness*(255-led_mask2[XY(u2/256,v2/256)]))/256L );
+                        blendXY(led_screen, u2, v2, hue, text_saturation, (text_brightness*(255-led_mask2[XY(u2/256,v2/256)]))/256L );
     
                         if (text_effect > 1) {
                         
                           //refractory effects drawn inside the mask area
-                          blendXY(leds, u2+u_diff, v2+v_diff, hue, text_saturation, (text_brightness*(led_mask2[XY(u2/256,v2/256)]))/256L );
+                          blendXY(led_screen, u2+u_diff, v2+v_diff, hue, text_saturation, (text_brightness*(led_mask2[XY(u2/256,v2/256)]))/256L );
                         }
 
                       } else {
                         //text is drawn to temporary canvas to be used for later effects
-                        blendXY(temp_canvas, u2+u_diff, v2+u_diff, hue, text_saturation, text_brightness  );
+                        CRGB * old_screen_buffer = led_screen.screen_buffer;
+                        led_screen.screen_buffer = temp_canvas;
+                        blendXY(led_screen, u2+u_diff, v2+u_diff, hue, text_saturation, text_brightness  );
+                        led_screen.screen_buffer = old_screen_buffer;
                       }
                       
                     } else {
                       //normal text, no effects, drawn to the image
-                      blendXY(leds, u2, v2, hue, text_saturation, text_brightness );
+                      blendXY(led_screen, u2, v2, hue, text_saturation, text_brightness );
                       
                     }
                     
                   } else {
                     
                     //text is used as a mask for the rest of the image
-                    //use the temp_canvas as a temporary buffer to build the mask                 
-                    blendXY(temp_canvas, u2+u_diff, v2+u_diff, hue, 0, 255  );
+                    //use the temp_canvas as a temporary buffer to build the mask  
+                      CRGB * old_screen_buffer = led_screen.screen_buffer;
+                      led_screen.screen_buffer = temp_canvas;             
+                      blendXY(led_screen, u2+u_diff, v2+u_diff, hue, 0, 255  );
+                      led_screen.screen_buffer = old_screen_buffer;  
                   }
                     
                     
@@ -348,19 +354,19 @@ void handle_text() {
                     led_mask[led_num] = 0;
                   } else {                  
                   //normal text drawn to the image
-                  //drawXY_fine(leds, u+offsets[offset_pos]*256, v+offsets[offset_pos+1]*256, hue, text_saturation, text_brightness  );
-                  int32_t z = (camera_scaler-65)*256-text_animation[i] + (fmix32((i+1)*(y*8+x))%(400*256));
+                  //drawXY_fine(led_screen, u+offsets[offset_pos]*256, v+offsets[offset_pos+1]*256, hue, text_saturation, text_brightness  );
+                  int32_t z = (led_screen.camera_scaler-65)*256-text_animation[i] + (fmix32((i+1)*(y*8+x))%(400*256));
                       z = _max(z,35*256);
-                      if (z < (camera_scaler-5)*256) {;
+                      if (z < (led_screen.camera_scaler-5)*256) {;
                           VECTOR3 p((u+offsets[offset_pos]*256)*7-7*3*256,(v+offsets[offset_pos+1]*256-42000)*7,0);
                           cube_ang3 = 0;
                           if ( cube_ang2 % (65536*2) < 65536 ) {
                             //cube_ang3 = (sin8(cube_ang2/256)-127)/3;
                             cube_ang3 = cube_ang2/256;
                           }
-                          matrix.rotate_y(p,cube_ang3); //rotates the cube as part of a letter (around the letter's y-axis)
+                          rotate_y(p,cube_ang3); //rotates the cube as part of a letter (around the letter's y-axis)
                           p.z += z;
-                          if (p.z < camera_scaler*256-512) {
+                          if (p.z < led_screen.camera_scaler*256-512) {
                             draw_cube( p, VECTOR3(512,512,512), VECTOR3_8(0,cube_ang3,0), CHSV(hue,sat,255), persist);
                           }
 
@@ -374,7 +380,7 @@ void handle_text() {
                 
                 }
                 
-                //blendXY(leds, (x+offsets[pos])*(36+255), (ypos+offsets[pos+1])*(36+255), hue, 255, bitRead(font8x8_basic[letter][y],x)*96  );
+                //blendXY(led_screen, (x+offsets[pos])*(36+255), (ypos+offsets[pos+1])*(36+255), hue, 255, bitRead(font8x8_basic[letter][y],x)*96  );
                 
                 
                 

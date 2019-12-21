@@ -28,8 +28,17 @@ class LIGHT_SKETCH {
 };
 
 
+#include "cursor.h"
+#include "math_helpers.h"
 #include "draw_functions.h"
+#include "draw_line.h"
+#include "draw_curve.h"
+#include "draw_circle.h"
+#include "rotate.h"
 #include "matrix.h"
+#include "draw_height_map.h"
+#include "cube.h"
+
 
 //this is an abstract object for storing registered light sketches
 class REGISTER_BASE {
@@ -131,7 +140,9 @@ class LIGHT_SKETCHES {
 
         
 
-        leds = new CRGB[NUM_LEDS+1];
+        main_led_buffer = new CRGB[NUM_LEDS+1];
+        leds = main_led_buffer;
+        led_screen.screen_buffer = main_led_buffer;
         //leds = (CRGB*)ps_malloc(sizeof(CRGB)*(NUM_LEDS+1));
 
         for (int i = 0; i < NUM_LEDS; i++) {
@@ -367,22 +378,23 @@ bool LIGHT_SKETCHES::need_to_allocate = true;
 
 LIGHT_SKETCHES light_sketches;
 
-//#include "balls_squishy.h"
-//#include "balls2d.h"
-//#include "cinco_de_mayo.h"
+#include "balls_squishy.h"
+#include "balls2d.h"
+#include "cinco_de_mayo.h"
 #include "curvy.h"
-//#include "fire.h"
-//#include "growcircle.h"
-//#include "mattclock.h"
-//#include "metaballs.h"
-//#include "orbit.h"
+#include "fire.h"
+#include "growcircle.h"
+#include "mattclock.h"
+#include "metaballs.h"
+#include "orbit.h"
 #include "neon.h"
-//#include "shapes.h"
-//#include "simplex.h"
+#include "shapes.h"
+#include "simplex.h"
 #include "snowflakes.h"
-//#include "test2d.h"
+#include "test2d.h"
 #include "test3d.h"
-//#include "phosphene.h"
-//#include "waves.h"
+#include "tree_sim.h"
+#include "phosphene.h"
+#include "waves.h"
 
 #endif
