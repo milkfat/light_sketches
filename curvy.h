@@ -21,6 +21,12 @@ class CURVY: public LIGHT_SKETCH {
 
   private:
 
+    Z_BUF _z_buffer;
+
+    Y_BUF y_buffer2[MATRIX_HEIGHT][2];
+
+    CRGB temp_led[NUM_LEDS+1];
+
     #define NUM_BUBBLES 20
     struct BUBBLE {
       int x=0;
@@ -102,9 +108,10 @@ class CURVY: public LIGHT_SKETCH {
     }
 
     void setup() {
-      rotation_alpha = 0;
-      rotation_beta = 90;
-      rotation_gamma = 0;
+      z_buffer = &_z_buffer;
+      led_screen.rotation_alpha = 0;
+      led_screen.rotation_beta = 90;
+      led_screen.rotation_gamma = 0;
       //jellyfish
       for (int i = 0; i < NUM_JELLIES; i++) {
         jellies[i].on_screen = false;
@@ -212,7 +219,7 @@ class CURVY: public LIGHT_SKETCH {
         
         LED_show();
         //LED_black();
-        reset_z_buffer();
+        z_buffer->reset();
 
         for (uint16_t i = 0; i < NUM_LEDS; i++) {
           leds[i].r = 0;
@@ -224,7 +231,7 @@ class CURVY: public LIGHT_SKETCH {
         
         handle_jellies();
         
-        reset_y_buffer();
+        reset_y_buffer2(y_buffer2);
         
         handle_fish();
         
@@ -478,9 +485,9 @@ void draw_jelly(JELLY& jelly) {
         jelly.tentacles[i][1].z = p2[2];
 
         //rotate the jellyfish as part of our global 3d matrix
-        matrix.rotate(p0);
-        matrix.rotate(p1);
-        matrix.rotate(p2);
+        led_screen.matrix.rotate(p0);
+        led_screen.matrix.rotate(p1);
+        led_screen.matrix.rotate(p2);
 
         //some sort of screen scaling
         scale_z(p0);
@@ -744,7 +751,7 @@ void draw_jelly(JELLY& jelly) {
           p[2] = tentacles[i][j].z;
 
           //rotate with global matrix
-          matrix.rotate(p);
+          led_screen.matrix.rotate(p);
 
           //some sort of screen scaling
           scale_z(p);
@@ -972,9 +979,9 @@ void draw_jelly(JELLY& jelly) {
         static const VECTOR3 b_val(0,255,0);
         static const VECTOR3 c_val(0,0,255);
 
-        draw_line_ybuffer(a, a_val, b, b_val);
-        draw_line_ybuffer(b, b_val, c, c_val);
-        draw_line_ybuffer(c, c_val, a, a_val);
+        draw_line_ybuffer(y_buffer2, a, a_val, b, b_val);
+        draw_line_ybuffer(y_buffer2, b, b_val, c, c_val);
+        draw_line_ybuffer(y_buffer2, c, c_val, a, a_val);
 
         // CRGB rgb(a_norm.x,a_norm.y,a_norm.z);
 
@@ -1109,7 +1116,7 @@ void draw_jelly(JELLY& jelly) {
         p->y += fish.y;
         p->z += fish.z;
         p->z = -p->z;
-        matrix.rotate(*p);
+        led_screen.matrix.rotate(*p);
 
         //scale_z(*p);
         
@@ -1152,32 +1159,32 @@ void draw_jelly(JELLY& jelly) {
         VECTOR3 right(0,0,-255);
         rotate_z(right, fish.az);
         rotate_y(right, fish.ay);
-        matrix.rotate(right);
+        led_screen.matrix.rotate(right);
         rotate_x(right,-24);
         VECTOR3 left(0,0,255);
         rotate_z(left, fish.az);
         rotate_y(left, fish.ay);
-        matrix.rotate(left);
+        led_screen.matrix.rotate(left);
         rotate_x(left,-24);
         VECTOR3 up(0,-255,0);
         rotate_z(up, fish.az);
         rotate_y(up, fish.ay);
-        matrix.rotate(up);
+        led_screen.matrix.rotate(up);
         rotate_x(up,-24);
         VECTOR3 down(0,255,0);
         rotate_z(down, fish.az);
         rotate_y(down, fish.ay);
-        matrix.rotate(down);
+        led_screen.matrix.rotate(down);
         rotate_x(down,-24);
         VECTOR3 front(-255,0,0);
         rotate_z(front, fish.az);
         rotate_y(front, fish.ay);
-        matrix.rotate(front);
+        led_screen.matrix.rotate(front);
         rotate_x(front,-24);
         VECTOR3 back(255,0,0);
         rotate_z(back, fish.az);
         rotate_y(back, fish.ay);
-        matrix.rotate(back);
+        led_screen.matrix.rotate(back);
         rotate_x(right,-24);
 
         CRGB rgb = CHSV(fish.hue,fish.sat,bri);
@@ -1309,15 +1316,15 @@ void draw_jelly(JELLY& jelly) {
             //uint8_t caustics = inoise8(((x-MATRIX_WIDTH/2)*((y+16)))/6,(y*(y+8))/6,z*2);
 
             //CRGB rgb = CHSV(142, 255, 255);
-            temp_canvas[XY(x,y)].b = bri;
+            temp_led[XY(x,y)].b = bri;
           }
         }
       }
 
       for (uint16_t i = 0; i < NUM_LEDS; i++) {
-          //nblend(leds[i], temp_canvas[i], 127);
-          color_blend_linear16(leds[i], 0, gamma16_decode(210), 65535, gamma16_decode(temp_canvas[i].b)>>5);
-          //leds[i] += temp_canvas[i];
+          //nblend(leds[i], temp_led[i], 127);
+          color_blend_linear16(leds[i], 0, gamma16_decode(210), 65535, gamma16_decode(temp_led[i].b)>>5);
+          //leds[i] += temp_led[i];
       }
 
     }
