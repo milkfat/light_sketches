@@ -30,7 +30,7 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
 
 
 
-#define NUM_BALLS 20
+#define NUM_SQUISHY_BALLS 15
 
   private:
     class BALL {
@@ -68,7 +68,7 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
 
     };
 
-    BALL balls[NUM_BALLS];
+    BALL balls[NUM_SQUISHY_BALLS];
 
     //create a buffer to store unresolved collisions
     class COLLISION {
@@ -82,14 +82,14 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
         bool unresolved = false; //does this collision need to be resolved?
     };
 #define COLLISION_BUFFER_SIZE 6
-    COLLISION collision_buffer[(NUM_BALLS * COLLISION_BUFFER_SIZE)];
+    COLLISION collision_buffer[(NUM_SQUISHY_BALLS * COLLISION_BUFFER_SIZE)];
     int max_buffer_position = -1;
     int collision_buffer_position = 0;
 
     void add_to_buffer(int ii, int ij, float idt, char iflag, float id = 0) {
 
       //find the first available buffer position
-      for (int i = 0; i < (NUM_BALLS * COLLISION_BUFFER_SIZE); i++) {
+      for (int i = 0; i < (NUM_SQUISHY_BALLS * COLLISION_BUFFER_SIZE); i++) {
         if (collision_buffer[i].unresolved == false) {
           collision_buffer_position = i;
           if (i > max_buffer_position) {
@@ -112,8 +112,8 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
 
     //find the next unresolved collision and void any collisions involving either of the two balls
     int next_collision() {
-      int i;
-      int j;
+      //int i;
+      //int j;
       float earliest_dt = 0;
       int earliest_collision = -1;
       int my_cnt = 0;
@@ -125,8 +125,8 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
         if (collision_buffer[k].unresolved && ( fabsf(collision_buffer[k].dt) > earliest_dt ) ) {
           earliest_dt = fabsf(collision_buffer[k].dt);
           earliest_collision = k;
-          i = collision_buffer[k].i;
-          j = collision_buffer[k].j;
+          // i = collision_buffer[k].i;
+          // j = collision_buffer[k].j;
         }
       }
 
@@ -213,7 +213,7 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
       //convert angle to segment 0-15
       uint8_t i_a = i_angle8 / 16;
 
-      uint8_t remainder = i_angle8 % 16;
+      //uint8_t remainder = i_angle8 % 16;
 
       
       {
@@ -291,7 +291,7 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
 
     void draw_balls() {
 
-      for (int i = 0; i < NUM_BALLS; i++) {
+      for (int i = 0; i < NUM_SQUISHY_BALLS; i++) {
         uint8_t hue = balls[i].h;
         if (balls[i].sleeping) {
           hue = 96;
@@ -420,8 +420,8 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
           uint8_t j_a = j_angle8 / 16;
 
           //find the remainder if the angle isn't an exact match
-          uint8_t i_ar = i_angle8 % 16;
-          uint8_t j_ar = j_angle8 % 16;
+          // uint8_t i_ar = i_angle8 % 16;
+          // uint8_t j_ar = j_angle8 % 16;
 
           
 
@@ -600,17 +600,17 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
 
     void setup() {
       frame_time = millis();
-      for ( int i = 0; i < NUM_BALLS; i++) {
+      for ( int i = 0; i < NUM_SQUISHY_BALLS; i++) {
         balls[i].h = random(256);
         //balls[i].h = 128;
-        //balls[i].x = (((i+1)*SQUISHY_MATRIX_WIDTH)/(NUM_BALLS+2))*256;
-        balls[i].x = (((i/2+1)*SQUISHY_MATRIX_WIDTH)/(NUM_BALLS/2+2))*256;
+        //balls[i].x = (((i+1)*SQUISHY_MATRIX_WIDTH)/(NUM_SQUISHY_BALLS+2))*256;
+        balls[i].x = (((i/2+1)*SQUISHY_MATRIX_WIDTH)/(NUM_SQUISHY_BALLS/2+2))*256;
         //balls[i].y = random(1,7)*(SQUISHY_MATRIX_HEIGHT/8)*256;
-        balls[i].y = ((i+1)*SQUISHY_MATRIX_HEIGHT*256)/(NUM_BALLS+2);
+        balls[i].y = ((i+1)*SQUISHY_MATRIX_HEIGHT*256)/(NUM_SQUISHY_BALLS+2);
         
         //balls[i].r = random(512,2048);
-        //balls[i].r = random(950,1736);
-        balls[i].r = random(295,373);
+        balls[i].r = random(950,1736);
+        //balls[i].r = random(295,373);
         //balls[i].r = 1024;
         balls[i].m = balls[i].r;
         balls[i].vx = random(1, 200) - 100;
@@ -622,7 +622,7 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
 
 
     void reset() {
-      for (int i = 0; i < NUM_BALLS; i++) {
+      for (int i = 0; i < NUM_SQUISHY_BALLS; i++) {
         if (balls[i].y < 3 * 256) {
           balls[i].vy += 1000;
           balls[i].sleeping = false;
@@ -659,13 +659,13 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
           frame_time += 10; //update the time for the next frame
 
 
-          for (int i = 0; i < NUM_BALLS; i++) {
+          for (int i = 0; i < NUM_SQUISHY_BALLS; i++) {
             balls[i].vr = balls[i].r;
             balls[i].update();
           }
 
           if (button2_down) {
-            for (int i = 0; i < NUM_BALLS; i++) {
+            for (int i = 0; i < NUM_SQUISHY_BALLS; i++) {
                 balls[i].vx *= .99f;
                 balls[i].vy *= .99f;
             }
@@ -677,18 +677,18 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
           max_buffer_position = 0;
 
 
-          for (int i = 0; i < (NUM_BALLS * COLLISION_BUFFER_SIZE); i++) {
+          for (int i = 0; i < (NUM_SQUISHY_BALLS * COLLISION_BUFFER_SIZE); i++) {
             collision_buffer[i].unresolved = false;
           }
 
           //find all existing collisions
-          for (int i = 0; i < NUM_BALLS; i++) {
+          for (int i = 0; i < NUM_SQUISHY_BALLS; i++) {
 
             //check for collisions with walls
             check_wall_collisions(i);
 
             //check for collisions with other balls
-            for (int j = i + 1; j < NUM_BALLS; j++) {
+            for (int j = i + 1; j < NUM_SQUISHY_BALLS; j++) {
               check_ball_collisions(i, j);
             }
 
