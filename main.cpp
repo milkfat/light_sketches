@@ -3,11 +3,11 @@
 // #define MATRIX_WIDTH 360
 // #define MATRIX_HEIGHT 250
 
-#define WINDOW_WIDTH 980
-#define WINDOW_HEIGHT 980
-#define MATRIX_WIDTH 15
-#define MATRIX_HEIGHT 41
-#define SCREEN_WIDTH 192
+#define WINDOW_WIDTH 200
+#define WINDOW_HEIGHT 1000
+#define MATRIX_WIDTH 32
+#define MATRIX_HEIGHT 192
+#define SCREEN_WIDTH 32
 #define SCREEN_HEIGHT 192
     
 //misc libraries
@@ -51,8 +51,8 @@ void update_matrix();
 //load all the magical light sketches
 #define NUM_LEDS (MATRIX_WIDTH*MATRIX_HEIGHT+1)
 #include "draw_functions.h"
-VECTOR3 tree_coords[500];
-uint8_t tree_radians[500];
+VECTOR3 tree_coords[NUM_LEDS];
+uint8_t tree_radians[NUM_LEDS];
 CRGB * screen_buffer = new CRGB[SCREEN_WIDTH*SCREEN_HEIGHT+1];
 
 #include "light_sketches.h"
@@ -68,10 +68,10 @@ void tree_thing() {
 			screen_buffer[i].b = 0;
 	}
 
-    for (int i = 0; i < 500; i++) {
+    for (int i = 0; i < NUM_LEDS; i++) {
         VECTOR3 p = tree_coords[i];
         p.y-=150*256;
-        MATRIX::rotate(p);
+        pc_screen.matrix.rotate(p);
         if (p.z >= 0) {
             scale_z(p);
             pc_screen.perspective(p);
@@ -121,13 +121,13 @@ void update_matrix() {
 	
     uint32_t debug_before = micros();
 
-	tree_thing();
+	//tree_thing();
 
     for (int x = 0; x < SCREEN_WIDTH; x++) {
         for (int y = 0; y < SCREEN_HEIGHT; y++) {
 			#define MIN_VAL 8
-			uint8_t * pixel_location = (uint8_t*)&pc_screen.screen_buffer[pc_screen.XY(x,SCREEN_HEIGHT-1-y)].r;
-			//uint8_t * pixel_location = (uint8_t*)&leds[led_screen.XY(x,SCREEN_HEIGHT-1-y)].r;
+			//uint8_t * pixel_location = (uint8_t*)&pc_screen.screen_buffer[pc_screen.XY(x,SCREEN_HEIGHT-1-y)].r;
+			uint8_t * pixel_location = (uint8_t*)&leds[led_screen.XY(x,SCREEN_HEIGHT-1-y)].r;
 			uint32_t pixel_data = pixel_location[2] | pixel_location[1] << 8 | pixel_location[0] << 16;
 			for (int y2 = 0; y2 < 4; y2++) {
 					put_pixel(screen, x*5+0+x_offset, y*5+y2+y_offset, pixel_data);
@@ -174,13 +174,22 @@ void update_matrix() {
 					case SDLK_g: button1_down=true; button1_click=true; break;
 					case SDLK_n: next_sketch=true; break;
 					case SDLK_r: reset_sketch=true; break;
-					case SDLK_d: debug_flag=true; break;
-					case SDLK_l: (event.key.keysym.mod & KMOD_SHIFT) ? rotation_alpha+=5 : rotation_alpha++; break;
-					case SDLK_j: (event.key.keysym.mod & KMOD_SHIFT) ? rotation_alpha-=5 : rotation_alpha--; break;
-					case SDLK_i: (event.key.keysym.mod & KMOD_SHIFT) ? rotation_beta+=5 : rotation_beta++; break;
-					case SDLK_k: (event.key.keysym.mod & KMOD_SHIFT) ? rotation_beta-=5 : rotation_beta--; break;
-					case SDLK_o: (event.key.keysym.mod & KMOD_SHIFT) ? rotation_gamma+=5 : rotation_gamma++; break;
-					case SDLK_u: (event.key.keysym.mod & KMOD_SHIFT) ? rotation_gamma-=5 : rotation_gamma--; break;
+					case SDLK_c: debug_flag=true; break;
+
+					case SDLK_l: (event.key.keysym.mod & KMOD_SHIFT) ? led_screen.rotation_alpha+=5 : led_screen.rotation_alpha++; break;
+					case SDLK_j: (event.key.keysym.mod & KMOD_SHIFT) ? led_screen.rotation_alpha-=5 : led_screen.rotation_alpha--; break;
+					case SDLK_i: (event.key.keysym.mod & KMOD_SHIFT) ? led_screen.rotation_beta+=5 : led_screen.rotation_beta++; break;
+					case SDLK_k: (event.key.keysym.mod & KMOD_SHIFT) ? led_screen.rotation_beta-=5 : led_screen.rotation_beta--; break;
+					case SDLK_o: (event.key.keysym.mod & KMOD_SHIFT) ? led_screen.rotation_gamma+=5 : led_screen.rotation_gamma++; break;
+					case SDLK_u: (event.key.keysym.mod & KMOD_SHIFT) ? led_screen.rotation_gamma-=5 : led_screen.rotation_gamma--; break;
+
+					case SDLK_d: (event.key.keysym.mod & KMOD_SHIFT) ? pc_screen.rotation_alpha+=5 : pc_screen.rotation_alpha++; break;
+					case SDLK_a: (event.key.keysym.mod & KMOD_SHIFT) ? pc_screen.rotation_alpha-=5 : pc_screen.rotation_alpha--; break;
+					case SDLK_w: (event.key.keysym.mod & KMOD_SHIFT) ? pc_screen.rotation_beta+=5 : pc_screen.rotation_beta++; break;
+					case SDLK_s: (event.key.keysym.mod & KMOD_SHIFT) ? pc_screen.rotation_beta-=5 : pc_screen.rotation_beta--; break;
+					case SDLK_e: (event.key.keysym.mod & KMOD_SHIFT) ? pc_screen.rotation_gamma+=5 : pc_screen.rotation_gamma++; break;
+					case SDLK_q: (event.key.keysym.mod & KMOD_SHIFT) ? pc_screen.rotation_gamma-=5 : pc_screen.rotation_gamma--; break;
+
 					case SDLK_t: typing_mode=true; SDL_StartTextInput(); break;
 					case SDLK_LEFT:  led_screen.camera_scaler--; std::cout << "camera: " << (int16_t)led_screen.camera_scaler << "\n"; break;
 					case SDLK_RIGHT: led_screen.camera_scaler++; std::cout << "camera: " << (int16_t)led_screen.camera_scaler << "\n"; break;
@@ -208,13 +217,13 @@ int main(int argc, char **argv){
 
 	pc_screen.screen_buffer = screen_buffer;
 
-	for (int i = 0; i < 500; i++) {
-			tree_coords[i] = VECTOR3(0, -150*256, 30*256);
-			rotate_y(tree_coords[i], i*17);
-			tree_radians[i] = i*17;
-			tree_coords[i].y = (i*65535)/499;
-			std::cout << tree_coords[i].x << " " << tree_coords[i].y << " " << tree_coords[i].z << "\n";
-		}	
+	for (int i = 0; i < NUM_LEDS; i++) {
+	    tree_coords[i] = VECTOR3(0, -150*256, 30*256);
+	    rotate_y(tree_coords[i], i*17);
+	    tree_radians[i] = i*17;
+	    tree_coords[i].y = (i*65535)/(NUM_LEDS-1);
+	    //std::cout << tree_coords[i].x << " " << tree_coords[i].y << " " << tree_coords[i].z << "\n";
+	}
 
    https_server.start();
    wss_server.start();

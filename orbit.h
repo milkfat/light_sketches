@@ -48,7 +48,7 @@ class ORBIT: public LIGHT_SKETCH {
             rotate_y(v,angle_y);
             rotate_z(v,angle_z);
             //v.y += (v.y * sin8(count/4))/64;
-            matrix.rotate(v);
+            led_screen.matrix.rotate(v);
             scale_z(v);
             led_screen.perspective(v);
 

@@ -41,7 +41,7 @@ static inline __attribute__ ((always_inline)) uint32_t XY(const int& x, const in
 
 
 static inline __attribute__ ((always_inline)) void LED_show() {
-  if (text_mask == 1) {
+  if (text_mask == 1 && led_mask != nullptr) {
     for (int i = 0;i < NUM_LEDS;i++) {
       if (invert_mask == 0) {
         leds[i].nscale8(255-led_mask[i]);
@@ -68,11 +68,26 @@ static inline __attribute__ ((always_inline)) void LED_show() {
 
 static inline __attribute__ ((always_inline)) void reset_y_buffer() {
   for (int i = 0; i < MATRIX_HEIGHT; i++) {
-  y_buffer[i][0] = MATRIX_WIDTH + 1;
-  y_buffer[i][1] = -1;
+    y_buffer[i][0] = MATRIX_WIDTH + 1;
+    y_buffer[i][1] = -1;
 
-  y_buffer2[i][0].position.x = INT32_MAX;
-  y_buffer2[i][1].position.x = INT32_MIN;
+    //y_buffer2[i][0].position.x = INT32_MAX;
+    //y_buffer2[i][1].position.x = INT32_MIN;
+
+  }
+
+  y_buffer_max = 0;
+  y_buffer_min = MATRIX_HEIGHT-1;
+  
+}
+
+static inline __attribute__ ((always_inline)) void reset_y_buffer2(Y_BUF y_buffer2[MATRIX_HEIGHT][2]) {
+  for (int i = 0; i < MATRIX_HEIGHT; i++) {
+    y_buffer[i][0] = MATRIX_WIDTH + 1;
+    y_buffer[i][1] = -1;
+
+    y_buffer2[i][0].position.x = INT32_MAX;
+    y_buffer2[i][1].position.x = INT32_MIN;
 
   }
 
@@ -88,7 +103,7 @@ static inline __attribute__ ((always_inline)) void reset_x_buffer() {
   }
 }
 
-static inline __attribute__ ((always_inline)) void reset_z_buffer() {
+static inline __attribute__ ((always_inline)) void reset_z_buffer(int16_t z_buffer[MATRIX_WIDTH][MATRIX_HEIGHT]) {
 
   //clear the Z buffer
   for (int x = 0; x < MATRIX_WIDTH; x++) {
@@ -109,7 +124,7 @@ static inline __attribute__ ((always_inline)) void LED_black() {
     memset8(&leds[y*MATRIX_WIDTH].r, 0, MATRIX_WIDTH*3);
   }
 
-  reset_z_buffer();
+  //reset_z_buffer();
   
 }
 

@@ -11,6 +11,8 @@ class WAVES: public LIGHT_SKETCH {
   
   private:
 
+  int16_t height_map[HEIGHTMAP_HEIGHT][HEIGHTMAP_WIDTH];
+
   uint8_t current_variation = 0;
   class pixel {
     public:
@@ -29,7 +31,7 @@ class WAVES: public LIGHT_SKETCH {
     }
 
     void setup() {
-
+      height_map_ptr = &height_map;
     }
 
     void reset() {
@@ -173,7 +175,7 @@ class WAVES: public LIGHT_SKETCH {
         height_map_to_LED();
         
         for (int i = 0; i < NUM_LEDS; i++) {
-          led_mask2[i]=255;
+          //led_mask2[i]=255;
         }
         
       }

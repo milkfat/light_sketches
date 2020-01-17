@@ -23,7 +23,7 @@ class SIMPLEX: public LIGHT_SKETCH {
 
     void next_effect() {
       current_effect++;
-      if(current_effect > 2) {
+      if(current_effect > 3) {
         current_effect = 0;
       }
     }
@@ -72,16 +72,30 @@ class SIMPLEX: public LIGHT_SKETCH {
         uint8_t start_y = 0;
         start_y++;
         start_y%=2;
-        for (int y2 = 0; y2 < MATRIX_HEIGHT; y2+=2) {
+        for (int y2 = 0; y2 < MATRIX_HEIGHT; y2++) {
           int y = y2<<5;
           for (int x2 = 0; x2 < MATRIX_WIDTH; x2++) {
             int x = x2<<5;
             int z = z2<<4;
             //flip the x/y axis to create 4 layers from one
             int i = XY(x2,y2);
-            int i_top = XY(x2,y2+1);
-            int i_bottom = XY(x2,y2-1);
+            //int i_top = XY(x2,y2+1);
+            //int i_bottom = XY(x2,y2-1);
             
+
+            //zoomy simplex
+            if (current_effect == 3) {
+              static uint32_t zoom = 0;
+              zoom+=3;
+              x = x2 - (MATRIX_WIDTH/2);
+              y = y2 - (MATRIX_HEIGHT/2);
+              z = _max(abs(x), abs(y));
+              int mult = _max(MATRIX_WIDTH/2+48, MATRIX_HEIGHT/2+48) - z;
+              mult = (mult*mult)/_max(MATRIX_WIDTH/2+48, MATRIX_HEIGHT/2+48);
+              val = _min(_max(inoise16(x*mult*256, y*mult*256, z*32*256-zoom)/256,48),255);
+              val = (val * val * val)/(256*256);
+              leds[i] += CHSV(default_color, default_saturation, val);
+            }
 
             //simple simplex
             if (current_effect == 0) {
@@ -207,9 +221,9 @@ class SIMPLEX: public LIGHT_SKETCH {
               }
 
 
-              leds[i_top] = leds[i];
-              leds[i_top] /= 2;
-              leds[i_bottom] += leds[i_top];
+              //leds[i_top] = leds[i];
+              //leds[i_top] /= 2;
+              //leds[i_bottom] += leds[i_top];
               
             }
 

@@ -1,46 +1,57 @@
 #ifndef LIGHTS_MATRIX_H
 #define LIGHTS_MATRIX_H
 
+#include "math_helpers.h"
+
 //A class for performing 3D rotation
 
 class MATRIX {
 
+    float * rotation_alpha;
+    float * rotation_beta;
+    float * rotation_gamma;
+
     //3D ROTATION MATRIX VARIABLES
     public:
-    MATRIX() {
+    
+    MATRIX(float * a, float * b, float * g) {
+        rotation_alpha = a;
+        rotation_beta = b;
+        rotation_gamma = g;
         update();
     }
 
     private:
+
     //find our angles in radians
-    static float alpha; //Z
-    static float beta; //X;
-    static float gamma; //Y
+    float alpha; //Z
+    float beta; //X;
+    float gamma; //Y
 
     //store sin/cos in variables
-    static float cZ;
-    static float cX;
-    static float cY;
-    static float sZ;
-    static float sX;
-    static float sY;
+    float cZ;
+    float cX;
+    float cY;
+    float sZ;
+    float sX;
+    float sY;
 
     //our rotation matrix
-    static float matrix[3][3];
+    float matrix[3][3];
     //END 3D ROTATION MATRIX VARIABLES
 
-    static uint32_t update_time;
+    uint32_t update_time = 0;
 
-    static inline void update() {
+    void update() {
         if (millis() - 16 > update_time) {
             update_time = millis();
 
             //construct ZXY rotation matrix
 
             //find our angles in radians
-            alpha = (rotation_alpha * PI) / 180.f; //Z
-            beta = (rotation_beta * PI) / 180.f; //X;
-            gamma = (rotation_gamma * PI) / 180.f; //Y
+            alpha = ((*rotation_alpha) * PI) / 180.f; //Z
+            beta = ((*rotation_beta) * PI) / 180.f; //X;
+            gamma = ((*rotation_gamma) * PI) / 180.f; //Y
 
             //store sin/cos in variables
             cZ = cos( alpha );
@@ -65,27 +76,17 @@ class MATRIX {
 
     public:
 
-        //rotate X,Y,Z coordinate based on our current matrix
-        // void rotate (int32_t in[3], int32_t out[3]) {
+        void rotate (int32_t& in_x, int32_t& in_y, int32_t& in_z, int32_t& out_x, int32_t& out_y, int32_t& out_z) {
         
-        //     //update the matrix if necessary
-        //     update();
-        //     out[0] = in[0] * matrix[0][0] + in[1] * matrix[0][1] + in[2] * matrix[0][2];
-        //     out[2] = -(in[0] * matrix[1][0] + in[1] * matrix[1][1] + in[2] * matrix[1][2]);
-        //     out[1] = in[0] * matrix[2][0] + in[1] * matrix[2][1] + in[2] * matrix[2][2];
-
-        // }
-        static inline __attribute__ ((always_inline))  void rotate (int32_t& in_x, int32_t& in_y, int32_t& in_z, int32_t& out_x, int32_t& out_y, int32_t& out_z) {
-        
-        //update the matrix if necessary
-        update();
-        out_x = in_x * matrix[0][0] + in_y * matrix[0][1] + in_z * matrix[0][2];
-        out_z = -(in_x * matrix[1][0] + in_y * matrix[1][1] + in_z * matrix[1][2]);
-        out_y = in_x * matrix[2][0] + in_y * matrix[2][1] + in_z * matrix[2][2];
+            //update the matrix if necessary
+            update();
+            out_x = in_x * matrix[0][0] + in_y * matrix[0][1] + in_z * matrix[0][2];
+            out_z = -(in_x * matrix[1][0] + in_y * matrix[1][1] + in_z * matrix[1][2]);
+            out_y = in_x * matrix[2][0] + in_y * matrix[2][1] + in_z * matrix[2][2];
 
         }
 
-        static inline __attribute__ ((always_inline)) void rotate (VECTOR3& in) {
+        void rotate (VECTOR3& in) {
             VECTOR3 temp;
             temp.x = in.x;
             temp.y = in.y;
@@ -93,17 +94,17 @@ class MATRIX {
             rotate(temp.x, temp.y, temp.z, in.x, in.y, in.z);
         }
         
-        static inline __attribute__ ((always_inline)) void rotate (VECTOR3& in, VECTOR3& out) {
+        void rotate (VECTOR3& in, VECTOR3& out) {
             rotate(in.x, in.y, in.z, out.x, out.y, out.z);
         }
             
 
 
-        static inline __attribute__ ((always_inline)) void rotate (int32_t in[3], int32_t out[3]) {
+        void rotate (int32_t in[3], int32_t out[3]) {
             rotate(in[0],in[1],in[2],out[0],out[1],out[2]);
         }
 
-        static inline __attribute__ ((always_inline)) void rotate (int32_t in[3]) {
+        void rotate (int32_t in[3]) {
         
             int32_t temp[3] = {
                 in[0],
@@ -116,24 +117,6 @@ class MATRIX {
         }
 
 };
-    //find our angles in radians
-float MATRIX::alpha; //Z
-float MATRIX::beta; //X;
-float MATRIX::gamma; //Y
-
-    //store sin/cos in variables
-float MATRIX::cZ;
-float MATRIX::cX;
-float MATRIX::cY;
-float MATRIX::sZ;
-float MATRIX::sX;
-float MATRIX::sY;
-
-    //our rotation matrix
-float MATRIX::matrix[3][3];
-uint32_t MATRIX::update_time = 0;
-
-MATRIX matrix;
 
 
 #endif

@@ -8,7 +8,7 @@
 
 //CRGB debug_canvas[HEIGHTMAP_WIDTH*HEIGHTMAP_HEIGHT]; //object for teh drawing
 //int height_map[HEIGHTMAP_WIDTH][HEIGHTMAP_HEIGHT];
-int16_t * height_map[HEIGHTMAP_HEIGHT];
+int16_t (*height_map_ptr)[HEIGHTMAP_HEIGHT][HEIGHTMAP_WIDTH];
 
 static void height_map_to_LED(const int& threshold = -128*256, const int& light_x = 100, const int& light_y = 100, const int& spec_x = 15, const int& spec_y = 15) {
   //write our computed values to the screen
@@ -19,15 +19,15 @@ static void height_map_to_LED(const int& threshold = -128*256, const int& light_
       //our height map is 1 pixel wider in each dimension than the screen
       int x2 = x+1;
       int y2 = y+1;
-      if (height_map[y2][x2] >= threshold) {
+      if ((*height_map_ptr)[y2][x2] >= threshold) {
         //attempt to find the approximate surface normal
 
         
         //horizontal pixel difference
-        int u = height_map[y2][x2+1] - height_map[y2][x2-1]; //between -128*32 and 127*32
+        int u = (*height_map_ptr)[y2][x2+1] - (*height_map_ptr)[y2][x2-1]; //between -128*32 and 127*32
   
         //vertical pixel difference
-        int v = height_map[y2+1][x2] - height_map[y2-1][x2]; //between -128*32 and 127*32
+        int v = (*height_map_ptr)[y2+1][x2] - (*height_map_ptr)[y2-1][x2]; //between -128*32 and 127*32
         
         
         //find the brightness based on a specific difference (angle)
@@ -82,7 +82,7 @@ static inline __attribute__ ((always_inline)) void reset_heightmap() {
 
   for (int y = 0; y < MATRIX_HEIGHT; y++) {
     for (int x = 0; x < MATRIX_WIDTH; x++) {
-      height_map[y][x] = 0;
+      (*height_map_ptr)[y][x] = 0;
     }
   }
 

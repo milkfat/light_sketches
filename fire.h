@@ -20,7 +20,7 @@ class FIRE2: public LIGHT_SKETCH {
       ~FIRE2 () {}
 
     private:
-    uint16_t* order;
+    uint16_t order[FIRE_GRID_WIDTH*FIRE_GRID_HEIGHT];
     uint8_t current_variation = 1;
     uint8_t grid_calcs = 1;
     uint8_t velocity_calcs = 1;
@@ -214,7 +214,7 @@ class FIRE2: public LIGHT_SKETCH {
       // for (int i = 0; i < FIRE_GRID_WIDTH; i++) {
       //   xorder[i] = i;
       // }
-      order = reinterpret_cast<uint16_t*>(height_map[0]);
+      //order = reinterpret_cast<uint16_t*>(height_map[0]);
       for (int i = 0; i < FIRE_GRID_WIDTH*FIRE_GRID_HEIGHT; i++) {
         order[i] = i;
       }

@@ -14,7 +14,9 @@ class GROWCIRCLE: public LIGHT_SKETCH {
       public:
         uint8_t dists[NUM_LEDS]; //distance of this LED from the origination
         uint8_t done = 1;
+        int stp0 = 0;
         int stp = 0;
+        int current_width0 = 0;
         uint8_t current_width = 0;
         uint8_t current_hue = 0;
         uint8_t next_hue = 196;
@@ -121,6 +123,8 @@ class GROWCIRCLE: public LIGHT_SKETCH {
             x1 = circles[c].x;
             y1 = circles[c].y;
           }
+          circles[c].stp0 = 0;
+          circles[c].current_width0 = 0;
           circles[c].stp = 0;
           circles[c].current_width = 0;
           //figure out the distance of each pixel from the starting point
@@ -135,10 +139,6 @@ class GROWCIRCLE: public LIGHT_SKETCH {
       }
 
       //shade pixels according to their distance from starting point
-      if (millis() - 16 > time1) {
-        time1 = millis();
-
-
 
         //PROCESS CIRCLES
         for (int i = 0; i < NUM_CIRCLES_GROWCIRCLE; i++) {
@@ -242,9 +242,11 @@ class GROWCIRCLE: public LIGHT_SKETCH {
 
             //move the circle "out" one step
             if ( circles[c].current_width < band_width ) {
-              circles[c].current_width++;
+              circles[c].current_width0+=128;
+              circles[c].current_width = circles[c].current_width0/256;
             } else {
-              circles[c].stp++;
+              circles[c].stp0+=128;
+              circles[c].stp = circles[c].stp0/256;
             }
           }
         }
@@ -284,7 +286,7 @@ class GROWCIRCLE: public LIGHT_SKETCH {
         LED_show();
         LED_black();
 
-      }
+      
 
 
     }

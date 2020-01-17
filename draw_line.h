@@ -130,16 +130,16 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
         Ly--;
         i--;
 
-        drawXYZ2(screen_object,i, Hy, z_depth, rgb, ((b2*v1)>>8) + ((b2*v2)>>8), ignore_z );
-        drawXYZ2(screen_object,i, Ly, z_depth, rgb, ((b *v1)>>8) + ((b *v2)>>8), ignore_z );
+        drawXYZ2(screen_object, i, Hy, z_depth, rgb, ((b2*v1)>>8) + ((b2*v2)>>8), ignore_z );
+        drawXYZ2(screen_object, i, Ly, z_depth, rgb, ((b *v1)>>8) + ((b *v2)>>8), ignore_z );
        
         //record stuff in our x and y buffers for other functions to use
         if (i >= 0 && i < MATRIX_WIDTH) {
 
           if (!wide_fill) {
-            int temp = Hy;
+            int temp = Ly;
             Ly = Hy;
-            Hy = Ly;
+            Hy = temp;
           }
 
           if (Hy <= x_buffer[i][0]) {
@@ -225,13 +225,13 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
       Lx--;
       i--;
 
-      drawXYZ2(screen_object,  Hx, i, z_depth, rgb, ((b2*v1)>>8) + ((b2*v2)>>8), ignore_z );
-      drawXYZ2(screen_object,  Lx, i, z_depth, rgb, ((b *v1)>>8) + ((b *v2)>>8), ignore_z );
+      drawXYZ2(screen_object, Hx, i, z_depth, rgb, ((b2*v1)>>8) + ((b2*v2)>>8), ignore_z );
+      drawXYZ2(screen_object, Lx, i, z_depth, rgb, ((b *v1)>>8) + ((b *v2)>>8), ignore_z );
   
       if (!wide_fill) {
-        int temp = Hx;
+        int temp = Lx;
         Lx = Hx;
-        Hx = Lx;
+        Hx = temp;
       }
       
       //record stuff in our x and y buffers for other functions to use
@@ -279,13 +279,11 @@ static inline __attribute__ ((always_inline)) void draw_line_fine(PERSPECTIVE& s
   draw_line_fine(screen_object, x1, y1, x2, y2, rgb, z_depth, val, val2, trim);
 }
 
-
 static inline __attribute__ ((always_inline)) void draw_line_fine(PERSPECTIVE& screen_object, const VECTOR3& a, const VECTOR3& b, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true, const bool& wide_fill = true) {
   draw_line_fine(screen_object, a.x, a.y, b.x, b.y, rgb, z_depth, val, val2, trim, ignore_z, wide_fill);
 }
 
-
-static inline __attribute__ ((always_inline)) void draw_line_ybuffer(const int32_t& x1i, const int32_t& y1i, const int32_t& x2i, const int32_t& y2i) {
+static void draw_line_ybuffer(const int32_t& x1i, const int32_t& y1i, const int32_t& x2i, const int32_t& y2i) {
   int32_t x1 = (x1i+128)/256;
   int32_t y1 = (y1i+128)/256;
   int32_t x2 = (x2i+128)/256;
@@ -345,7 +343,7 @@ static inline __attribute__ ((always_inline)) void draw_line_ybuffer(const int32
 
 
 
-static inline __attribute__ ((always_inline)) void draw_line_ybuffer(VECTOR3 a, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 b_rgb) {
+static void draw_line_ybuffer(Y_BUF y_buffer2[MATRIX_HEIGHT][2], VECTOR3 a, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 b_rgb) {
 
   a += 128;
   b += 128;

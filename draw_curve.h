@@ -215,10 +215,10 @@ static inline __attribute__ ((always_inline)) void matt_curve(int32_t coordinate
 
         
       }
-      uint8_t asdf = 0;
-      if (stp%64 == 0) {
-        asdf = 1;
-      }
+      // uint8_t asdf = 0;
+      // if (stp%64 == 0) {
+      //   asdf = 1;
+      // }
       //draw our curve (starting from the second iteration, we need two points, duh)
       if (stp > 0) {
         //draw line between points
@@ -321,10 +321,10 @@ static inline __attribute__ ((always_inline)) void matt_curve8(PERSPECTIVE scree
 
   //a variable to store the angle for segment 2 from the previous pass (which will become segment 1 of the current pass)
   //we must blend the curves together to make one smooth continuous curve
-  int16_t last_a2b;
+  int16_t last_a2b = 0;
 
   //a variable to store the angle and length of the previous segment
-  uint16_t last_w;
+  uint16_t last_w = 0;
 
   int starting_point = -1;
   int ending_point = len-1;
@@ -514,10 +514,7 @@ static inline __attribute__ ((always_inline)) void matt_curve8(PERSPECTIVE scree
 
         
       }
-      uint8_t asdf = 0;
-      if (stp%64 == 0) {
-        asdf = 1;
-      }
+      
       //draw our curve (starting from the second iteration, we need two points, duh)
       if (stp > 0) {
         //draw line between points

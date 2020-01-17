@@ -24,8 +24,10 @@ class METABALLS: public LIGHT_SKETCH {
         private:
 
   private:
+    CRGB temp_led[NUM_LEDS+1];
     uint8_t current_variation = 0;
     int launch_speed = 0;
+    int16_t height_map[HEIGHTMAP_HEIGHT][HEIGHTMAP_WIDTH];
 
     
     uint8_t num_balls = NUM_METABALLS;
@@ -84,6 +86,7 @@ class METABALLS: public LIGHT_SKETCH {
     }
 
     void setup() {
+      height_map_ptr = &height_map;
       lava_lamp_setup();
       
       long td = 0;
@@ -273,9 +276,9 @@ class METABALLS: public LIGHT_SKETCH {
                     d2 = (d2*d2)>>8;
                     //add to temporary canvas
                     int led = XY(x, y);
-                    temp_canvas[led].r = _min(temp_canvas[led].r + d2,255);
+                    temp_led[led].r = _min(temp_led[led].r + d2,255);
                     
-                    //temp_canvas[XY(x, y)].r = _min(temp_canvas[XY(x, y)].r + d2,255); //slower?
+                    //temp_led[XY(x, y)].r = _min(temp_led[XY(x, y)].r + d2,255); //slower?
                   }
 
                   //add heights to heightmap using cosine
@@ -332,17 +335,17 @@ class METABALLS: public LIGHT_SKETCH {
         for (int y = 0; y < METABALL_MATRIX_HEIGHT; y++) {
           for (int x = 0; x < METABALL_MATRIX_WIDTH; x++) {
             uint8_t opacity = 0;
-            if (temp_canvas[led].r > 96) {
-              opacity = _max(_min((temp_canvas[led].r - 96)*6, 255), 0);
-              led_mask2[led] = opacity;
+            if (temp_led[led].r > 96) {
+              opacity = _max(_min((temp_led[led].r - 96)*6, 255), 0);
+              //led_mask2[led] = opacity;
               height_map[y+1][x+1] = (height_map[y+1][x+1]*opacity)/255;
               color_scale(leds[led], opacity);
             } else {
               leds[led] = CRGB::Black;
               height_map[y+1][x+1] = 0;
-              led_mask2[led]=0;
+              //led_mask2[led]=0;
             }
-            temp_canvas[led] = CRGB::Black;
+            temp_led[led] = CRGB::Black;
             led++;
           }    
         }

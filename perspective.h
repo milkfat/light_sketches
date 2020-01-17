@@ -2,6 +2,7 @@
 #define LIGHTS_PERSPECTIVE_H
 
 #include "vector3.h"
+#include "matrix.h"
 
 
 class PERSPECTIVE {
@@ -20,6 +21,11 @@ class PERSPECTIVE {
         const uint32_t screen_width;
         const uint32_t screen_height;
         CRGB * screen_buffer;
+        float rotation_alpha = 0;
+        float rotation_beta = 90;
+        float rotation_gamma = 0;
+
+        MATRIX matrix = MATRIX(&rotation_alpha, &rotation_beta, &rotation_gamma);
         
         PERSPECTIVE (const uint& width, const uint& height) : screen_width(width), screen_height(height) {}
 
@@ -97,13 +103,13 @@ class PERSPECTIVE {
     inline __attribute__ ((always_inline)) uint32_t XY(const int& x, const int& y) {
     if (x >= 0 && x < screen_width && y >= 0 && y < screen_height) {
       int32_t location = y*screen_width + x;
-      if (location > screen_width*screen_height-1 || location < 0) {
-          return screen_width*screen_height-1;
+      if (location > screen_width*screen_height || location < 0) {
+          return screen_width*screen_height;
       } else {
           return location;
       }
     } else {
-      return screen_width*screen_height-1;
+      return screen_width*screen_height;
     }
 }
 };

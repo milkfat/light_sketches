@@ -304,7 +304,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
       int32_t p0[3];
       
-      matrix.rotate(p,p0);
+      led_screen.matrix.rotate(p,p0);
 
       p[0] = x1;
       p[1] = y1;
@@ -312,7 +312,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
       int32_t p1[3];
 
-      matrix.rotate(p,p1);
+      led_screen.matrix.rotate(p,p1);
 
       //translate vectors to coordinates
       p0[2] += -180 * 256 + (200 * 256 * debug_scaler) / 256;
@@ -375,7 +375,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
           int32_t p0[3];
 
-          matrix.rotate(p, p0);
+          led_screen.matrix.rotate(p, p0);
 
           p[0] = x+x1b;
           p[1] = y-y1;
@@ -383,7 +383,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
           int32_t p1[3];
 
-          matrix.rotate(p, p1);
+          led_screen.matrix.rotate(p, p1);
 
           //translate vectors to coordinates
           p0[2] += -180 * 256 + (200 * 256 * debug_scaler) / 256;
@@ -516,7 +516,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
     //draw digit object, including animation when transitioning
     void draw_digit(digit &d) { 
       
-      int td = millis() - d.update_time;
+      //int td = millis() - d.update_time;
       int ed = millis() - d.erase_time;
       int dd = millis() - d.draw_time;
       if (ed < 0) {
@@ -616,7 +616,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
             cposx += (SEGMENT_LENGTH-SEGMENT_SPACING)*cx;
           } else {
             //draw a 3d colon
-            int32_t p[3];
+            //int32_t p[3];
       
             int x = (cposx+SEGMENT_SPACING+2)*256;
             int y = (MATRIX_HEIGHT-1-cposy)*256;
@@ -670,7 +670,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
     void next_effect() {
 
       led_screen.camera_scaler = 232;
-      led_screen.screen_scaler = 100;
+      led_screen.screen_scaler = 111;
       
       if (current_effect == TEXT_CLOCK) {
         display_text = "";
@@ -708,7 +708,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
     }
 
     void reset() {
-
+      
     }
 
     uint32_t loop_time = millis();
@@ -718,9 +718,9 @@ class MATTCLOCK: public LIGHT_SKETCH {
         static uint16_t bd = 1;
         static uint16_t gd = 1;
         static uint16_t ad = 1;
-        rotation_beta = 90 + (sin16(bd)*15.f)/32768; 
-        rotation_gamma = 0 + (sin16(gd)*20.f)/32768;
-        rotation_alpha = 0 + (sin16(ad)*20.f)/32768;
+        led_screen.rotation_beta = 90 + (sin16(bd)*15.f)/32768; 
+        led_screen.rotation_gamma = 0 + (sin16(gd)*20.f)/32768;
+        led_screen.rotation_alpha = 0 + (sin16(ad)*20.f)/32768;
         bd += 32;
         gd += 42;
         ad += 52;
@@ -833,11 +833,11 @@ class MATTCLOCK: public LIGHT_SKETCH {
       #define X_SCALE 36
       #define Y_SCALE 54
       
-      uint32_t digit_time = d.update_time;
+      //uint32_t digit_time = d.update_time;
       uint32_t erase_time = d.erase_time;
       uint32_t draw_time = d.draw_time;
 
-      int td = millis() - digit_time;
+      //int td = millis() - digit_time;
       int ed = millis() - erase_time;
       int dd = millis() - draw_time;
 
@@ -889,7 +889,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
           int32_t p0[3];
 
-          matrix.rotate(p, p0);
+          led_screen.matrix.rotate(p, p0);
 
           //translate vectors to coordinates
           p0[2] += -180 * 256 + (200 * 256 * debug_scaler) / 256;

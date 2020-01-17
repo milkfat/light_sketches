@@ -35,16 +35,16 @@ int32_t cube_ang3 = 0;
 
 void handle_text() {
   //if the screen has been updated then redraw the text
-  if (update_since_text == 1) {
+  if (z_buffer != nullptr && update_since_text == 1) {
 
-    reset_z_buffer();
+    z_buffer->reset();
     cube_ang+=512;
     cube_ang2 = cube_ang;
     cube_ang3 = cube_ang;
 
     
 
-    if (drawing_enabled) {
+    if (drawing_enabled && temp_canvas != nullptr) {
 
 
       //add our temp canvas to LEDS
@@ -266,21 +266,21 @@ void handle_text() {
                   } if (text_effect == 1) {
                     //mask (text appears beneath the mask)
                     
-                  } else if (text_effect == 2) {
+                  } else if (text_effect == 2 && height_map_ptr != nullptr) {
                     
                     //DISPLACEMENT
                     
                     //horizontal pixel difference
-                    u_diff = height_map[u2/256+2][v2/256+1] - height_map[u2/256][v2/256+1]; //between -128*32 and 127*32
+                    u_diff = (*height_map_ptr)[u2/256+2][v2/256+1] - (*height_map_ptr)[u2/256][v2/256+1]; //between -128*32 and 127*32
                     u_diff/=8;
                     //vertical pixel difference
-                    v_diff = height_map[u2/256+1][v2/256+2] - height_map[u2/256+1][v2/256]; //between -128*32 and 127*32
+                    v_diff = (*height_map_ptr)[u2/256+1][v2/256+2] - (*height_map_ptr)[u2/256+1][v2/256]; //between -128*32 and 127*32
                     v_diff/=8;
                     
-                  } else if (text_effect == 3) {
+                  } else if (text_effect == 3 && height_map_ptr != nullptr) {
     
                     //LIGHT BENDING?
-                    u_diff = height_map[u2/256+2][v2/256+1] - height_map[u2/256][v2/256+1]; //between -128*32 and 127*32
+                    u_diff = (*height_map_ptr)[u2/256+2][v2/256+1] - (*height_map_ptr)[u2/256][v2/256+1]; //between -128*32 and 127*32
                     if (u_diff > 0) {
                       //u_diff = 127*32 - abs(u_diff);
                       //u_diff = sq(u_diff)/(128L*32);
@@ -290,7 +290,7 @@ void handle_text() {
                     }
                     u_diff /= 24;
                     //vertical pixel difference
-                    v_diff = height_map[u2/256+1][v2/256+2] - height_map[u2/256+1][v2/256]; //between -128*32 and 127*32
+                    v_diff = (*height_map_ptr)[u2/256+1][v2/256+2] - (*height_map_ptr)[u2/256+1][v2/256]; //between -128*32 and 127*32
                     if (v_diff > 0) {
                       //v_diff = 127*32 - abs(v_diff);
                       //v_diff = sq(v_diff)/(128L*32);
@@ -309,7 +309,7 @@ void handle_text() {
         
                     if (text_effect) {
 
-                      if (text_effect != 4) {
+                      if (text_effect != 4 && led_mask2 != nullptr) {
                         
                         //normal text drawn outside of mask area
                         blendXY(led_screen, u2, v2, hue, text_saturation, (text_brightness*(255-led_mask2[XY(u2/256,v2/256)]))/256L );
@@ -323,7 +323,9 @@ void handle_text() {
                       } else {
                         //text is drawn to temporary canvas to be used for later effects
                         CRGB * old_screen_buffer = led_screen.screen_buffer;
-                        led_screen.screen_buffer = temp_canvas;
+                        if (temp_canvas != nullptr) {
+                          led_screen.screen_buffer = temp_canvas;
+                        }
                         blendXY(led_screen, u2+u_diff, v2+u_diff, hue, text_saturation, text_brightness  );
                         led_screen.screen_buffer = old_screen_buffer;
                       }
@@ -339,7 +341,9 @@ void handle_text() {
                     //text is used as a mask for the rest of the image
                     //use the temp_canvas as a temporary buffer to build the mask  
                       CRGB * old_screen_buffer = led_screen.screen_buffer;
-                      led_screen.screen_buffer = temp_canvas;             
+                      if (temp_canvas != nullptr) {
+                        led_screen.screen_buffer = temp_canvas;             
+                      }
                       blendXY(led_screen, u2+u_diff, v2+u_diff, hue, 0, 255  );
                       led_screen.screen_buffer = old_screen_buffer;  
                   }
@@ -395,17 +399,17 @@ void handle_text() {
       
     }
 
-    if (text_effect == 4) {
+    if (text_effect == 4 && temp_canvas != nullptr && led_mask2 != nullptr && height_map_ptr != nullptr) {
 
       //attempt at a refractory effect that uses the temp_canvas as the source
       for (int x = 0; x < MATRIX_WIDTH; x++) {
         for (int y = 0; y < MATRIX_HEIGHT; y++) {
     
           //horizontal pixel difference
-          int u_diff = height_map[x+2][y+1] - height_map[x][y+1]; //between -128*32 and 127*32
+          int u_diff = (*height_map_ptr)[x+2][y+1] - (*height_map_ptr)[x][y+1]; //between -128*32 and 127*32
           u_diff /= 64; //-32 to 32
           //vertical pixel difference
-          int v_diff = height_map[x+1][y+2] - height_map[x+1][y]; //between -128*32 and 127*32
+          int v_diff = (*height_map_ptr)[x+1][y+2] - (*height_map_ptr)[x+1][y]; //between -128*32 and 127*32
           v_diff /= 64; //-32 to 32
           
           int u = x + u_diff;
@@ -448,7 +452,7 @@ void handle_text() {
     }
 
 
-    if (text_mask && text_filter) {
+    if (text_mask && text_filter && temp_canvas != nullptr) {
       //copy filtered text mask from temp canvas
       for (int i = 0; i < NUM_LEDS; i++) {
           led_mask[i] = 255-temp_canvas[i].getAverageLight();

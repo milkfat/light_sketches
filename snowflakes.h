@@ -31,6 +31,7 @@ class SNOWFLAKES: public LIGHT_SKETCH {
         uint8_t on_screen;
     };
 
+    Z_BUF _z_buffer;
     SNOWFLAKE snowflakes[NUM_SNOWFLAKES];
     uint32_t big_seed = 0;
     uint32_t snow_noise_position = 0;
@@ -137,9 +138,10 @@ class SNOWFLAKES: public LIGHT_SKETCH {
     }
 
     void setup() {
-        rotation_alpha = 0;
-        rotation_beta = 90;
-        rotation_gamma = 0;
+        z_buffer = &_z_buffer;
+        led_screen.rotation_alpha = 0;
+        led_screen.rotation_beta = 90;
+        led_screen.rotation_gamma = 0;
         big_seed = random(65535);
         for (int i = 0; i < NUM_SNOWFLAKES; i++) {
             flake_reset(&snowflakes[i], true);
@@ -163,6 +165,9 @@ class SNOWFLAKES: public LIGHT_SKETCH {
         
         //update the screen
         LED_show();
+        if (z_buffer != nullptr) {
+            z_buffer->reset();
+        }
 
         //reset our led buffer
         for (int i = 0; i < NUM_LEDS; i++)
@@ -227,7 +232,7 @@ class SNOWFLAKES: public LIGHT_SKETCH {
     
     void flake_physics(SNOWFLAKE * flake) {
 
-        uint32_t seed = flake->seed;
+        //uint32_t seed = flake->seed;
 
         //rotation around each axis at a random rate
         flake->rx+= ((uint8_t)fmix32(flake->seed)-128)*2;
@@ -254,7 +259,7 @@ class SNOWFLAKES: public LIGHT_SKETCH {
         rotate_x(normal, flake->rx/256);
         rotate_y(normal, flake->ry/256);
         rotate_z(normal, flake->rz/256);
-        matrix.rotate(normal);
+        led_screen.matrix.rotate(normal);
 
         //figure out the magnitude of our x and z components (horizontal motion)
         //multiply by inverse y
@@ -333,7 +338,7 @@ class SNOWFLAKES: public LIGHT_SKETCH {
         VECTOR3 p = VECTOR3(flake->x, flake->y, flake->z);
         
         //rotate according to our global matrix
-        matrix.rotate(p);
+        led_screen.matrix.rotate(p);
         //adjustable scale for the z-axis          
         scale_z(p.z);
         //add 3D perspective
@@ -434,8 +439,8 @@ class SNOWFLAKES: public LIGHT_SKETCH {
                 p1.z+=flake->z;
                 
                 //rotate according to our global matrix
-                matrix.rotate(p0);
-                matrix.rotate(p1);
+                led_screen.matrix.rotate(p0);
+                led_screen.matrix.rotate(p1);
                 //adjustable scale for the z-axis
                 scale_z(p0.z);
                 scale_z(p1.z);

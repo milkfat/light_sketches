@@ -1,6 +1,8 @@
 #ifndef LIGHTS_DRAW_VARIABLES_H
 #define LIGHTS_DRAW_VARIABLES_H
 
+#include "vector3.h"
+
 
 //CRGB leds[NUM_LEDS+1];
 CRGB * main_led_buffer;
@@ -58,15 +60,37 @@ int32_t y_buffer_min = MATRIX_HEIGHT-1;
 int32_t x_buffer[MATRIX_WIDTH][2]; //stores the min/max Y values per X so that we can fill between them
 
 //int z_buffer[MATRIX_WIDTH][MATRIX_HEIGHT];
-int16_t * z_buffer[MATRIX_WIDTH];
+//int16_t * z_buffer[MATRIX_WIDTH];
 
 
 struct Y_BUF {
   VECTOR3 position;
   VECTOR3 ratio;
 };
-Y_BUF* y_buffer2[MATRIX_HEIGHT];
+//Y_BUF* y_buffer2[MATRIX_HEIGHT];
 
+class Z_BUF {
+  int16_t buf[MATRIX_WIDTH][MATRIX_HEIGHT];
 
+ public:
+  void reset() {
+    for (int x = 0; x < MATRIX_WIDTH; x++) {
+      for (int y = 0; y < MATRIX_HEIGHT; y++) {
+        buf[x][y] = {INT16_MIN};
+      }
+    }
+  }
+
+  Z_BUF () {
+    reset();
+  }
+  // Overloading [] operator to access elements in array style 
+  int16_t* operator[] (int index) {
+    return &(buf[index][0]);
+  } 
+
+};
+
+Z_BUF* z_buffer = nullptr;
 
 #endif

@@ -11,6 +11,8 @@
 #define _clamp8(a) _min(_max(a,0),255)
 #endif
 
+#include "vector3.h"
+
 
 //https://stackoverflow.com/questions/1659440/32-bit-to-16-bit-floating-point-conversion
 //by Phernost

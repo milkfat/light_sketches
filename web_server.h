@@ -126,7 +126,7 @@ class WSS_SERVER {
                   in_message->read((char*)&id, 2);
                   button2_down = true;
 
-                  if (drawing_enabled) {
+                  if (drawing_enabled && temp_canvas != nullptr) {
                       CRGB * old_screen_buffer = led_screen.screen_buffer;
                       led_screen.screen_buffer = temp_canvas;    
                       draw_line_fine(led_screen, (x+offset)*256, y*256, (x1+offset)*256, y1*256, 255, 255, p);
@@ -145,9 +145,9 @@ class WSS_SERVER {
 
               case 'a':
                 //read orientation data from device (angles)
-                in_message->read((char*)&rotation_alpha, 4);
-                in_message->read((char*)&rotation_beta, 4);
-                in_message->read((char*)&rotation_gamma, 4);
+                in_message->read((char*)&led_screen.rotation_alpha, 4);
+                in_message->read((char*)&led_screen.rotation_beta, 4);
+                in_message->read((char*)&led_screen.rotation_gamma, 4);
                 break;
 
               case 'd':
@@ -231,7 +231,7 @@ class WSS_SERVER {
             
             //clear canvas
             try {
-                if (pt.get<int>("cc")) {
+                if (pt.get<int>("cc") && temp_canvas!=nullptr) {
                 for (int i = 0; i < NUM_LEDS; i++) {
                     temp_canvas[i] = CRGB::Black;
                 }

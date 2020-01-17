@@ -48,17 +48,17 @@ static inline __attribute__ ((always_inline)) void drawXY_blend_gamma(PERSPECTIV
 
 }
 
-static inline __attribute__ ((always_inline)) void drawXY_blend_gamma(PERSPECTIVE& screen_object, const int& x, const int& y, const int& z, const CRGB& rgb_in, const uint8_t& brightness = 255, const bool& ignore_z = true) {
+static inline __attribute__ ((always_inline)) void drawXY_blend_gamma( PERSPECTIVE& screen_object, const int& x, const int& y, const int& z, const CRGB& rgb_in, const uint8_t& brightness = 255, const bool& ignore_z = true) {
   
   //treat RGB values as gamma 2.2
   //must be decoded, added, then re-encoded
   if (y >= 0 && y < screen_object.screen_height && x >= 0 && x < screen_object.screen_width) {
 
     int z_depth = z/16;
-    if (ignore_z || z_depth >= z_buffer[x][y]) {
+    if (z_buffer == nullptr || z_depth >= (*z_buffer)[x][y]) {
 
-      if (z_depth > z_buffer[x][y]) {
-        z_buffer[x][y] = z_depth; 
+      if (z_buffer != nullptr && z_depth > (*z_buffer)[x][y]) {
+        (*z_buffer)[x][y] = z_depth; 
       }
       
       //uint8_t bri = _clamp8(100 - z/768);
@@ -84,9 +84,11 @@ static inline __attribute__ ((always_inline)) void drawXYZ(PERSPECTIVE& screen_o
   
   if (y >= 0 && y < screen_object.screen_height && x >= 0 && x < screen_object.screen_width) {
 
-    if (z/16 > z_buffer[x][y]) {
+    if (z_buffer == nullptr || z/16 > (*z_buffer)[x][y]) {
 
-      z_buffer[x][y] = z/16; 
+      if (z_buffer != nullptr) {
+        (*z_buffer)[x][y] = z/16; 
+      }
 
 
       //uint8_t bri = _clamp8(100 - z/768);
@@ -202,18 +204,18 @@ static inline __attribute__ ((always_inline)) void blendXY_RGBA(alpha_pixel ap[]
   int yval = (ypos + 512) % 256; //amount of light bottom
   xval = ease8InOutApprox(xval);
   yval = ease8InOutApprox(yval);
-  int x2val = 255 - xval; //amount of light left
-  int y2val = 255 - yval; //amount of light top
+  // int x2val = 255 - xval; //amount of light left
+  // int y2val = 255 - yval; //amount of light top
   
   uint8_t l1 = 255; //top left
   uint8_t l2 = 255; //top right
   uint8_t l3 = 255; //bottom right
   uint8_t l4 = 255; //bottom left
 
-  uint8_t l1a = (l1*a)/255;
-  uint8_t l2a = (l2*a)/255;
-  uint8_t l3a = (l3*a)/255;
-  uint8_t l4a = (l4*a)/255;
+  // uint8_t l1a = (l1*a)/255;
+  // uint8_t l2a = (l2*a)/255;
+  // uint8_t l3a = (l3*a)/255;
+  // uint8_t l4a = (l4*a)/255;
   
   ap[XY(x,y)].r += (r*l1)/255;
   ap[XY(x,y)].g += (g*l1)/255;

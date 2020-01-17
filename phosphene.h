@@ -134,6 +134,10 @@ class PHOSPHENE: public LIGHT_SKETCH {
             phosphene_time = millis();
 
 
+            LED_show();
+            LED_black();
+
+
 
             curIdx = 0;
             while (curIdx < updatePerFrame) {
@@ -152,8 +156,6 @@ class PHOSPHENE: public LIGHT_SKETCH {
                 }
             }
 
-            LED_show();
-            LED_black();
         }
     }
 

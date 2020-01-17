@@ -10,6 +10,7 @@ class TEST3D: public LIGHT_SKETCH {
     TEST3D () {setup();}
     ~TEST3D () {}
   private:
+    Z_BUF _z_buffer;
     //0 = test object
     //1 = grid
     //2 = snow
@@ -101,11 +102,11 @@ class TEST3D: public LIGHT_SKETCH {
     int32_t square2[4][3];
 
     void rotate(int32_t in[3], int32_t out[3]) {
-      matrix.rotate(in, out);
+      led_screen.matrix.rotate(in, out);
     }
 
     void rotate(VECTOR3& p) {
-      matrix.rotate(p);
+      led_screen.matrix.rotate(p);
     }
 
 
@@ -654,7 +655,7 @@ class TEST3D: public LIGHT_SKETCH {
       //increment the particle's age
       p.age+=8;
       if (p.age > 256*8) {p.function = 0; return;}
-      PARTICLE_ATTRIBUTES * pa = &particle_attributes[p.attributes];
+      //PARTICLE_ATTRIBUTES * pa = &particle_attributes[p.attributes];
       move_particle(p);
  
     } //lift_particle()
@@ -734,6 +735,7 @@ class TEST3D: public LIGHT_SKETCH {
     PHOS phos;
 
     void setup() {
+      z_buffer = &_z_buffer;
       //particles = (PARTICLE*) malloc (NUM_PARTICLES * sizeof(PARTICLE));
       for (int i = 0; i < NUM_PARTICLES; i++) {
         particles[i].x = random(-30 * 256L, 30 * 256L);
@@ -751,9 +753,9 @@ class TEST3D: public LIGHT_SKETCH {
     }
 
     void reset() {
-      rotation_alpha = 0;
-      rotation_beta = 90;
-      rotation_gamma = 0;
+      led_screen.rotation_alpha = 0;
+      led_screen.rotation_beta = 90;
+      led_screen.rotation_gamma = 0;
     }
 
     void loop() {
@@ -813,9 +815,9 @@ class TEST3D: public LIGHT_SKETCH {
             draw_cube(VECTOR3(0,0,cube_size), VECTOR3(15*256,15*256,15*256) );
             draw_cube(VECTOR3(0,0,-cube_size), VECTOR3(15*256,15*256,15*256) );
             cube_step +=4;
-            rotation_alpha += 1;
-            rotation_beta += .77;
-            rotation_gamma += .68;
+            led_screen.rotation_alpha += 1;
+            led_screen.rotation_beta += .77;
+            led_screen.rotation_gamma += .68;
             //handle_cube();
             break;
           case TUNNEL:
@@ -871,9 +873,9 @@ void handle_test_object() {
 
           draw_line_fine(led_screen, r0[0] + 3 * 256, r0[1] + 50 * 256, r1[0] + 3 * 256, r1[1] + 50 * 256, 96);
 
-          rotation_alpha += 2;
-          rotation_beta += .154;
-          rotation_gamma += .136;
+          led_screen.rotation_alpha += 2;
+          led_screen.rotation_beta += .154;
+          led_screen.rotation_gamma += .136;
 
 } //handle_test_object()
 
@@ -1198,17 +1200,17 @@ void handle_grid() {
           if (grid_type > 0) {
             rotation_dividy_thing = .2;
           }
-          rotation_alpha += (elapsed_time/20000.f)*rotation_dividy_thing;
-          if (rotation_alpha > 360) {
-            rotation_alpha -= 360;
+          led_screen.rotation_alpha += (elapsed_time/20000.f)*rotation_dividy_thing;
+          if (led_screen.rotation_alpha > 360) {
+            led_screen.rotation_alpha -= 360;
           }
-          rotation_beta += (elapsed_time/18000.f)*rotation_dividy_thing;
-          if (rotation_beta > 360) {
-            rotation_beta -= 360;
+          led_screen.rotation_beta += (elapsed_time/18000.f)*rotation_dividy_thing;
+          if (led_screen.rotation_beta > 360) {
+            led_screen.rotation_beta -= 360;
           }
-          rotation_gamma += (elapsed_time/17000.f)*rotation_dividy_thing;
-          if (rotation_gamma > 360) {
-            rotation_gamma -= 360;
+          led_screen.rotation_gamma += (elapsed_time/17000.f)*rotation_dividy_thing;
+          if (led_screen.rotation_gamma > 360) {
+            led_screen.rotation_gamma -= 360;
           }
 
 } //handle_grid()
@@ -1295,17 +1297,17 @@ void handle_spiral() {
 
           }
           matt_curve8(coords, 12, default_color, default_saturation, 255, false, false, true);
-          rotation_alpha+=.2;
-          rotation_beta+=.3;
+          led_screen.rotation_alpha+=.2;
+          led_screen.rotation_beta+=.3;
 
 } //handle_spiral();
 
 
 void handle_tunnel() {
   static uint16_t stp = 0; //rotation
-  static uint8_t cnt = 0;
+  //static uint8_t cnt = 0;
   static uint8_t stp2 = 0; //bright light
-  static uint8_t stp3 = 0; //circle width
+  //static uint8_t stp3 = 0; //circle width
   static uint16_t stp4 = 0; //tunnel speed
   #define TUNNEL_DETAIL 32
   for (int i = 0; i < TUNNEL_DETAIL+1; i++) {
@@ -1384,7 +1386,7 @@ void handle_tunnel() {
 
   stp  = millis()*3;       //rotation
   stp2 = millis()/64;    //bright light
-  stp3 = millis()/96; //circle width
+  //stp3 = millis()/96; //circle width
   stp4 = millis()*128;   //tunnel speed
 
 } //handle_tunnel();
@@ -1397,7 +1399,7 @@ void handle_fireworks() {
           //
           //
           
-          static uint16_t max_speed = 32768/8; //this is the max speed, above which particles will start to act weird (accelerating backwards)
+          //static uint16_t max_speed = 32768/8; //this is the max speed, above which particles will start to act weird (accelerating backwards)
           
           //spawn a new firework based on the number of frames that have been shown
           static uint16_t next_firework_frame = 0;

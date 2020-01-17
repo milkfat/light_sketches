@@ -1,9 +1,6 @@
 #ifndef LIGHTS_ROTATE_H
 #define LIGHTS_ROTATE_H
 
-float rotation_alpha = 0;
-float rotation_beta = 90;
-float rotation_gamma = 0;
 
 static inline __attribute__ ((always_inline)) void rotate_x(int32_t& x, int32_t& y, int32_t& z, int8_t& s, int8_t& c) {
     int32_t temp = ( y*c - z*s ) / 128;
