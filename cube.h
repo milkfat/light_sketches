@@ -1,6 +1,8 @@
 #ifndef LIGHTS_CUBE_H
 #define LIGHTS_CUBE_H
 
+#define NUMBER_OF_CUBES 30
+
 #include "rotate.h"
 #include "scale.h"
 
@@ -40,12 +42,14 @@ static void draw_quad(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& d, const VECT
 
     for (int x = 0; x < MATRIX_WIDTH; x++) {
         
-        if (x_buffer[x][0]-1 >= 0 && x_buffer[x][0]-1 < MATRIX_HEIGHT) {
-            z_buffer[x][x_buffer[x][0]-1] += 1;
-        }
+        if (z_buffer != nullptr) {
+          if (x_buffer[x][0]-1 >= 0 && x_buffer[x][0]-1 < MATRIX_HEIGHT) {
+              (*z_buffer)[x][x_buffer[x][0]-1] += 1;
+          }
 
-        if (x_buffer[x][1]+1 >= 0 && x_buffer[x][1]+1 < MATRIX_HEIGHT) {
-            z_buffer[x][x_buffer[x][1]+1] += 1;
+          if (x_buffer[x][1]+1 >= 0 && x_buffer[x][1]+1 < MATRIX_HEIGHT) {
+              (*z_buffer)[x][x_buffer[x][1]+1] += 1;
+          }
         }
 
     }
@@ -81,8 +85,6 @@ struct CUBE {
     bool persist = false;
 };
 
-#define NUMBER_OF_CUBES 300
-
 CUBE* cubes;
 
 int16_t first_cube = -1;
@@ -114,7 +116,7 @@ static void draw_cube(const VECTOR3& p, const VECTOR3& d = VECTOR3(256,256,256),
     CUBE* c = &cubes[current_cube];
     
     VECTOR3 newp = p;
-    matrix.rotate(newp);
+    led_screen.matrix.rotate(newp);
 
     c->persist = persist;
     c->z = newp.z;
@@ -190,7 +192,7 @@ static void draw_cached_cube(const int16_t& cp, int16_t bri) {
 
   for (int i = 0; i < 6; i++) {
     rotate_y(normals[i],c->r.y);
-    matrix.rotate(normals[i]);
+    led_screen.matrix.rotate(normals[i]);
   }
 
   VECTOR3 points[] = {
@@ -210,7 +212,7 @@ static void draw_cached_cube(const int16_t& cp, int16_t bri) {
   for (int i = 0; i < 8; i++) {
     rotate_y(points[i],c->r.y);
     points[i]+=c->p;
-    matrix.rotate(points[i]);
+    led_screen.matrix.rotate(points[i]);
     
     //translate vectors to coordinates
     scale_z(points[i]);
@@ -247,7 +249,7 @@ static void draw_cached_cube(const int16_t& cp, int16_t bri) {
   }
 
   VECTOR3 p;
-  matrix.rotate(c->p, p);
+  led_screen.matrix.rotate(c->p, p);
   
   //draw faces from back to front
   for (int i = 0; i < 6; i++) {
