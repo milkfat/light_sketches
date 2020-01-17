@@ -227,9 +227,9 @@ class BALLS2D: public LIGHT_SKETCH {
 
     void setup() {
       frame_time = millis();
-      rotation_alpha = 0;
-      rotation_beta = 90;
-      rotation_gamma = 0;
+      led_screen.rotation_alpha = 0;
+      led_screen.rotation_beta = 90;
+      led_screen.rotation_gamma = 0;
       for ( int i = 0; i < NUM_BALLS; i++) {
         balls[i].h = random(256);
         balls[i].x = i % 2 * 2 * 256 + 2 * 256;
@@ -241,9 +241,9 @@ class BALLS2D: public LIGHT_SKETCH {
     }
 
     void reset() {
-      rotation_alpha = 0;
-      rotation_beta = 90;
-      rotation_gamma = 0;
+      led_screen.rotation_alpha = 0;
+      led_screen.rotation_beta = 90;
+      led_screen.rotation_gamma = 0;
       for (int i = 0; i < NUM_BALLS; i++) {
         if (balls[i].y < 3 * 256) {
           balls[i].vy += 1000;
@@ -307,8 +307,8 @@ class BALLS2D: public LIGHT_SKETCH {
 
         //find our angles in radians
         //float alpha = ((rotation_alpha-180.0) * PI) / 180.0; //Z
-        float beta = (rotation_beta * PI) / 180.f; //X;
-        float gamma = (rotation_gamma * PI) / 180.f; //Y
+        float beta = (led_screen.rotation_beta * PI) / 180.f; //X;
+        float gamma = (led_screen.rotation_gamma * PI) / 180.f; //Y
 
         //store sin/cos in variables
         //float cZ = 1.0*cos( alpha );
@@ -370,7 +370,7 @@ class BALLS2D: public LIGHT_SKETCH {
 
       if (frame_delta > 0.01) {
         uint16_t total_cnt = 0;
-        uint32_t milliseconds = millis();
+        //uint32_t milliseconds = millis();
         uint32_t microseconds = micros();
 
         frame_time = millis(); //update the time for the next frame
@@ -485,8 +485,8 @@ class BALLS2D: public LIGHT_SKETCH {
 
               float ax = dx / d;
               float ay = dy / d;
-              float vp1 = (balls[i].distx) * ax + (balls[i].disty) * ay;
-              float vp2 = (balls[j].distx) * ax + (balls[j].disty) * ay;
+              // float vp1 = (balls[i].distx) * ax + (balls[i].disty) * ay;
+              // float vp2 = (balls[j].distx) * ax + (balls[j].disty) * ay;
               //float dt = (balls[i].r + balls[j].r - d) / (vp1 - vp2);
               float& dt = collision_buffer[k].dt;
               //back the two balls up so there is no overlap
@@ -531,10 +531,10 @@ class BALLS2D: public LIGHT_SKETCH {
               Serial.print(vaP2);
 #endif
 
-              float oldvxi = balls[i].vx;
-              float oldvyi = balls[i].vy;
-              float oldvxj = balls[j].vx;
-              float oldvyj = balls[j].vy;
+              // float oldvxi = balls[i].vx;
+              // float oldvyi = balls[i].vy;
+              // float oldvxj = balls[j].vx;
+              // float oldvyj = balls[j].vy;
 
 
               balls[i].vx = vaP1 * ax - vb1 * ay;
