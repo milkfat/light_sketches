@@ -574,7 +574,6 @@ void draw_jelly(JELLY& jelly) {
     void handle_tentacles(JELLY& jelly) {
       tentacle_segment (*tentacles)[NUM_TENTACLE_SEGMENTS] = jelly.tentacles;
       for (int i = 0; i < NUM_JELLY_SEGMENTS; i++) {
-        int32_t tentacle_points[NUM_TENTACLE_SEGMENTS][2];
         for (int j = 0; j < NUM_TENTACLE_SEGMENTS; j++) {
 
           //apply physics to all but the first point (which is affixed to the jelly)

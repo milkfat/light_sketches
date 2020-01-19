@@ -21,6 +21,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
     int update_count = 0; //keep track of how many digits were updated in a cycle
     int erase_delay = 0;
     int draw_delay = 0;
+    CRGB rgb_clock = CRGB(255,0,0);
 
     
     //uint8_t SEGMENT_LENGTH = 5;
@@ -294,7 +295,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
       }
     }
 
-    void draw_3d(const int& x0, const int& y0, const int& z0, const int& x1, const int& y1, const int& z1, const uint8_t& hue = 0, const uint8_t& sat = 255, const uint8_t& val = 255) {
+    void draw_3d(const int& x0, const int& y0, const int& z0, const int& x1, const int& y1, const int& z1, CRGB& rgb_in) {
 
       int32_t p[3];
       
@@ -322,7 +323,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
       led_screen.perspective(p0);
       led_screen.perspective(p1);
       
-      draw_line_fine(led_screen, p0[0], p0[1], p1[0], p1[1], hue, sat, val, -10000, val);
+      draw_line_fine(led_screen, p0[0], p0[1], p1[0], p1[1], rgb_in);
     } //draw_3d()
 
 
@@ -414,11 +415,11 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
 
         if (part == 0 || draw_part == part) {
-          draw_3d(x+x0, y-y0, z+z0, x+x1, y-y1, z+z1);
+          draw_3d(x+x0, y-y0, z+z0, x+x1, y-y1, z+z1, rgb_clock);
         }
 
       } else {
-        draw_line_fine(led_screen, x+x0, y-y0, x+x1, y-y1, 0, 255, 64, -10000, 64);
+        draw_line_fine(led_screen, x+x0, y-y0, x+x1, y-y1, rgb_clock);
       }
 
     }
@@ -447,10 +448,10 @@ class MATTCLOCK: public LIGHT_SKETCH {
       
       if (clock_3d) {
 
-        draw_3d(x+x0, y-y0, z, x+x1, y-y1, z);
+        draw_3d(x+x0, y-y0, z, x+x1, y-y1, z, rgb_clock);
 
       } else {
-        draw_line_fine(led_screen, x+x0, y-y0, x+x1, y-y1, 0, 255, 64, -10000, 64);
+        draw_line_fine(led_screen, x+x0, y-y0, x+x1, y-y1, rgb_clock);
       }
 
     }
@@ -621,9 +622,13 @@ class MATTCLOCK: public LIGHT_SKETCH {
             int x = (cposx+SEGMENT_SPACING+2)*256;
             int y = (MATRIX_HEIGHT-1-cposy)*256;
 
-            draw_3d(x, y-(SEGMENT_SPACING*2)*256, 0, x+2*256, y-(SEGMENT_SPACING*2)*256, 0, 0, 255, val);
+            CRGB rgb2;
+            rgb2.r = (rgb_clock.r*val)/255;
+            rgb2.g = (rgb_clock.g*val)/255;
+            rgb2.b = (rgb_clock.b*val)/255;
+            draw_3d(x, y-(SEGMENT_SPACING*2)*256, 0, x+2*256, y-(SEGMENT_SPACING*2)*256, 0, rgb2);
 
-            draw_3d(x+(SEGMENT_LENGTH-10)*256, y-(SEGMENT_SPACING*2)*256, 0, x+(SEGMENT_LENGTH-8)*256, y-(SEGMENT_SPACING*2)*256, 0, 0, 255, val);
+            draw_3d(x+(SEGMENT_LENGTH-10)*256, y-(SEGMENT_SPACING*2)*256, 0, x+(SEGMENT_LENGTH-8)*256, y-(SEGMENT_SPACING*2)*256, 0, rgb2);
             
             //cposy += 6*cy;
             cposy += (SEGMENT_LENGTH+SEGMENT_SPACING)*cy;
@@ -697,6 +702,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
     }
 
     void setup() {
+      control_variables.add(rgb_clock, "Color");
       for (int i = 0; i < 6; i++) {
         digits[i].number_from = 0;
         digits[i].number_to = 0;
@@ -903,7 +909,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
         }
       }  
       
-      matt_curve8(wire_digit, 6, default_color, default_saturation, val, false, false, true, percentage);
+      matt_curve8(led_screen, wire_digit, 6, rgb_clock, false, false, true, percentage);
     }
 
 

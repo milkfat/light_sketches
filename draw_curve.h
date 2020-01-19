@@ -308,8 +308,8 @@ static inline __attribute__ ((always_inline)) void matt_curve(int32_t coordinate
 
 //draw a curve by simultaneously shortening and rotating the line segment vectors
 
-static inline __attribute__ ((always_inline)) void matt_curve8(PERSPECTIVE screen_object, int32_t coordinate_array[][2], const size_t& len, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const bool& flipXY = false, const bool& closedShape = false, const bool& extraSmooth = false, const uint8_t& percentage = 255, const uint8_t& step_size = 32) {
-  CRGB rgb = CHSV(hue, sat, val);
+static inline __attribute__ ((always_inline)) void matt_curve8(PERSPECTIVE screen_object, int32_t coordinate_array[][2], const size_t& len, CRGB& rgb, const bool& flipXY = false, const bool& closedShape = false, const bool& extraSmooth = false, const uint8_t& percentage = 255, const uint8_t& step_size = 32) {
+  static const uint8_t val = 255;
   //draw simple lines for step size of 255
   if (step_size == 255) {
     for (int i = 1; i < len; i++) {
@@ -590,10 +590,16 @@ static inline __attribute__ ((always_inline)) void matt_curve8(PERSPECTIVE scree
 } //matt_curve8_base
 
 
-static inline __attribute__ ((always_inline)) void matt_curve8(int32_t coordinate_array[][2], const size_t& len, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const bool& flipXY = false, const bool& closedShape = false, const bool& extraSmooth = false, const uint8_t& percentage = 255, const uint8_t& step_size = 32) {
+static inline __attribute__ ((always_inline)) void matt_curve8(int32_t coordinate_array[][2], const size_t& len, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const bool& flipXY = false, const bool& closedShape = false, const bool& extraSmooth = false, const uint8_t& percentage = 255, const uint8_t& step_size = 32) 
+{
+  CRGB rgb = CRGB(hue, sat, val);
+  matt_curve8(led_screen, coordinate_array, len, rgb, flipXY, closedShape, extraSmooth, percentage, step_size);
+}
 
-  matt_curve8(led_screen, coordinate_array, len, hue, sat, val, flipXY, closedShape, extraSmooth, percentage, step_size);
-
+static inline __attribute__ ((always_inline)) void matt_curve8(PERSPECTIVE screen_object, int32_t coordinate_array[][2], const size_t& len, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const bool& flipXY = false, const bool& closedShape = false, const bool& extraSmooth = false, const uint8_t& percentage = 255, const uint8_t& step_size = 32)
+{
+  CRGB rgb = CRGB(hue, sat, val);
+  matt_curve8(screen_object, coordinate_array, len, rgb, flipXY, closedShape, extraSmooth, percentage, step_size);
 }
 
 
