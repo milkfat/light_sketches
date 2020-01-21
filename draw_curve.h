@@ -592,13 +592,13 @@ static inline __attribute__ ((always_inline)) void matt_curve8(PERSPECTIVE scree
 
 static inline __attribute__ ((always_inline)) void matt_curve8(int32_t coordinate_array[][2], const size_t& len, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const bool& flipXY = false, const bool& closedShape = false, const bool& extraSmooth = false, const uint8_t& percentage = 255, const uint8_t& step_size = 32) 
 {
-  CRGB rgb = CRGB(hue, sat, val);
+  CRGB rgb = CHSV(hue, sat, val);
   matt_curve8(led_screen, coordinate_array, len, rgb, flipXY, closedShape, extraSmooth, percentage, step_size);
 }
 
 static inline __attribute__ ((always_inline)) void matt_curve8(PERSPECTIVE screen_object, int32_t coordinate_array[][2], const size_t& len, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const bool& flipXY = false, const bool& closedShape = false, const bool& extraSmooth = false, const uint8_t& percentage = 255, const uint8_t& step_size = 32)
 {
-  CRGB rgb = CRGB(hue, sat, val);
+  CRGB rgb = CHSV(hue, sat, val);
   matt_curve8(screen_object, coordinate_array, len, rgb, flipXY, closedShape, extraSmooth, percentage, step_size);
 }
 

@@ -324,6 +324,7 @@ class LIGHT_SKETCHES {
         salloc();
         light_sketches[current_light_sketch]->destroy();
         height_map_ptr = nullptr;
+        z_buffer = nullptr;
         current_light_sketch=i;
         if (current_light_sketch >= number_of_light_sketches) {
           current_light_sketch = 0;
@@ -400,21 +401,21 @@ LIGHT_SKETCHES light_sketches;
 
 #include "balls_squishy.h"
 #include "balls2d.h"
-#include "cinco_de_mayo.h"
-//#include "curvy.h"
+// #include "cinco_de_mayo.h"
+#include "curvy.h"
 //#include "fire.h"
 //#include "growcircle.h"
 #include "mattclock.h"
 //#include "metaballs.h"
-#include "orbit.h"
+// #include "orbit.h"
 #include "neon.h"
-#include "shapes.h"
-#include "simplex.h"
+//#include "shapes.h"
+// #include "simplex.h"
 #include "snowflakes.h"
-#include "test2d.h"
+// #include "test2d.h"
 #include "test3d.h"
-#include "tree_sim.h"
-#include "phosphene.h"
+//#include "tree_sim.h"
+//#include "phosphene.h"
 //#include "waves.h"
 
 #endif

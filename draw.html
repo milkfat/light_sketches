@@ -13,6 +13,8 @@
       </style>
    </head>
    <body>
+    <!--we must request permission for orientation events via a user gesture-->
+      <button style="color:red;font-size:200px;" onclick="try{DeviceOrientationEvent.requestPermission();}catch(err){} this.style.display = 'none'; onLoad();">Start!</button>
       <canvas id='myCanvas0' style='position:absolute; left:0px; top:0px;'></canvas>
       <canvas id='myCanvas1' style='position:absolute; left:0px; top:0px;'></canvas>
       <canvas id='myCanvas2' style='position:absolute; left:0px; top:0px;'></canvas>
@@ -37,7 +39,7 @@
                 };
              }
          
-           window.addEventListener("DOMContentLoaded", onLoad, false);
+           //window.addEventListener("DOMContentLoaded", onLoad, false);
          }
          
          var canvas = document.getElementById('myCanvas0');
@@ -88,7 +90,7 @@
             websocket.onerror = function(evt) { onError(evt) };
             window.addEventListener('resize', resizeCanvas, false);
             document.fonts.load('24pt Proxima Nova Soft').then(resizeCanvas);  
-            setInterval(monitorCursors, 15);  
+            setInterval(monitorCursors, 15); 
          }
          
          function onOpen(evt) {
