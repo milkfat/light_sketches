@@ -5,7 +5,7 @@
 //DRAW LINE FINE
 
 
-static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, const VECTOR3& b, const CRGB& rgb, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true, const bool& wide_fill = true) {
+static inline __attribute__ ((always_inline)) void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, const VECTOR3& b, const CRGB& rgb, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true, const bool& wide_fill = true) {
   
   int32_t z_depth = a.z;
 
@@ -90,12 +90,12 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
 
   int32_t x_dist = x2 - x1;
   int32_t y_dist = y2 - y1;
-  int32_t x_step = (x_dist*256)/y_dist;
-  int32_t y_step = (y_dist*256)/x_dist;
+  float x_step = (x_dist*256.f)/y_dist;
+  float y_step = (y_dist*256.f)/x_dist;
   if (abs(x1 - x2) > abs(y1 - y2)) {
     //calculate horizontally
     
-    int y_start = y1 + ((x1_led*256 - x1)*y_step)/256;
+    float y_start = y1 + ((x1_led*256 - x1)*y_step)/256.f;
     for (int i = (x1_led); i <= (x2_led); i++) {
       //if ((i != x1_led && i != x2_led) || !trim) {
       if (true) {
@@ -191,7 +191,7 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
   } else {
     //calculate vertically
 
-    int32_t x_start = x1 + ((y1_led*256-y1)*x_step)/256;
+    float x_start = x1 + ((y1_led*256-y1)*x_step)/256.f;
     for (int i = (y1_led); i <= (y2_led); i++) {
       uint8_t v1 = val;
       int pos = i - y1_led;
@@ -343,7 +343,7 @@ static void draw_line_ybuffer(const int32_t& x1i, const int32_t& y1i, const int3
 
 
 
-static void draw_line_ybuffer(Y_BUF y_buffer2[MATRIX_HEIGHT][2], VECTOR3 a, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 b_rgb) {
+static inline __attribute__ ((always_inline))  void draw_line_ybuffer(Y_BUF y_buffer2[MATRIX_HEIGHT][2], VECTOR3 a, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 b_rgb) {
 
   a += 128;
   b += 128;
