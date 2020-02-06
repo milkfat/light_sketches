@@ -308,13 +308,13 @@ static inline __attribute__ ((always_inline)) void matt_curve(int32_t coordinate
 
 //draw a curve by simultaneously shortening and rotating the line segment vectors
 
-static inline __attribute__ ((always_inline)) void matt_curve8(PERSPECTIVE screen_object, int32_t coordinate_array[][2], const size_t& len, CRGB& rgb, const bool& flipXY = false, const bool& closedShape = false, const bool& extraSmooth = false, const uint8_t& percentage = 255, const uint8_t& step_size = 32) {
+static inline __attribute__ ((always_inline)) void matt_curve8(PERSPECTIVE screen_object, int32_t coordinate_array[][2], const size_t& len, CRGB& rgb, const bool& flipXY = false, const bool& closedShape = false, const bool& extraSmooth = false, const uint8_t& percentage = 255, const uint8_t& step_size = 32, const bool& additive = false) {
   static const uint8_t val = 255;
   //draw simple lines for step size of 255
   if (step_size == 255) {
     for (int i = 1; i < len; i++) {
       //draw_line_fine2(screen_object, coordinate_array[i-1][0],coordinate_array[i-1][1],coordinate_array[i][0],coordinate_array[i][1],hue,sat,val);
-      draw_line_fine(screen_object,coordinate_array[i-1][0],coordinate_array[i-1][1],coordinate_array[i][0],coordinate_array[i][1], rgb, -10000, val, val, true);
+      draw_line_fine(screen_object,coordinate_array[i-1][0],coordinate_array[i-1][1],coordinate_array[i][0],coordinate_array[i][1], rgb, -10000, val, val, true,true,true,additive);
     } 
     return;
   }
@@ -439,7 +439,11 @@ static inline __attribute__ ((always_inline)) void matt_curve8(PERSPECTIVE scree
     //do not draw the first segment
     while(stp <= 256 && i != -1) {
 
-      if ( ((i+1)*stp) / total_length > percentage) {
+      // if ( ((i+1)*stp) / total_length > percentage) {
+      //   return;
+      // }
+
+      if ( (stp/total_length) + ((i+1)*256)/total_length > percentage) {
         return;
       }
       
@@ -520,12 +524,12 @@ static inline __attribute__ ((always_inline)) void matt_curve8(PERSPECTIVE scree
         //draw line between points
         if (flipXY) {
           //draw_line_fine2(screen_object, last_y, last_x, y, x, hue, sat, val);
-          draw_line_fine(screen_object, last_y, last_x, y, x, rgb, -10000, val, val, true);
+          draw_line_fine(screen_object, last_y, last_x, y, x, rgb, -10000, val, val, true,true,true,additive);
             //blendXY(led_screen, y, x, 0, 0, 255);
         } else {
 
           //draw_line_fine2(screen_object, last_x, last_y, x, y, hue, sat, val);
-          draw_line_fine(screen_object, last_x, last_y, x, y, rgb, -10000, val, val, true);
+          draw_line_fine(screen_object, last_x, last_y, x, y, rgb, -10000, val, val, true,true,true,additive);
             //blendXY(led_screen, x, y, 0, 0, 255);
         }
       }
@@ -566,10 +570,10 @@ static inline __attribute__ ((always_inline)) void matt_curve8(PERSPECTIVE scree
         if (stp > 0) {
           //draw line between points
           if (flipXY) {
-            draw_line_fine(screen_object, last_yb, last_xb, yb, xb, rgb, -10000, val, val, true);
+            draw_line_fine(screen_object, last_yb, last_xb, yb, xb, rgb, -10000, val, val, true,true,true,additive);
             //blendXY(led_screen, yb, xb, 0, 0, 255);
           } else {
-            draw_line_fine(screen_object, last_xb, last_yb, xb, yb, rgb, -10000, val, val, true);
+            draw_line_fine(screen_object, last_xb, last_yb, xb, yb, rgb, -10000, val, val, true,true,true,additive);
             //blendXY(led_screen, xb, yb, 0, 0, 255);
           }
         }
