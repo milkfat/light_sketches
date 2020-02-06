@@ -1,7 +1,7 @@
 #ifndef LIGHTS_CUBE_H
 #define LIGHTS_CUBE_H
 
-#define NUMBER_OF_CUBES 30
+#define NUMBER_OF_CUBES 300
 
 #include "rotate.h"
 #include "scale.h"
@@ -75,11 +75,11 @@ static void draw_quad(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& d, const VECT
 } //draw_quad()
 
 struct CUBE {
-    VECTOR3 p; //position X,Y,Z
-    VECTOR3 d; //dimensions X,Y,Z
-    VECTOR3_8 r; //rotation X,Y,Z
-    int32_t z;
-    CRGB rgb;
+    VECTOR3 p = VECTOR3(0,0,0); //position X,Y,Z
+    VECTOR3 d = VECTOR3(0,0,0); //dimensions X,Y,Z
+    VECTOR3_8 r = VECTOR3(0,0,0); //rotation X,Y,Z
+    int32_t z = 0;
+    CRGB rgb = CRGB(0,0,0);
     int16_t prev = -1;
     int16_t next = -1;
     bool persist = false;
@@ -292,12 +292,13 @@ static void draw_cubes() {
         int16_t next_cube = cubes[cube].next;
         draw_cached_cube(cube,cnt);
         cnt++;
-        if (cubes[cube].persist) {
+        //make cubes fall away
+        if (false && cubes[cube].persist) {
             cubes[cube].d.x = (cubes[cube].d.x*(50+(fmix32(cube)%32))) / 100;
             cubes[cube].d.y = (cubes[cube].d.y*(50+(fmix32(cube)%32))) / 100;
             cubes[cube].d.z = (cubes[cube].d.z*(50+(fmix32(cube)%32))) / 100;
             cubes[cube].p.z -= 5000;
-            if (cubes[cube].d.x == 0 || cubes[cube].d.y == 0 || cubes[cube].d.z == 0 || cubes[cube].p.z < -200000) {
+            if (cubes[cube].d.x == 0 || cubes[cube].d.y == 0 || cubes[cube].d.z == 0 || cubes[cube].p.z < -20000) {
                 cubes[cube].persist = false;
             }
             if (new_first_cube == -1) {
