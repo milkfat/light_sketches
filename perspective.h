@@ -13,17 +13,24 @@ class PERSPECTIVE {
         int32_t Sz; //projection screen Z (between camera and object)
         int32_t Cz2;
         int32_t Sz2;
+        int32_t _X_MAX = INT32_MIN;
+        int32_t _X_MIN = INT32_MAX;
+        int32_t _Y_MAX = INT32_MIN;
+        int32_t _Y_MIN = INT32_MAX;
 
 
     public:
-        int16_t camera_scaler = 232;
-        int16_t screen_scaler = 100;
-        const uint32_t screen_width;
-        const uint32_t screen_height;
+        int32_t camera_scaler = 232*256;
+        int32_t screen_scaler = 100*256;
+        const int32_t screen_width;
+        const int32_t screen_height;
         CRGB * screen_buffer;
         float rotation_alpha = 0;
         float rotation_beta = 90;
         float rotation_gamma = 0;
+        int32_t x_offset = 0;
+        int32_t y_offset = 0;
+        int32_t z_offset = 0;
 
         MATRIX matrix = MATRIX(&rotation_alpha, &rotation_beta, &rotation_gamma);
         
@@ -35,14 +42,17 @@ class PERSPECTIVE {
 
     inline __attribute__ ((always_inline)) void update() {
 
-            Cz = camera_scaler * 256L; //camera Z
-            Sz = screen_scaler * 256L; //projection screen Z (between camera and object)
+            Cz = camera_scaler; //camera Z
+            Sz = screen_scaler; //projection screen Z (between camera and object)
             Cz2 = Cz/2;
             Sz2 = Sz/2;
     }
 
     inline __attribute__ ((always_inline)) bool perspective(int32_t& x, int32_t& y, int32_t& z) {
         if (z < Cz) {
+            x+=x_offset;
+            y+=y_offset;
+            z+=z_offset;
             x/=MATRIX_PRECISION;//half precision to double each axis of our available coordinate space
             y/=MATRIX_PRECISION;
             z/=MATRIX_PRECISION;
@@ -87,6 +97,9 @@ class PERSPECTIVE {
         x*=MATRIX_PRECISION;
         y*=MATRIX_PRECISION;
         z*=MATRIX_PRECISION;
+        x-=x_offset;
+        y-=y_offset;
+        z-=z_offset;
         return true;
     }
 
@@ -101,17 +114,42 @@ class PERSPECTIVE {
     //return LED position from X,Y coordinates
     //return NUM_LEDS-1 (our safety "invisible" pixel) if coordinates are off-screen
     inline __attribute__ ((always_inline)) uint32_t XY(const int& x, const int& y) {
-    if (x >= 0 && x < screen_width && y >= 0 && y < screen_height) {
-      int32_t location = y*screen_width + x;
-      if (location > screen_width*screen_height || location < 0) {
-          return screen_width*screen_height;
-      } else {
-          return location;
-      }
-    } else {
-      return screen_width*screen_height;
+
+        if (x >= 0 && x < screen_width && y >= 0 && y < screen_height) {
+            int32_t location = y*screen_width + x;
+            if (location > screen_width*screen_height || location < 0) {
+                return screen_width*screen_height;
+            } else {
+                return location;
+            }
+        } else {
+            _X_MAX = _max(_X_MAX, x);
+            _X_MIN = _min(_X_MIN, x);
+            _Y_MAX = _max(_Y_MAX, y);
+            _Y_MIN = _min(_Y_MIN, y);
+            return screen_width*screen_height;
+        }  
     }
-}
+
+    inline __attribute__ ((always_inline)) bool out_of_bounds() {
+        return _X_MAX > screen_width-1 || _X_MIN < 0 || _Y_MAX > screen_height-1 || _Y_MIN < 0;
+    }
+
+    inline __attribute__ ((always_inline)) void reset_boundaries() {
+        _X_MAX = INT32_MIN;
+        _X_MIN = INT32_MAX;
+        _Y_MAX = INT32_MIN;
+        _Y_MIN = INT32_MAX;
+    }
+
+    inline __attribute__ ((always_inline)) uint8_t x_boundary_status() {
+        return (_X_MIN < 0) + (_X_MAX > screen_width-1)*2;
+    }
+
+    inline __attribute__ ((always_inline)) uint8_t y_boundary_status() {
+        return (_Y_MIN < 0) + (_Y_MAX > screen_height-1)*2;
+    }
+
 };
 
 #endif
