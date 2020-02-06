@@ -6,10 +6,11 @@ class SNOWFLAKES: public LIGHT_SKETCH {
   public:
     SNOWFLAKES () {setup();}
     ~SNOWFLAKES () {}
-#define NUM_SNOWFLAKES 50
+#define MAX_NUM_SNOWFLAKES 50
 
 
   private:
+    uint8_t num_snowflakes = 20;
 
     int current_effect = 0;
 
@@ -32,7 +33,7 @@ class SNOWFLAKES: public LIGHT_SKETCH {
     };
 
     Z_BUF _z_buffer;
-    SNOWFLAKE snowflakes[NUM_SNOWFLAKES];
+    SNOWFLAKE snowflakes[MAX_NUM_SNOWFLAKES];
     uint32_t big_seed = 0;
     uint32_t snow_noise_position = 0;
 
@@ -143,9 +144,12 @@ class SNOWFLAKES: public LIGHT_SKETCH {
         led_screen.rotation_beta = 90;
         led_screen.rotation_gamma = 0;
         big_seed = random(65535);
-        for (int i = 0; i < NUM_SNOWFLAKES; i++) {
+        for (int i = 0; i < num_snowflakes; i++) {
             flake_reset(&snowflakes[i], true);
         }
+        control_variables.add(num_snowflakes, "Number of flakes", 0, 50);
+        control_variables.add(led_screen.camera_scaler, "Camera Z", 0, 256*256);
+        control_variables.add(led_screen.screen_scaler, "Screen Z", 0, 256*256);
 
     }
 
@@ -176,18 +180,18 @@ class SNOWFLAKES: public LIGHT_SKETCH {
         }
 
         //reset the snowflake's "drawn" flag
-        for (int i = 0; i < NUM_SNOWFLAKES; i++) {
+        for (int i = 0; i < num_snowflakes; i++) {
             snowflakes[i].flag = 1;
         }
 
         //process each snowflake
-        for (int f = 0; f < NUM_SNOWFLAKES; f++) {
+        for (int f = 0; f < num_snowflakes; f++) {
 
             //we want to draw our snowflakes from back to front
             //so we find the most distant snowflake that hasn't yet been drawn
             int max_z = 1000000;
             int max_flake = 0;
-            for (int j = 0; j < NUM_SNOWFLAKES; j++) {
+            for (int j = 0; j < num_snowflakes; j++) {
                 if (snowflakes[j].flag) {
                     if (snowflakes[j].z < max_z) {
                         max_z = snowflakes[j].z;
