@@ -52,13 +52,13 @@ class CONTROL_VARIABLES {
                 var = *cv[pos].ui32_t;
                 break;
             case 4:
-                var = *cv[pos].ui8_t;
+                var = *cv[pos].i8_t;
                 break;
             case 5:
-                var = *cv[pos].ui16_t;
+                var = *cv[pos].i16_t;
                 break;
             case 6:
-                var = *cv[pos].ui32_t;
+                var = *cv[pos].i32_t;
                 break;
             default:
                 return 0;
@@ -101,13 +101,13 @@ class CONTROL_VARIABLES {
                 return *cv[pos].ui32_t;
                 break;
             case 4:
-                return *cv[pos].ui8_t;
+                return *cv[pos].i8_t;
                 break;
             case 5:
-                return *cv[pos].ui16_t;
+                return *cv[pos].i16_t;
                 break;
             case 6:
-                return *cv[pos].ui32_t;
+                return *cv[pos].i32_t;
                 break;
             default:
                 return -2;
