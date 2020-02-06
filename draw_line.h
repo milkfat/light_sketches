@@ -5,7 +5,7 @@
 //DRAW LINE FINE
 
 
-static inline __attribute__ ((always_inline)) void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, const VECTOR3& b, const CRGB& rgb, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true, const bool& wide_fill = true) {
+static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, const VECTOR3& b, const CRGB& rgb, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true, const bool& wide_fill = true, const bool& additive = false) {
   
   int32_t z_depth = a.z;
 
@@ -130,9 +130,18 @@ static inline __attribute__ ((always_inline)) void draw_line_fine_base(PERSPECTI
         Ly--;
         i--;
 
-        drawXYZ2(screen_object, i, Hy, z_depth, rgb, ((b2*v1)>>8) + ((b2*v2)>>8), ignore_z );
-        drawXYZ2(screen_object, i, Ly, z_depth, rgb, ((b *v1)>>8) + ((b *v2)>>8), ignore_z );
-       
+        if (additive) {
+          CRGB rgb0 = rgb;
+          color_scale(rgb0, ((b2*v1)>>8) + ((b2*v2)>>8));
+          CRGB rgb1 = rgb;
+          color_scale(rgb1, ((b *v1)>>8) + ((b *v2)>>8));
+          color_add_gamma8(screen_object.screen_buffer[XY(i, Hy)], rgb0);
+          color_add_gamma8(screen_object.screen_buffer[XY(i, Ly)], rgb1);
+        } else {
+          drawXYZ2(screen_object, i, Hy, z_depth, rgb, ((b2*v1)>>8) + ((b2*v2)>>8), ignore_z );
+          drawXYZ2(screen_object, i, Ly, z_depth, rgb, ((b *v1)>>8) + ((b *v2)>>8), ignore_z );
+        }
+
         //record stuff in our x and y buffers for other functions to use
         if (i >= 0 && i < MATRIX_WIDTH) {
 
@@ -225,9 +234,17 @@ static inline __attribute__ ((always_inline)) void draw_line_fine_base(PERSPECTI
       Lx--;
       i--;
 
-      drawXYZ2(screen_object, Hx, i, z_depth, rgb, ((b2*v1)>>8) + ((b2*v2)>>8), ignore_z );
-      drawXYZ2(screen_object, Lx, i, z_depth, rgb, ((b *v1)>>8) + ((b *v2)>>8), ignore_z );
-  
+      if (additive) {
+        CRGB rgb0 = rgb;
+        color_scale(rgb0, ((b2*v1)>>8) + ((b2*v2)>>8));
+        CRGB rgb1 = rgb;
+        color_scale(rgb1, ((b *v1)>>8) + ((b *v2)>>8));
+        color_add_gamma8(screen_object.screen_buffer[XY(Hx, i)], rgb0);
+        color_add_gamma8(screen_object.screen_buffer[XY(Lx, i)], rgb1);
+      } else {
+        drawXYZ2(screen_object, Hx, i, z_depth, rgb, ((b2*v1)>>8) + ((b2*v2)>>8), ignore_z );
+        drawXYZ2(screen_object, Lx, i, z_depth, rgb, ((b *v1)>>8) + ((b *v2)>>8), ignore_z );
+      }
       if (!wide_fill) {
         int temp = Lx;
         Lx = Hx;
@@ -267,10 +284,10 @@ static inline __attribute__ ((always_inline)) void draw_line_fine_base(PERSPECTI
 
 
 
-static inline __attribute__ ((always_inline)) void draw_line_fine(PERSPECTIVE& screen_object, const int32_t& x1, const int32_t& y1, const int32_t& x2, const int32_t& y2, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true, const bool wide_fill = true) {
+static inline __attribute__ ((always_inline)) void draw_line_fine(PERSPECTIVE& screen_object, const int32_t& x1, const int32_t& y1, const int32_t& x2, const int32_t& y2, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true, const bool wide_fill = true, const bool additive = false) {
   VECTOR3 a(x1,y1,z_depth);
   VECTOR3 b(x2,y2,z_depth);
-  draw_line_fine_base(screen_object, a, b, rgb, val, val2, trim, ignore_z, wide_fill);
+  draw_line_fine_base(screen_object, a, b, rgb, val, val2, trim, ignore_z, wide_fill, additive);
 }
 
 
@@ -343,7 +360,7 @@ static void draw_line_ybuffer(const int32_t& x1i, const int32_t& y1i, const int3
 
 
 
-static inline __attribute__ ((always_inline))  void draw_line_ybuffer(Y_BUF y_buffer2[MATRIX_HEIGHT][2], VECTOR3 a, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 b_rgb) {
+static void draw_line_ybuffer(Y_BUF y_buffer2[MATRIX_HEIGHT][2], VECTOR3 a, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 b_rgb) {
 
   a += 128;
   b += 128;
