@@ -1,6 +1,8 @@
 #ifndef LIGHTS_FONT_H
 #define LIGHTS_FONT_H
 
+#define NUMBER_OF_FONTS 7
+
 //ADAFRUIT FONTS
 #ifdef ARDUINO 
 #define PGM PROGMEM
