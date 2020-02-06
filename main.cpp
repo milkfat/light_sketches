@@ -6,9 +6,9 @@
 #define WINDOW_WIDTH 200
 #define WINDOW_HEIGHT 1000
 #define MATRIX_WIDTH 32
-#define MATRIX_HEIGHT 192
+#define MATRIX_HEIGHT 128
 #define SCREEN_WIDTH 32
-#define SCREEN_HEIGHT 192
+#define SCREEN_HEIGHT 128
     
 //misc libraries
 #include <iostream>
@@ -170,7 +170,7 @@ void update_matrix() {
 				{
 					case SDLK_ESCAPE: done=SDL_TRUE; break;
 					case SDLK_SPACE: spacebar=true; break;
-					case SDLK_f: button2_down=true; text_shake_time = millis(); break;
+					case SDLK_f: button2_down=true; text_shake_time = millis(); (current_font >= NUMBER_OF_FONTS) ? current_font = 0 : current_font++; break;
 					case SDLK_g: button1_down=true; button1_click=true; break;
 					case SDLK_n: next_sketch=true; break;
 					case SDLK_r: reset_sketch=true; break;
@@ -191,10 +191,10 @@ void update_matrix() {
 					case SDLK_q: (event.key.keysym.mod & KMOD_SHIFT) ? pc_screen.rotation_gamma-=5 : pc_screen.rotation_gamma--; break;
 
 					case SDLK_t: typing_mode=true; SDL_StartTextInput(); break;
-					case SDLK_LEFT:  led_screen.camera_scaler--; std::cout << "camera: " << (int16_t)led_screen.camera_scaler << "\n"; break;
-					case SDLK_RIGHT: led_screen.camera_scaler++; std::cout << "camera: " << (int16_t)led_screen.camera_scaler << "\n"; break;
-					case SDLK_UP:    led_screen.screen_scaler--; std::cout << "screen: " << (int16_t)led_screen.screen_scaler << "\n"; break;
-					case SDLK_DOWN:  led_screen.screen_scaler++; std::cout << "screen: " << (int16_t)led_screen.screen_scaler << "\n"; break; 
+					case SDLK_LEFT:  led_screen.camera_scaler-=256; std::cout << "camera: " << (int32_t)led_screen.camera_scaler << "\n"; break;
+					case SDLK_RIGHT: led_screen.camera_scaler+=256; std::cout << "camera: " << (int32_t)led_screen.camera_scaler << "\n"; break;
+					case SDLK_UP:    led_screen.screen_scaler-=256; std::cout << "screen: " << (int32_t)led_screen.screen_scaler << "\n"; break;
+					case SDLK_DOWN:  led_screen.screen_scaler+=256; std::cout << "screen: " << (int32_t)led_screen.screen_scaler << "\n"; break; 
 				}
 			}
 			break;
@@ -296,13 +296,8 @@ int main(int argc, char **argv){
 				}
 				if (next_sketch_name[0]) {
 					std::cout << "Next sketch name: " << next_sketch_name << "\n";
-					for (int i = 0; i < 20; i++) {
-						if (light_sketches.names(i) && strcmp(next_sketch_name, light_sketches.names(i)) == 0) {
-							light_sketches.set_sketch(i);
-							wss_server.wssCurrentSketch();
-							break;
-						}
-					}
+					light_sketches.set_sketch(next_sketch_name);
+					wss_server.wssCurrentSketch();
 					next_sketch_name[0]='\0';
 				}
 				if (next_sketch) {
