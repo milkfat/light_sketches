@@ -28,6 +28,7 @@ class METABALLS: public LIGHT_SKETCH {
     uint8_t current_variation = 0;
     int launch_speed = 0;
     int16_t height_map[HEIGHTMAP_HEIGHT][HEIGHTMAP_WIDTH];
+    uint8_t scale = 255;
 
     
     uint8_t num_balls = NUM_METABALLS;
@@ -86,6 +87,8 @@ class METABALLS: public LIGHT_SKETCH {
     }
 
     void setup() {
+      control_variables.add(num_balls, "number of metaballs", 0, NUM_METABALLS);
+      control_variables.add(scale, "scale", 0, 255);
       height_map_ptr = &height_map;
       lava_lamp_setup();
       
@@ -228,7 +231,7 @@ class METABALLS: public LIGHT_SKETCH {
               balls[i].x = METABALL_MATRIX_WIDTH*128;
               balls[i].vy = random(launch_speed/2, launch_speed);
               balls[i].vx = random(200) - 100;
-              balls[i].r = random(7*255,18*255);
+              balls[i].r = random((7*255*scale)/255,(18*255*scale)/255);
               balls[i].r2 = balls[i].r*balls[i].r;
             }
             
