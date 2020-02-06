@@ -22,6 +22,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
     int erase_delay = 0;
     int draw_delay = 0;
     CRGB rgb_clock = CRGB(255,0,0);
+    Z_BUF _z_buffer;
 
     
     //uint8_t SEGMENT_LENGTH = 5;
@@ -114,12 +115,12 @@ class MATTCLOCK: public LIGHT_SKETCH {
         },
         {
           //three
-          {32,192},
-          {192,240},
+          {32,224},
+          {224,224},
           {128,128},
           {128,128},
-          {192,16},
-          {32,64}
+          {224,32},
+          {32,32}
         },
         {
           //four
@@ -648,12 +649,91 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
       getLocalTime(timeinfo);
       
-      strftime(timebuffer, sizeof(timebuffer), "%I:%M:%S %p", timeinfo);
+      //strftime(timebuffer, sizeof(timebuffer), "%I:%M:%S %p", timeinfo);
+      strftime(timebuffer, sizeof(timebuffer), "%I:%M:%S", timeinfo);
       
     }
 
+    void check_boundaries() {
+        static int x_dir = 0;
+        static int x_step = 1;
+        static int y_dir = 0;
+        static int y_step = 1;
+        if (led_screen.out_of_bounds()) {
+
+          switch (led_screen.y_boundary_status()) {
+            case 0:
+              y_dir = 0;
+              y_step = 1;
+              break;
+            case 1:
+              //off the bottom, move up
+              if (y_dir == 1) {
+                y_step*=2;
+              } else {
+                y_step=1;
+              }
+              led_screen.y_offset+=y_step;
+              y_dir = 1;
+              break;
+            case 2:
+              //off the top, move down
+              if (y_dir == -1) {
+                y_step*=2;
+              } else {
+                y_step=1;
+              }
+              led_screen.y_offset-=y_step;
+              y_dir = -1;
+              break;
+            case 3:
+              //off the top and bottom, zoom out
+              led_screen.camera_scaler-=256;
+              y_dir = 0;
+              y_step = 1;
+              break;
+            default:
+              break;
+          }
+
+          switch (led_screen.x_boundary_status()) {
+            case 0:
+              x_dir = 0;
+              x_step = 1;
+              break;
+            case 1:
+              //off the left side, move right
+              led_screen.x_offset+=64;
+              break;
+            case 2:
+              //off the right side, move left
+              led_screen.x_offset-=64;
+              break;
+            case 3:
+              //off the left and right sides, zoom out
+              led_screen.camera_scaler-=256;
+              x_dir = 0;
+              x_step = 1;
+              break;
+            default:
+              break;
+          }
+        } else {
+          x_dir = 0;
+          x_step = 1;
+          y_dir = 0;
+          y_step = 1;
+        }
+
+    }
+
+    void reset_boundaries() {
+      led_screen.reset_boundaries();
+    }
+
     void draw_digital_clock() {
-      update_count = 0;
+
+        update_count = 0;
         for (int i = 0; i < sizeof(timebuffer); i++) {
           if (timebuffer[i] == '\0') {
             break;
@@ -665,6 +745,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
             draw_digit(timebuffer[i]);
           }
         }
+
     }
 
   
@@ -674,8 +755,8 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
     void next_effect() {
 
-      led_screen.camera_scaler = 232;
-      led_screen.screen_scaler = 111;
+      led_screen.camera_scaler = 300*256;
+      led_screen.screen_scaler = 111*256;
       
       if (current_effect == TEXT_CLOCK) {
         display_text = "";
@@ -696,13 +777,17 @@ class MATTCLOCK: public LIGHT_SKETCH {
         erase_delay = 100;
         draw_delay = 400;
       } else if (current_effect == TEXT_CLOCK) {
-        led_screen.camera_scaler = 232;
-        led_screen.screen_scaler = 169;
+        //led_screen.screen_scaler = 169*256;
       }
     }
 
     void setup() {
+      z_buffer = &_z_buffer;
       control_variables.add(rgb_clock, "Color");
+      control_variables.add(led_screen.camera_scaler, "Camera Z", 0, 256*256);
+      control_variables.add(led_screen.screen_scaler, "Screen Z", 0, 256*256);
+      control_variables.add(led_screen.y_offset, "Y offset", -256*256*4, 256*256*4);
+
       for (int i = 0; i < 6; i++) {
         digits[i].number_from = 0;
         digits[i].number_to = 0;
@@ -753,18 +838,33 @@ class MATTCLOCK: public LIGHT_SKETCH {
         }
 
         //run the active sketch
-        if (current_effect == DIGITAL_CLOCK || current_effect == HAND_DRAWN_CLOCK) {
-          draw_digital_clock();
+
+
+        switch (current_effect) {
+          case DIGITAL_CLOCK:
+            reset_boundaries();
+            draw_digital_clock();
+            check_boundaries();   //adjust the screen so that the clock fits (move/zoom out)
+            break;
+
+          case HAND_DRAWN_CLOCK:
+            reset_boundaries();
+            draw_digital_clock();
+            check_boundaries();
+            break;
+
+          case TEXT_CLOCK:
+            check_boundaries();
+            reset_boundaries();
+            old_display_text = display_text;
+            display_text = timebuffer;
+            break;
+          
+          case ANALOG_CLOCK:
+            draw_analog_clock();
+            break;
         }
 
-        if (current_effect == TEXT_CLOCK) {
-          old_display_text = display_text;
-          display_text = timebuffer;
-        }
-
-        if (current_effect == ANALOG_CLOCK) {
-          draw_analog_clock();
-        }
       }
 
     }//loop
