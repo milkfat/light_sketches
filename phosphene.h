@@ -2,6 +2,9 @@
 #define LIGHTS_PHOSPHENE_H
 
 class PHOSPHENE: public LIGHT_SKETCH {
+
+    CRGB rgb = CRGB(0,255,0);
+
   public:
         PHOSPHENE () {setup();}
     ~PHOSPHENE () {}
@@ -113,6 +116,8 @@ class PHOSPHENE: public LIGHT_SKETCH {
 
     void setup() {
 
+        control_variables.add(rgb, "color");
+
         for (int y = 0; y < SIZE_Y; y++) {
             for (int x = 0; x < SIZE_X; x++) {
                 pixels[y][x] = 0;
@@ -150,8 +155,10 @@ class PHOSPHENE: public LIGHT_SKETCH {
 
             for (int y = 0; y < SIZE_Y; y++) {
                 for (int x = 0; x < SIZE_X; x++) {
-                    
-                    leds[XY(x,y)].g = _min(_max(pixels[y][x],0),16833) >> 6;
+                    uint8_t bri = _min(_max(pixels[y][x],0),16320) >> 6;
+                    leds[XY(x,y)].r = (rgb.r*bri) >> 8;
+                    leds[XY(x,y)].g = (rgb.g*bri) >> 8;
+                    leds[XY(x,y)].b = (rgb.b*bri) >> 8;
 
                 }
             }
