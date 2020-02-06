@@ -124,8 +124,10 @@ static inline __attribute__ ((always_inline)) void LED_black() {
     memset8(&leds[y*MATRIX_WIDTH].r, 0, MATRIX_WIDTH*3);
   }
 
-  //reset_z_buffer();
-  
+  if(z_buffer != nullptr) {
+    z_buffer->reset();
+  }
+
 }
 
 
