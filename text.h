@@ -38,7 +38,10 @@ void handle_text() {
   if (z_buffer != nullptr && update_since_text == 1) {
 
     z_buffer->reset();
-    cube_ang+=512;
+    static uint32_t text_time = 0;
+    uint32_t time_elapsed = millis() - text_time;
+    text_time = millis();
+    cube_ang+=time_elapsed*(512/16);
     cube_ang2 = cube_ang;
     cube_ang3 = cube_ang;
 
@@ -359,24 +362,26 @@ void handle_text() {
                   } else {                  
                   //normal text drawn to the image
                   //drawXY_fine(led_screen, u+offsets[offset_pos]*256, v+offsets[offset_pos+1]*256, hue, text_saturation, text_brightness  );
-                  int32_t z = (led_screen.camera_scaler-65)*256-text_animation[i] + (fmix32((i+1)*(y*8+x))%(400*256));
+                  //draw some cubes... this is a fucking mess!
+                  int32_t z = (led_screen.camera_scaler-65*256)-text_animation[i] + (fmix32((i+1)*(y*8+x))%(400*256));
                       z = _max(z,35*256);
-                      if (z < (led_screen.camera_scaler-5)*256) {;
-                          VECTOR3 p((u+offsets[offset_pos]*256)*7-7*3*256,(v+offsets[offset_pos+1]*256-42000)*7,0);
+                      z = 0;
+                      if (z < led_screen.camera_scaler-5*256) {;
+                          VECTOR3 p((u+offsets[offset_pos]*256)*7-7*3*256,(v+offsets[offset_pos+1]*256-22000)*7,0);
                           cube_ang3 = 0;
-                          if ( cube_ang2 % (65536*2) < 65536 ) {
+                          if ( cube_ang2 % (65536*4) < 65536 ) {
                             //cube_ang3 = (sin8(cube_ang2/256)-127)/3;
                             cube_ang3 = cube_ang2/256;
                           }
                           rotate_y(p,cube_ang3); //rotates the cube as part of a letter (around the letter's y-axis)
                           p.z += z;
-                          if (p.z < led_screen.camera_scaler*256-512) {
+                          if (p.z < led_screen.camera_scaler-512 && p.z < led_screen.screen_scaler) {
                             draw_cube( p, VECTOR3(512,512,512), VECTOR3_8(0,cube_ang3,0), CHSV(hue,sat,255), persist);
                           }
 
                       }
 
-                      cube_ang2-=128;
+                      cube_ang2-=256;
 
                       
                       //std::cout << u2 << "," << v2 << "\n";
