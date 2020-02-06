@@ -52,7 +52,8 @@ static inline __attribute__ ((always_inline)) void drawXY_blend_gamma( PERSPECTI
   
   //treat RGB values as gamma 2.2
   //must be decoded, added, then re-encoded
-  if (y >= 0 && y < screen_object.screen_height && x >= 0 && x < screen_object.screen_width) {
+  uint32_t led = XY(x,y);
+  if (led >= 0 && led < NUM_LEDS-1) {
 
     int z_depth = z/16;
     if (z_buffer == nullptr || z_depth >= (*z_buffer)[x][y]) {
@@ -62,7 +63,7 @@ static inline __attribute__ ((always_inline)) void drawXY_blend_gamma( PERSPECTI
       }
       
       //uint8_t bri = _clamp8(100 - z/768);
-      uint32_t bri = _max(led_screen.camera_scaler - z/256,0);
+      uint32_t bri = _max(led_screen.camera_scaler - z,0)/256;
       bri /= 2;
       bri = _min(bri,255);
       bri = (bri*bri)>>8;
@@ -71,7 +72,7 @@ static inline __attribute__ ((always_inline)) void drawXY_blend_gamma( PERSPECTI
       CRGB rgb = rgb_in;
       color_scale(rgb, bri);
       
-      drawXY_blend_gamma(screen_object, XY(x,y), rgb, brightness);
+      drawXY_blend_gamma(screen_object, led, rgb, brightness);
 
       //screen_object.screen_buffer[screen_object.XY(x,y)] = rgb;
     }
@@ -92,7 +93,7 @@ static inline __attribute__ ((always_inline)) void drawXYZ(PERSPECTIVE& screen_o
 
 
       //uint8_t bri = _clamp8(100 - z/768);
-      uint32_t bri = _max(led_screen.camera_scaler - z/256,0);
+      uint32_t bri = _max(led_screen.camera_scaler - z,0)/256;
       bri /= 2;
       bri = _min(bri,255);
       bri = (bri*bri)>>8;
