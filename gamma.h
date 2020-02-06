@@ -35,6 +35,10 @@ void build_gamma_tables() {
 
 
 
+
+//various gamma encode/decode functions
+
+
 static inline __attribute__ ((always_inline)) uint16_t gamma16_decode(const uint8_t& value) {
   //decode 8-bit gamma 2.2 into 16-bit linear
   return gamma16_d[value];
@@ -71,11 +75,39 @@ static inline __attribute__ ((always_inline)) CRGB gamma8_decode(const CRGB& val
   return rgb;
 }
 
+static inline __attribute__ ((always_inline)) CRGB gamma8_decode(const VECTOR3& value) {
+  CRGB rgb( gamma8_d[_clamp8(value.x)], gamma8_d[_clamp8(value.y)], gamma8_d[_clamp8(value.z)] );
+  return rgb;
+}
+
+
+
+
+//add gamma encoded color to another gamma encoded color
+
+static inline __attribute__ ((always_inline)) uint8_t gamma8_add_gamma8(const uint8_t& gval, const uint8_t& gval2) {
+  //add an 8-bit linear value to an 8-bit gamma encoded value  
+  return gamma16_encode( _min( ( gamma16_decode(gval) + gamma16_decode(gval2) ), 65535) );
+}
+
+static inline __attribute__ ((always_inline)) void color_add_gamma8(uint8_t& value, const uint8_t& value2) {
+  value = gamma8_add_gamma8(value, value2);
+}
+
+static inline __attribute__ ((always_inline)) void color_add_gamma8(CRGB& rgb, const CRGB& rgb2) {
+  color_add_gamma8(rgb.r, rgb2.r);
+  color_add_gamma8(rgb.g, rgb2.g);
+  color_add_gamma8(rgb.b, rgb2.b);
+}
+
+
+
+
+//combine linear color with gamma color
 
 static inline __attribute__ ((always_inline)) uint8_t gamma8_add_linear8(const uint8_t& gval, const uint8_t& lval) {
   //add an 8-bit linear value to an 8-bit gamma encoded value  
   return gamma16_encode( _min( ( gamma16_decode(gval) + (lval << 8) ), 65535) );
-  
 }
 
 static inline __attribute__ ((always_inline)) void color_add_linear8(uint8_t& value, const uint8_t& value2) {
@@ -85,7 +117,6 @@ static inline __attribute__ ((always_inline)) void color_add_linear8(uint8_t& va
 static inline __attribute__ ((always_inline)) uint8_t gamma8_add_linear16(const uint8_t& gval, const uint16_t& lval) {
   //add an 8-bit linear value to an 8-bit gamma encoded value  
   return gamma16_encode( _min( ( gamma16_decode(gval) + lval ), 65535) );
-  
 }
 
 static inline __attribute__ ((always_inline)) void color_add_linear16(uint8_t& value, const uint16_t& value2) {
@@ -145,11 +176,6 @@ static inline __attribute__ ((always_inline)) void color_blend_linear16(CRGB& rg
 
 }
 
-
-static inline __attribute__ ((always_inline)) CRGB gamma8_decode(const VECTOR3& value) {
-  CRGB rgb( gamma8_d[_clamp8(value.x)], gamma8_d[_clamp8(value.y)], gamma8_d[_clamp8(value.z)] );
-  return rgb;
-}
 
 
 
