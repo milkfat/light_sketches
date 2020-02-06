@@ -750,6 +750,9 @@ class TEST3D: public LIGHT_SKETCH {
 
       phos.setup();
 
+      control_variables.add(led_screen.camera_scaler, "Camera Z:", 0, 256*256);
+      control_variables.add(led_screen.screen_scaler, "Screen Z:", 0, 256*256);
+
     }
 
     void reset() {
