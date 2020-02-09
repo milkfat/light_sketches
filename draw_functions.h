@@ -93,7 +93,7 @@ static inline __attribute__ ((always_inline)) void drawXYZ(PERSPECTIVE& screen_o
 
 
       //uint8_t bri = _clamp8(100 - z/768);
-      uint32_t bri = _max(led_screen.camera_scaler - z,0)/256;
+      uint32_t bri = _max(screen_object.camera_scaler - z,0)/256;
       bri /= 2;
       bri = _min(bri,255);
       bri = (bri*bri)>>8;

@@ -654,75 +654,80 @@ class MATTCLOCK: public LIGHT_SKETCH {
       
     }
 
-    void check_boundaries() {
-        static int x_dir = 0;
-        static int x_step = 1;
-        static int y_dir = 0;
-        static int y_step = 1;
+    void check_boundaries(bool rst = false) {
+        static int x_step = 0;
+        static int y_step = 0;
+        static int y_initial = 0;
+        static int c_step = 0;
+        static int c_initial = 0;
+        if (rst) {
+          x_step = 0;
+          y_step = 0;
+          y_initial = 0;
+          c_step = 0;
+          c_initial = 0;
+          return;
+        }
         if (led_screen.out_of_bounds()) {
+          
+          int y_upper = led_screen.y_boundary_status_upper();
+          int y_lower = led_screen.y_boundary_status_lower();
+          int c_offset = y_upper + y_lower;
+          int y_offset = y_upper - y_lower;
 
-          switch (led_screen.y_boundary_status()) {
-            case 0:
-              y_dir = 0;
-              y_step = 1;
-              break;
-            case 1:
-              //off the bottom, move up
-              if (y_dir == 1) {
-                y_step*=2;
-              } else {
-                y_step=1;
-              }
-              led_screen.y_offset+=y_step;
-              y_dir = 1;
-              break;
-            case 2:
-              //off the top, move down
-              if (y_dir == -1) {
-                y_step*=2;
-              } else {
-                y_step=1;
-              }
-              led_screen.y_offset-=y_step;
-              y_dir = -1;
-              break;
-            case 3:
-              //off the top and bottom, zoom out
-              led_screen.camera_scaler-=256;
-              y_dir = 0;
-              y_step = 1;
-              break;
-            default:
-              break;
+          if (y_offset > 0) {
+            if (y_step >= 0) {
+              y_initial = y_offset;
+              y_step = -5;
+            }
+            if (y_offset <= y_initial/2) {
+              y_step += 1;
+            } else {
+              y_step -= 1;
+            }
+            led_screen.y_offset += y_step;
           }
 
-          switch (led_screen.x_boundary_status()) {
-            case 0:
-              x_dir = 0;
-              x_step = 1;
-              break;
-            case 1:
-              //off the left side, move right
-              led_screen.x_offset+=64;
-              break;
-            case 2:
-              //off the right side, move left
-              led_screen.x_offset-=64;
-              break;
-            case 3:
-              //off the left and right sides, zoom out
-              led_screen.camera_scaler-=256;
-              x_dir = 0;
-              x_step = 1;
-              break;
-            default:
-              break;
+          if (y_offset < 0) {
+            if (y_step <= 0) {
+              y_initial = y_offset;
+              y_step = 5;
+            }
+            if (y_offset <= y_initial/2) {
+              y_step += 1;
+            } else {
+              y_step -= 1;
+            }
+            led_screen.y_offset += y_step;
           }
+
+          //std::cout << "y_offset:" << y_offset << "y_step:" << y_step << "y_initial:" << y_initial << " y_upper:" << y_upper << " y_lower:" << y_lower << "\n";
+          
+          if (c_offset > 0) {
+            if (c_step == 0) {
+              c_initial = c_offset;
+              c_step = 5;
+            }
+            if (c_offset > c_initial/2) {
+              c_step+=1;
+            } else {
+              c_step-=1;
+            }
+            c_step = _max(c_step, 0);
+            led_screen.camera_scaler-=c_step;
+          } else {
+            if (c_step != 0) {
+              //std::cout << "STOP\n";
+            }
+            c_step = 0;
+          }
+          
         } else {
-          x_dir = 0;
-          x_step = 1;
-          y_dir = 0;
-          y_step = 1;
+          y_initial = 0;
+          c_initial = 0;
+          x_step = 0;
+          y_step = 0;
+          c_step = 0;
         }
 
     }
@@ -754,6 +759,8 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
 
     void next_effect() {
+
+      check_boundaries(true);
 
       led_screen.camera_scaler = 300*256;
       led_screen.screen_scaler = 111*256;

@@ -49,7 +49,7 @@ class PERSPECTIVE {
     }
 
     inline __attribute__ ((always_inline)) bool perspective(int32_t& x, int32_t& y, int32_t& z) {
-        if (z < Cz) {
+        if (z < Sz) {
             x+=x_offset;
             y+=y_offset;
             z+=z_offset;
@@ -115,6 +115,11 @@ class PERSPECTIVE {
     //return NUM_LEDS-1 (our safety "invisible" pixel) if coordinates are off-screen
     inline __attribute__ ((always_inline)) uint32_t XY(const int& x, const int& y) {
 
+        _X_MAX = _max(_X_MAX, x);
+        _X_MIN = _min(_X_MIN, x);
+        _Y_MAX = _max(_Y_MAX, y);
+        _Y_MIN = _min(_Y_MIN, y);
+
         if (x >= 0 && x < screen_width && y >= 0 && y < screen_height) {
             int32_t location = y*screen_width + x;
             if (location > screen_width*screen_height || location < 0) {
@@ -123,10 +128,6 @@ class PERSPECTIVE {
                 return location;
             }
         } else {
-            _X_MAX = _max(_X_MAX, x);
-            _X_MIN = _min(_X_MIN, x);
-            _Y_MAX = _max(_Y_MAX, y);
-            _Y_MIN = _min(_Y_MIN, y);
             return screen_width*screen_height;
         }  
     }
@@ -142,12 +143,25 @@ class PERSPECTIVE {
         _Y_MIN = INT32_MAX;
     }
 
+    //0 = all drawing is within screen boundaries
+    //1 = drawing occurred beyond the lower boundary
+    //2 = drawing occurred beyond the upper boundary
+    //3 = drawing occurred beyond both boundaries
     inline __attribute__ ((always_inline)) uint8_t x_boundary_status() {
         return (_X_MIN < 0) + (_X_MAX > screen_width-1)*2;
     }
 
     inline __attribute__ ((always_inline)) uint8_t y_boundary_status() {
         return (_Y_MIN < 0) + (_Y_MAX > screen_height-1)*2;
+    }
+
+    //returns positive number (of pixels) if drawing occurred beyond a boundary
+    inline __attribute__ ((always_inline)) int32_t y_boundary_status_upper() {
+        return _Y_MAX - screen_height;
+    }
+
+    inline __attribute__ ((always_inline)) int32_t y_boundary_status_lower() {
+        return -_Y_MIN;
     }
 
 };
