@@ -364,8 +364,17 @@ class LIGHT_SKETCHES {
         void destroy() {
           sketch->~T();
           control_variables.clear();
+          #ifdef __INC_FASTSPI_LED2_H 
+          control_variables.add(global_brightness, "Global Brightness", 0, 255);
+          #endif
         }
         void loop() {
+          #ifdef __INC_FASTSPI_LED2_H 
+          static uint8_t current_brightness = 255;
+          if (global_brightness != current_brightness) {
+            FastLED.setBrightness(global_brightness);
+          }
+          #endif
           sketch->loop();
         }
         void next_effect() {
@@ -398,24 +407,27 @@ bool LIGHT_SKETCHES::need_to_allocate = true;
 //initialize our object to handle light sketches
 
 LIGHT_SKETCHES light_sketches;
-
-#include "balls_squishy.h"
-#include "balls2d.h"
-// #include "cinco_de_mayo.h"
-#include "curvy.h"
-//#include "fire.h"
-//#include "growcircle.h"
-#include "mattclock.h"
-//#include "metaballs.h"
+#ifndef DISABLE_DEFAULT_SKETCHES
+// #include "balls_squishy.h"
+// #include "balls2d.h"
+//  #include "cinco_de_mayo.h"
+//  #include "curvy.h"
+//  #include "fire.h"
+//  #include "growcircle.h"
+  #include "mattclock.h"
+//  #include "metaballs.h"
 // #include "orbit.h"
-#include "neon.h"
-//#include "shapes.h"
+// #include "neon.h"
+// #include "plasma_globe.h"
+// #include "shapes.h"
 // #include "simplex.h"
-#include "snowflakes.h"
-// #include "test2d.h"
-#include "test3d.h"
-//#include "tree_sim.h"
-//#include "phosphene.h"
-//#include "waves.h"
+// #include "snowflakes.h"
+//  #include "test2d.h"
+// #include "test3d.h"
+// //#include "tree_sim.h"
+// #include "phosphene.h"
+ #include "untitled.h"
+// #include "waves.h"
+#endif
 
 #endif

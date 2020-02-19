@@ -1,10 +1,12 @@
 #ifndef LIGHTS_UNTITLED_H
 #define LIGHTS_UNTITLED_H
 
-#define NUMBER_OF_CELLS 100
+#define NUMBER_OF_CELLS 50
 #define QUEUE_SIZE 4000
 
 #define BORDER_BUFFER 48
+#define LIGHTNING_ENABLE 0
+#define LIGHTNING_SPEED 10
 
 class UNTITLED: public LIGHT_SKETCH {
 
@@ -17,6 +19,7 @@ class UNTITLED: public LIGHT_SKETCH {
     };
 
     thing things[NUMBER_OF_THINGS+1];
+
     
     uint8_t queue[QUEUE_SIZE][2];
     int16_t queue_read = 0;
@@ -25,6 +28,9 @@ class UNTITLED: public LIGHT_SKETCH {
     struct PIXEL_DATA {
         int8_t t = -1; //which thing has the shortest distance
         uint32_t dist = UINT32_MAX; //distance of t from this pixel
+        uint8_t age = 0;
+        uint8_t edge = 0;
+        uint8_t cnt = 0;
     };
 
     PIXEL_DATA grid[MATRIX_HEIGHT][MATRIX_WIDTH];
@@ -42,9 +48,10 @@ class UNTITLED: public LIGHT_SKETCH {
         for (int i = 0; i < NUMBER_OF_CELLS; i++) {
             things[i].pos.y = random(-BORDER_BUFFER*256,(MATRIX_HEIGHT+BORDER_BUFFER)*256);
             things[i].pos.x = random(-BORDER_BUFFER*256,(MATRIX_WIDTH+BORDER_BUFFER)*256);
-            things[i].spd.y = random(-13,14);
-            things[i].spd.x = random(-13,14);
+            things[i].spd.y = random(-14,15);
+            things[i].spd.x = random(-14,15);
             things[i].rgb = CHSV(random(256), 255, random(32,256));
+           // things[i].rgb = CHSV(0, 0, random(2)*255); //black and white
         }
   
     }
@@ -149,6 +156,7 @@ class UNTITLED: public LIGHT_SKETCH {
                 //is the pixel on the grid?
                 //is the thing different than the current pixel's thing?
                 if (y2 >= 0 && y2 < MATRIX_HEIGHT && x2 >= 0 && x2 < MATRIX_WIDTH && this_t != grid[y2][x2].t) {
+                    
                     //calculate the distance between thing and pixel
                     uint32_t a = _min(abs(things[this_t].pos.x - x2*256),UINT16_MAX/4);
                     uint32_t b = _min(abs(things[this_t].pos.y - y2*256),UINT16_MAX/4);
@@ -167,6 +175,7 @@ class UNTITLED: public LIGHT_SKETCH {
                 }
             }
 
+
         }
 
 
@@ -182,16 +191,21 @@ class UNTITLED: public LIGHT_SKETCH {
             }
         }
 
+
         //edges/anti-aliasing
         //step through each pixel and find edges (does the adjacent pixel contain a different thing)
         for (int y = 0; y < MATRIX_HEIGHT; y++) {
             for (int x = 0; x < MATRIX_WIDTH; x++) {
                 //array of adjacent pixel coordinates
                 uint16_t l[4][2];
-                l[0][0] = x-1;
+                l[0][0] = x+1;
                 l[0][1] = y;
                 l[1][0] = x;
-                l[1][1] = y-1;
+                l[1][1] = y+1;
+                l[2][0] = x-1;
+                l[2][1] = y;
+                l[3][0] = x;
+                l[3][1] = y-1;
 
                 //step through each adjacent pixel to see if we need to do any blending 
                 //we will do our blending:
@@ -203,12 +217,21 @@ class UNTITLED: public LIGHT_SKETCH {
                     //  0 = 100% this pixel
                     //  255 = 100% adjacent pixel
                 int cnt = 0;
-                for (int i = 0; i < 2; i++) {
+                if(grid[y][x].age > 0) {
+                    grid[y][x].age = (grid[y][x].age*3)/4;
+                }
+
+                grid[y][x].edge = 0;
+                for (int i = 0; i < 4; i++) {
                     int x2 = l[i][0];
                     int y2 = l[i][1];
                     //is the current pixel on the screen
                     if (y2 >= 0 && y2 < MATRIX_HEIGHT && x2 >= 0 && x2 < MATRIX_WIDTH && grid[y][x].t != grid[y2][x2].t) {
-                        
+                        grid[y][x].edge = 1;
+                        //lightning
+                        if (LIGHTNING_ENABLE && y == 64 && x == 64) {
+                            grid[y][x].age=255;
+                        }
                         //calculate the midpoint between the two things
                         int x_diff = things[grid[y2][x2].t].pos.x-things[grid[y][x].t].pos.x;
                         int y_diff = things[grid[y2][x2].t].pos.y-things[grid[y][x].t].pos.y;
@@ -226,68 +249,213 @@ class UNTITLED: public LIGHT_SKETCH {
                         }
                         //calculate the intercept
                         int intercept = y_mid - (x_mid * neg_slope);
-                        //now we can calculate coordinates of the midpoint
-                        int y_actual = (x*256)*neg_slope+intercept;
-                        int x_actual = (y*256-intercept)/neg_slope;
-                        //get the color of each pixel in linear color space
-                        CRGB rgb0 = gamma8_decode(leds[XY(x,y)]);
-                        CRGB rgb1 = gamma8_decode(leds[XY(x2,y2)]);
-                        if (y == y2) {
-                            //our two pixels are aligned horizontally
-                            //we'll use the x-coordinate for blending
-                            if (abs(x_diff) < abs(y_diff)) {
-                                continue;
+                        //now we can calculate the absolute coordinates at which the line intersects with each side of our pixel
+                        #define OFFSET 128
+                        int y_actual = (x*256-OFFSET)*neg_slope+intercept;
+                        int x_actual = ((y*256-OFFSET)-intercept)/neg_slope;
+                        int y2_actual = ((x+1)*256-OFFSET)*neg_slope+intercept;
+                        int x2_actual = (((y+1)*256-OFFSET)-intercept)/neg_slope;
+
+                        //find the relative intersect position along each side
+                        //0 = one end ("left")
+                        //1-255 = somewhere in the middle
+                        //256 = other end ("right")
+                        int y_a = y_actual - (y*256-OFFSET);
+                        int x_a = x_actual - (x*256-OFFSET);
+                        int y_b = y2_actual - (y*256-OFFSET);
+                        int x_b = x2_actual - (x*256-OFFSET);
+
+                        //test to make sure the intersect is within the pixel boundaries
+                        int ya_test = y_a >= 0 && y_a <= 256;
+                        int yb_test = y_b >= 0 && y_b <= 256;
+                        int xa_test = x_a >= 0 && x_a <= 256;
+                        int xb_test = x_b >= 0 && x_b <= 256;
+
+                        //get the two potential color values
+                        CRGB rgb0 = things[grid[y][x].t].rgb;
+                        CRGB rgb1 = things[grid[y2][x2].t].rgb;
+
+                        //shading
+                        uint32_t c = grid[y][x].dist/8192;
+                        rgb0.r -= (uint8_t)_min(c/32,(uint8_t)rgb0.r);
+                        rgb0.g -= (uint8_t)_min(c/32,(uint8_t)rgb0.g);
+                        rgb0.b -= (uint8_t)_min(c/32,(uint8_t)rgb0.b);
+
+                        uint32_t c2 = grid[y2][x2].dist/8192;
+                        rgb1.r -= (uint8_t)_min(c/32,(uint8_t)rgb1.r);
+                        rgb1.g -= (uint8_t)_min(c/32,(uint8_t)rgb1.g);
+                        rgb1.b -= (uint8_t)_min(c/32,(uint8_t)rgb1.b);
+
+                        rgb0 = gamma8_decode(rgb0);
+                        rgb1 = gamma8_decode(rgb1);
+                        CRGB rgb_new = rgb0;
+
+                        if (ya_test && yb_test) {
+                            //split top-bottom
+                            int b0 = y_a;
+                            int b1 = y_b;
+                            b0 = _max(_min(b0,255),0);
+                            b1 = _max(_min(b1,255),0);
+                            int b = (b0+b1)/2;
+                            if (things[grid[y][x].t].pos.y > things[grid[y2][x2].t].pos.y) {
+                                b = 255-b;
                             }
+                            rgb_new = (nblend(rgb1, rgb0, b));
+                        } else
 
-                            int x_dist = abs((x*256)-x_actual);
-                            int x2_dist = abs((x2*256)-x_actual);
-                            int x3 = x;
-                            int y3 = y;
-                            int x3_dist = x_dist;
-
-
-                            uint8_t b = _min(x3_dist, 255);
-                            leds[XY(x3,y3)]   = gamma8_encode(nblend(rgb1, rgb0, b));
-                            //leds[XY(x,y)].r = 255;
-                            //break;
-                        } else { //(x == x2)
-                            if (abs(y_diff) < abs(x_diff)) {
-                                continue;
+                        if (xa_test && xb_test) {
+                            //split left-right
+                            int b0 = x_a;
+                            int b1 = x_b;
+                            b0 = _max(_min(b0,255),0);
+                            b1 = _max(_min(b1,255),0);
+                            int b = (b0+b1)/2;
+                            if (things[grid[y][x].t].pos.x > things[grid[y2][x2].t].pos.x) {
+                                b = 255-b;
                             }
-
-                            int y_dist = abs((y*256)-y_actual);
-                            int y2_dist = abs((y2*256)-y_actual);
-                            int x3 = x;
-                            int y3 = y;
-                            int y3_dist = y_dist;
-
-                            if ( y2_dist < y_dist) {
-                                CRGB temp_rgb = rgb0;
-                                rgb0 = rgb1;
-                                rgb1 = temp_rgb;
-                                x3 = x2;
-                                y3 = y2;
-                                y3_dist = y2_dist;
+                            rgb_new = (nblend(rgb1, rgb0, b));
+                        } else
+                        if (yb_test && xa_test) {
+                            //lower right corner
+                            int b0 = y_b;
+                            int b1 = 256-x_a;
+                            b0 = _max(_min(b0,255),0);
+                            b1 = _max(_min(b1,255),0);
+                            int b = (b0*b1)/2;
+                            b /= 256;
+                            if (things[grid[y][x].t].pos.x < things[grid[y2][x2].t].pos.x) {
+                                b = 255-b;
                             }
+                            rgb_new = (nblend(rgb1, rgb0, b));
+                            //leds[XY(x,y)] = CRGB::Blue;
 
-                            // if ( (x_diff > 0) != (y_diff > 0) ) {
-                            //     CRGB temp_rgb = rgb0;
-                            //     rgb0 = rgb1;
-                            //     rgb1 = temp_rgb;
-                            //     x3 = x2;
-                            //     y3 = y2;
-                            // }
+                        } else
+                        if (ya_test && xb_test) {
+                            //upper left corner
+                            int b0 = 256-y_a;
+                            int b1 = x_b;
+                            b0 = _max(_min(b0,255),0);
+                            b1 = _max(_min(b1,255),0);
+                            int b = (b0*b1)/2;
+                            b /= 256;
+                            if (things[grid[y][x].t].pos.x > things[grid[y2][x2].t].pos.x) {
+                                b = 255-b;
+                            }
+                            rgb_new = (nblend(rgb1, rgb0, b));
+                            //leds[XY(x,y)] = CRGB::Green;
+                        } else
+                        if (ya_test && xa_test) {
+                            //lower left corner
+                            int b0 = y_a;
+                            int b1 = x_a;
+                            b0 = _max(_min(b0,255),0);
+                            b1 = _max(_min(b1,255),0);
+                            int b = (b0*b1)/2;
+                            b /= 256;
+                            if (things[grid[y][x].t].pos.x > things[grid[y2][x2].t].pos.x) {
+                                b = 255-b;
+                            }
+                            rgb_new = (nblend(rgb1, rgb0, b));
+                            //leds[XY(x,y)] = CRGB::Red;
 
-                            uint8_t b = _min(y3_dist, 255);
-                            //our two pixels are aligned vertically
-                            //we'll use the y-coordinate for blending
-                            leds[XY(x,y)]   = gamma8_encode(nblend(rgb1, rgb0, b));
-                            //leds[XY(x,y)].g = 255;
-                            //break;
-                           
+
+                        } else
+                        if (yb_test && xb_test) {
+                            //upper right corner
+                            int b0 = 256-y_b;
+                            int b1 = 256-x_b;
+                            b0 = _max(_min(b0,255),0);
+                            b1 = _max(_min(b1,255),0);
+                            int b = (b0*b1)/2;
+                            b /= 256;
+                            if (things[grid[y][x].t].pos.x < things[grid[y2][x2].t].pos.x) {
+                                b = 255-b;
+                            }
+                            rgb_new = (nblend(rgb1, rgb0, b));
+                            //leds[XY(x,y)] = CRGB::White;
+
+                        } else {
+                            //rare cases ... glitches?
+                            if (false && y==y2) {
+                                if (x_actual < (x*256-OFFSET)) {
+                                    if (things[grid[y][x].t].pos.x >= things[grid[y2][x2].t].pos.x) {
+                                        rgb_new = (rgb0);
+                                    } else {
+                                        rgb_new = (rgb1);
+                                    }
+                                } else if (x_actual >= ((x+1)*256-OFFSET)) {
+                                    if (things[grid[y][x].t].pos.x >= things[grid[y2][x2].t].pos.x) {
+                                        rgb_new = (rgb1);
+                                    } else {
+                                        rgb_new = (rgb0);
+                                    }
+                                }
+
+                            }
+                            if (x==x2) {
+                                if (y_actual <= (y*256-OFFSET)) {
+                                    if (things[grid[y][x].t].pos.y >= things[grid[y2][x2].t].pos.y) {
+                                        rgb_new = (rgb0);
+                                    } else {
+                                        rgb_new = (rgb1);
+                                    }
+                                } else if (y_actual >= ((y+1)*256-OFFSET)) {
+                                    if (things[grid[y][x].t].pos.y >= things[grid[y2][x2].t].pos.y) {
+                                        rgb_new = rgb1;
+                                    } else {
+                                        rgb_new = rgb0;
+                                    }
+                                }
+                            }
+                        
                         }
 
-                        //leds[XY(x,y)].g += 255;
+                        //get the color of each pixel in linear color space
+                        
+
+
+
+                        //leds[XY(x3,y3)]   = gamma8_encode(nblend(rgb1, rgb0, b));
+                        grid[y][x].cnt++;
+                        CRGB rgb_old = gamma8_decode(leds[XY(x,y)]);
+                        leds[XY(x,y)] = gamma8_encode(nblend(rgb_old, rgb_new, 255/grid[y][x].cnt));
+                    }
+                }
+
+
+                if(grid[y][x].age > 0) {
+                    leds[XY(x,y)] += grid[y][x].age;
+                }
+
+            }
+        }
+
+        //calculate lightning in the forward direction
+        for (int y = 0; y < MATRIX_HEIGHT; y++) {
+            for (int x = 0; x < MATRIX_WIDTH; x++) {
+                //array of adjacent pixel coordinates
+                uint16_t l[4][2];
+                l[0][0] = x+1;
+                l[0][1] = y;
+                l[1][0] = x;
+                l[1][1] = y+1;
+                l[2][0] = x-1;
+                l[2][1] = y;
+                l[3][0] = x;
+                l[3][1] = y-1;
+
+                for (int i = 0; i < 4; i++) {
+                    int x2 = l[i][0];
+                    int y2 = l[i][1];
+                    if (y2 >= 0 && y2 < MATRIX_HEIGHT && x2 >= 0 && x2 < MATRIX_WIDTH && grid[y][x].edge && grid[y2][x2].edge) {
+                        if (grid[y][x].age == 0 && grid[y2][x2].age > 150 && grid[y2][x2].edge < LIGHTNING_SPEED) {
+                            grid[y][x].age = 255;
+                            grid[y][x].edge = grid[y2][x2].edge+1;
+                        }
+                        if (grid[y2][x2].age == 0 && grid[y][x].age > 150 && grid[y][x].edge < LIGHTNING_SPEED) {
+                            grid[y2][x2].age = 255;
+                            grid[y2][x2].edge = grid[y][x].edge+1;
+                        }
                     }
                 }
 
@@ -295,12 +463,44 @@ class UNTITLED: public LIGHT_SKETCH {
         }
 
 
+        //calculate lightning in the reverse direction
+        for (int y = MATRIX_HEIGHT-1; y >= 0; y--) {
+            for (int x = MATRIX_WIDTH-1; x >= 0; x--) {
+                //array of adjacent pixel coordinates
+                uint16_t l[4][2];
+                l[0][0] = x+1;
+                l[0][1] = y;
+                l[1][0] = x;
+                l[1][1] = y+1;
+                l[2][0] = x-1;
+                l[2][1] = y;
+                l[3][0] = x;
+                l[3][1] = y-1;
+
+                for (int i = 0; i < 4; i++) {
+                    int x2 = l[i][0];
+                    int y2 = l[i][1];
+                    if (y2 >= 0 && y2 < MATRIX_HEIGHT && x2 >= 0 && x2 < MATRIX_WIDTH && grid[y][x].edge && grid[y2][x2].edge) {
+                        if (grid[y][x].age == 0 && grid[y2][x2].age > 150 && grid[y2][x2].edge < LIGHTNING_SPEED) {
+                            grid[y][x].age = 255;
+                            grid[y][x].edge = grid[y2][x2].edge+1;
+                        }
+                        if (grid[y2][x2].age == 0 && grid[y][x].age > 150 && grid[y][x].edge < LIGHTNING_SPEED) {
+                            grid[y2][x2].age = 255;
+                            grid[y2][x2].edge = grid[y][x].edge+1;
+                        }
+                    }
+                }
+
+            }
+        }
 
         //reset the grid
         for (int y = 0; y < MATRIX_HEIGHT; y++) {
             for (int x = 0; x < MATRIX_WIDTH; x++) {
                 grid[y][x].dist = UINT32_MAX;
                 grid[y][x].t = -1;
+                grid[y][x].cnt = 0;
             }
         }
 

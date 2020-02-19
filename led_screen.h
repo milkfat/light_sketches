@@ -11,7 +11,8 @@
 
 PERSPECTIVE led_screen = PERSPECTIVE(MATRIX_WIDTH, MATRIX_HEIGHT);
 
-
+#ifndef LIGHTS_ADJUST
+#define LIGHTS_ADJUST
 static inline __attribute__ ((always_inline)) int adjust (const int& p) {
     int po = p;
     
@@ -30,6 +31,7 @@ static inline __attribute__ ((always_inline)) int adjust (const int& p) {
 
     return po;
   }
+#endif
 
 //return LED position from X,Y coordinates
 //return NUM_LEDS-1 (our safety "invisible" pixel) if coordinates are off-screen
