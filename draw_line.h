@@ -114,15 +114,15 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
         int Hy = (y+255)/256; //ceil
         int Ly = y/256;
         uint progress = abs(y - Hy*256);
-        uint8_t b = _min( _max(progress, 0), 255);
+        uint8_t b = ease8InOutApprox(_min( _max(progress, 0), 255));
         uint8_t b2 = 255-b;
         if (i == x1_led) {
-          b = (b*x1_r)>>8;
-          b2 = (b2*x1_r)>>8;
+          b = (b*ease8InOutApprox(_min(x1_r,255)))/255;
+          b2 = (b2*ease8InOutApprox(_min(x1_r,255)))/255;
         }
         if (i == x2_led) {
-          b = (b*x2_r)>>8;
-          b2 = (b2*x2_r)>>8;
+          b = (b*ease8InOutApprox(_min(x2_r,255)))/255;
+          b2 = (b2*ease8InOutApprox(_min(x2_r,255)))/255;
         }
 
         //subtract the pixel we added to compensate for rounding errors between -1 and 0
@@ -217,15 +217,15 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
       int Hx = (x+255)/256; //ceil
       int Lx = x/256;
       uint progress = abs(x - Hx*256);
-      uint8_t b = _min( _max(progress, 0), 255);
+      uint8_t b = ease8InOutApprox(_min( _max(progress, 0), 255));
       uint8_t b2 = 255-b;
       if (i == y1_led) {
-        b  = (b*y1_r)>>8;
-        b2 = (b2*y1_r)>>8;
+        b  = (b*ease8InOutApprox(_min(y1_r,255)))/255;
+        b2 = (b2*ease8InOutApprox(_min(y1_r,255)))/255;
       }
       if (i == y2_led) {
-        b  = (b*y2_r)>>8;
-        b2 = (b2*y2_r)>>8;
+        b  = (b*ease8InOutApprox(_min(y2_r,255)))/255;
+        b2 = (b2*ease8InOutApprox(_min(y2_r,255)))/255;
       }
 
 
