@@ -18,6 +18,8 @@
 
 #define MAX_NUMBER_OF_LIGHT_SKETCHES 20
 
+uint8_t global_brightness = 255;
+
 void update_matrix();
 
 class LIGHT_SKETCH {
@@ -52,6 +54,7 @@ class REGISTER_BASE {
     virtual void destroy() = 0;
     virtual void create() = 0;
     virtual char* name() = 0;
+    virtual int size() = 0;
 };
 
 
@@ -67,6 +70,7 @@ class LIGHT_SKETCHES {
     static REGISTER_BASE * light_sketches[MAX_NUMBER_OF_LIGHT_SKETCHES];
     static int number_of_light_sketches;
     static int current_light_sketch;
+    static int next_light_sketch;
     static int largest_sketch;
     static bool need_to_allocate;
 
@@ -87,6 +91,12 @@ class LIGHT_SKETCHES {
         //int zbuffer_size = sizeof(int16_t[MATRIX_HEIGHT]) * (MATRIX_WIDTH);
         int cubes_size = sizeof(CUBE) * NUMBER_OF_CUBES;
         #ifdef __INC_FASTSPI_LED2_H 
+        for (int i = 0; i < number_of_light_sketches; i++) {
+            Serial.print(light_sketches[i]->name());
+            Serial.print(" has been registered. Requires ");
+            Serial.print(light_sketches[i]->size());
+            Serial.println(" bytes.");
+        }
         Serial.print(largest_sketch);
         Serial.println(" bytes required for largest sketch");
         Serial.print(leds_size);
@@ -112,6 +122,9 @@ class LIGHT_SKETCHES {
         Serial.println(" bytes required total");
         Serial.printf("\r\nHeap Memory Available: %d bytes total, %d bytes largest free block: \r\n\r\n", heap_caps_get_free_size(0), heap_caps_get_largest_free_block(0));
         #else
+        for (int i = 0; i < number_of_light_sketches; i++) {
+            std::cout << light_sketches[i]->name() << " has been registered. Requires " << light_sketches[i]->size() << " bytes\n";
+        }
         std::cout << largest_sketch << " bytes required for largest sketch\n";
         std::cout << leds_size << " bytes required for main CRGB object\n";
         //std::cout << canvas_size << " bytes required for temporary canvas\n";
@@ -279,8 +292,20 @@ class LIGHT_SKETCHES {
 
     public:
 
+    void change_sketch() {
+      light_sketches[current_light_sketch]->destroy();
+      height_map_ptr = nullptr;
+      z_buffer = nullptr;
+      next_light_sketch %= number_of_light_sketches;
+      current_light_sketch=next_light_sketch;
+      light_sketches[current_light_sketch]->create();
+    }
+
     void loop() {
       salloc();
+      if (current_light_sketch != next_light_sketch) {
+        change_sketch();
+      }
       light_sketches[current_light_sketch]->loop();
     }
 
@@ -309,27 +334,11 @@ class LIGHT_SKETCHES {
     }
 
     void next_sketch() {
-        salloc();
-        light_sketches[current_light_sketch]->destroy();
-        height_map_ptr = nullptr;
-        z_buffer = nullptr;
-        current_light_sketch++;
-        if (current_light_sketch >= number_of_light_sketches) {
-          current_light_sketch = 0;
-        }
-        light_sketches[current_light_sketch]->create();
+        next_light_sketch++;
     }
 
     void set_sketch(int i) {
-        salloc();
-        light_sketches[current_light_sketch]->destroy();
-        height_map_ptr = nullptr;
-        z_buffer = nullptr;
-        current_light_sketch=i;
-        if (current_light_sketch >= number_of_light_sketches) {
-          current_light_sketch = 0;
-        }
-        light_sketches[current_light_sketch]->create();
+        next_light_sketch=i;
     }
 
     void set_sketch(const char * c) {
@@ -356,17 +365,11 @@ class LIGHT_SKETCHES {
             if (s > largest_sketch) {
               largest_sketch = s;
             }
-            #ifdef __INC_FASTSPI_LED2_H 
-            #else
-            std::cout << name << " has been registered. Requires " << sizeof(T) << " bytes.\n";
-            #endif
         }
         void destroy() {
           sketch->~T();
           control_variables.clear();
-          #ifdef __INC_FASTSPI_LED2_H 
           control_variables.add(global_brightness, "Global Brightness", 0, 255);
-          #endif
         }
         void loop() {
           #ifdef __INC_FASTSPI_LED2_H 
@@ -386,6 +389,9 @@ class LIGHT_SKETCHES {
         char* name() {
           return sketch_name;
         }
+        int size() {
+          return sizeof(T);
+        }
         void create() {
             //construct our new light sketch object in the reserved memory location 
             //(effectively overwriting the previous sketch)
@@ -401,6 +407,7 @@ REGISTER_BASE * LIGHT_SKETCHES::light_sketches[MAX_NUMBER_OF_LIGHT_SKETCHES];
 char * LIGHT_SKETCHES::buffer = nullptr;
 int LIGHT_SKETCHES::number_of_light_sketches = 0;
 int LIGHT_SKETCHES::current_light_sketch = 0;
+int LIGHT_SKETCHES::next_light_sketch = 0;
 int LIGHT_SKETCHES::largest_sketch = 0;
 bool LIGHT_SKETCHES::need_to_allocate = true;
 
@@ -409,7 +416,7 @@ bool LIGHT_SKETCHES::need_to_allocate = true;
 LIGHT_SKETCHES light_sketches;
 #ifndef DISABLE_DEFAULT_SKETCHES
 // #include "balls_squishy.h"
-// #include "balls2d.h"
+ #include "balls2d.h"
 //  #include "cinco_de_mayo.h"
 //  #include "curvy.h"
 //  #include "fire.h"
@@ -421,12 +428,12 @@ LIGHT_SKETCHES light_sketches;
 // #include "plasma_globe.h"
 // #include "shapes.h"
 // #include "simplex.h"
-// #include "snowflakes.h"
+ #include "snowflakes.h"
 //  #include "test2d.h"
-// #include "test3d.h"
+ #include "test3d.h"
 // //#include "tree_sim.h"
 // #include "phosphene.h"
- #include "untitled.h"
+#include "untitled.h"
 // #include "waves.h"
 #endif
 
