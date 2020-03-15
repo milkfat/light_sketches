@@ -10,6 +10,9 @@ class TEST3D: public LIGHT_SKETCH {
     TEST3D () {setup();}
     ~TEST3D () {}
   private:
+
+    uint16_t next_firework_frame = 0;
+    
     Z_BUF _z_buffer;
     //0 = test object
     //1 = grid
@@ -34,6 +37,15 @@ class TEST3D: public LIGHT_SKETCH {
       GRID_PHOS,
       GRID_NOISE,
       NUM_GRID_TYPES
+    };
+
+    enum particle_types {
+      NULL_PARTICLE,
+      STAR_PARTICLE,
+      LIFT_PARTICLE,
+      CRACKLE_PARTICLE,
+      COLOR_CHANGE_PARTICLE,
+      BURST_PARTICLE
     };
 
     float compress(float value) {
@@ -130,9 +142,8 @@ class TEST3D: public LIGHT_SKETCH {
         int16_t vy;
         int16_t vz;
         uint8_t attributes = 0; //index of shared attributes (shared by other particles) such as hue, saturation, value, mass, radius... etc.
-        uint8_t function = 0;   //index of the function that will update this particle
+        uint8_t function = NULL_PARTICLE;   //index of the functions (physics and draw) that will update this particle
         int16_t age = 256*8;    //age of the particle
-
     };
 
 
@@ -149,7 +160,7 @@ class TEST3D: public LIGHT_SKETCH {
 
   private:
 
-  #define NUM_PARTICLES 1000
+  #define NUM_PARTICLES 2000
   PARTICLE particles[NUM_PARTICLES];
   
   PARTICLE * current_particle() {
@@ -232,7 +243,7 @@ class TEST3D: public LIGHT_SKETCH {
       //fireworks
       if (current_variation == FIREWORK) {
         for (int i = 0; i < NUM_PARTICLES; i++) {
-          particles[i].function = 0;
+          particles[i].function = NULL_PARTICLE;
         }
       }
 
@@ -241,7 +252,15 @@ class TEST3D: public LIGHT_SKETCH {
     //burst into colors!
     void spawn_firework_burst(const int16_t& start_x, const int16_t& start_y, const int16_t& start_z, const int16_t& start_vx, const int16_t& start_vy, const int16_t& start_vz) {
       
-     
+      int do_crackle = 0;
+      int do_double_crackle = 0;
+      if (random(3)) {
+        do_crackle = 1;
+
+        if (random(3)==0) {
+          do_double_crackle = 1;
+        }
+      }
       //adjust the minimum/maximum size of the burst based on the height of the shell
       //255 = big
       //15 = small
@@ -253,20 +272,21 @@ class TEST3D: public LIGHT_SKETCH {
       range_max = range_max*range_max/(25-2);
 
       //choose a random size within our minimum/maximum boundaries
-      uint16_t radius = random(range_min,range_max);
+      //uint16_t radius = random(range_min,range_max);
+      uint16_t radius = range_max;
       uint16_t burst_size = radius+35; //35 is the minimum for the current physics calculations
       //std::cout << "range_min: " << range_min << " range_max: " << range_max << " radius: " << radius << " burst_size: " << burst_size << "\n";
 
 
       //create particle attributes for our burst
-      PARTICLE_ATTRIBUTES * a[4];
-      uint16_t ai[4];
+      PARTICLE_ATTRIBUTES * a[6];
+      uint16_t ai[6];
 
       //random hue
       uint8_t h = random(256);
 
       //default attributes
-      for (int i = 0; i < 4; i++) {
+      for (int i = 0; i < 6; i++) {
         ai[i] = current_particle_attributes();
         a[i] = &particle_attributes[ai[i]];
         a[i]->h = h;
@@ -290,6 +310,13 @@ class TEST3D: public LIGHT_SKETCH {
       a[3]->m = 20*50;
       a[3]->r = 4;
 
+      //attributes for crackle
+      a[4]->s = 0;
+      a[4]->m = a[4]->m/2;
+
+      a[5]->s = 0;
+      a[5]->m /= 3;
+
 
       //number of particles (stars) is based on size
       //number of particles is higher for larger bursts
@@ -299,108 +326,189 @@ class TEST3D: public LIGHT_SKETCH {
       //in other words: this defines the number of slices into which we will split our sphere
       //small sphere, large z_step, lower number of slices
       //big sphere, small z_step, higher number of slices
+      //uint16_t z_step = 32768/4;
       uint16_t z_step = 4500-(np*3000)/28;
+      //z_step *= 4;
       //std::cout << "np: " << np << " z_step: " << z_step << "\n";
 
       //calculate how many stars each slice will get (number of stars in a circle)
-      uint16_t npxy = 15+(np*15)/20;
+      uint16_t npxy = 15+(np*15)/28;
 
       //random rotation angles for our sphere
       uint16_t r0 = random(0,65535);
       uint16_t r1 = random(0,65535);
 
       //iterate over the z-axis
-      for (uint16_t iz = 0; iz < 32767; iz+=z_step) {
-        //calculate our Z-velocity (you could pretend that this is a coordinate)
-        int16_t vz = cos16(iz); //distribution from 0 - 32767
-        //calculate the radius of this slice
-        int16_t r = abs(sin16(iz));
-        //calculate the number of particles for this slice (based on absolute size of the shell combined with the relative radius size)
-        int16_t particles_this_ring = (r*npxy)/32767;
+      uint16_t ring_count = 0;
+      int age_count = 0;
+      while (true) {
+        uint16_t iz = ring_count*z_step;
+        if (iz > 32767) {break;}
+        
+        ring_count++;
+        for (uint16_t k = 0; k < 1; k++) {
+          iz += k;
+        //for (uint16_t k = 0; k < 200; k+=50) {
+          //calculate our Z-velocity (you could pretend that this is a coordinate)
+          int16_t vz = cos16(iz); //distribution from 0 - 32767
+          //calculate the radius of this slice
+          int16_t r = abs(sin16(iz));
+          //calculate the number of particles for this slice (based on absolute size of the shell combined with the relative radius size)
+          //int16_t particles_this_ring = r/500;
+          int16_t particles_this_ring = (r*npxy)/32767;
+          //particles_this_ring = _max(particles_this_ring/4,1);
+          //particles_this_ring=8;
+          //std::cout << "stars: " << particles_this_ring << " iz:" << npxy << "iz:" << iz  << " vz:" << vz  << " radius:" << r << "\n";
 
-        //iterate around the circumference of the slice
-        for (int i = 0; i < particles_this_ring; i++) {
-          //find the next available particle object
-          PARTICLE * cp = current_particle();
-          //create particle if an object is available
-          if(cp) {
-            cp->function = 1;
-            //initial starting position
-            cp->x = start_x/2;
-            cp->y = start_y/2;
-            cp->z = start_z/2;
+          //iterate around the circumference of the slice
+          for (int i = 0; i < particles_this_ring; i++) {
+            for (int k = 0; k < 1; k++) {
+            //for (int k = 0; k < 200; k+=50) {
+              //find the next available particle object
+              PARTICLE * cp = current_particle();
+              //create particle if an object is available
+              if(cp) {
+                cp->function = STAR_PARTICLE;
+                cp->function = COLOR_CHANGE_PARTICLE;
+                //initial starting position
+                cp->x = start_x/2;
+                cp->y = start_y/2;
+                cp->z = start_z/2;
 
-            //distribute particles evenly in a ring, X and Y
-            int16_t angle = (i*65535)/particles_this_ring;
-            angle = (angle*random(90,110))/100; //randomize the angle a bit
-            //calculate the X and Y components of the particle for this slice
-            int16_t vx = sin16(angle);
-            int16_t vy = cos16(angle);
-            
-            //add the Z component
-            int16_t riz = (iz*random(85,116))/100; //randomize the angle a bit
-            vz = cos16(riz);
-            //calculate the XY component (radius) for this Z
-            int16_t vxy = abs(sin16(riz));
-            
-            //calculate the final X and Y velocities (positions)
-            //at this point we have the particles evenly distributed around a sphere
-            cp->vx = (vx*vxy)/32768;
-            cp->vy = (vy*vxy)/32768;
-            cp->vz = vz;
+                //distribute particles evenly in a ring, X and Y
+                int16_t angle = (i*65535)/particles_this_ring + k;
+                uint8_t xy_mag = random(95,105); //randomize the angle a bit
+                //xy_mag = 100;
+                if (k != 0) {
+                  xy_mag = random(85,115);
+                }
+                angle = (angle*xy_mag)/100;
+                //calculate the X and Y components of the particle for this slice
+                int16_t vx = sin16(angle);
+                int16_t vy = cos16(angle);
+                
+                //add the Z component
+                uint8_t z_mag = random(95,105); //randomize the angle a bit
+/*
+                if (k != 0) {
+                  z_mag = random(85,115);
+                }
+*/
+                //z_mag = 100;
+                int16_t riz = (iz*z_mag)/100; 
+                vz = cos16(riz);
+                //calculate the XY component (radius) for this Z
+                int16_t vxy = abs(sin16(riz));
+                
+                //calculate the final X and Y velocities (positions)
+                //at this point we have the particles evenly distributed around a sphere
+                cp->vx = (vx*vxy)/32768;
+                cp->vy = (vy*vxy)/32768;
+                cp->vz = vz;
 
-            //rotate the sphere around x-axis
-            int16_t rz = (cp->vz*cos16(r0))/32768 - (cp->vy*sin16(r0))/32768;
-            int16_t ry = (cp->vy*cos16(r0))/32768 + (cp->vz*sin16(r0))/32768;
-            cp->vz = rz;
-            cp->vy = ry;
+                //rotate the sphere around x-axis
 
-            //rotate the sphere around z-axis
-            int16_t rx = (cp->vx*cos16(r1))/32768 - (cp->vy*sin16(r1))/32768;
-                    ry = (cp->vy*cos16(r1))/32768 + (cp->vx*sin16(r1))/32768;
-            cp->vx = rx;
-            cp->vy = ry;
+                int16_t rz = (cp->vz*cos16(r0))/32768 - (cp->vy*sin16(r0))/32768;
+                int16_t ry = (cp->vy*cos16(r0))/32768 + (cp->vz*sin16(r0))/32768;
+                cp->vz = rz;
+                cp->vy = ry;
 
-            //apply speed divisor to change the overall burst size
-            // cp->vx /= (15*20);
-            // cp->vy /= (15*20);
-            // cp->vz /= (15*20);
-            //std::cout << " x: " << cp->vx << " y: " << cp->vy << "  z: " << cp->vx << "\n";
+                //rotate the sphere around z-axis
+                int16_t rx = (cp->vx*cos16(r1))/32768 - (cp->vy*sin16(r1))/32768;
+                        ry = (cp->vy*cos16(r1))/32768 + (cp->vx*sin16(r1))/32768;
+                cp->vx = rx;
+                cp->vy = ry;
 
-            //default color
-            cp->age = 0;
-            cp->attributes = ai[0];
-            
-            //alternate color for one hemisphere
-            if (vz < 0) {
-              cp->attributes = ai[1];
+                //apply speed divisor to change the overall burst size
+                // cp->vx /= (15*20);
+                // cp->vy /= (15*20);
+                // cp->vz /= (15*20);
+                //std::cout << " x: " << cp->vx << " y: " << cp->vy << "  z: " << cp->vx << "\n";
+
+                //default color
+                cp->age = age_count;
+                age_count -= 5;
+
+                cp->attributes = ai[0];
+                
+                //alternate color for one hemisphere
+                if (vz < 0) {
+                  cp->attributes = ai[1];
+                }
+                //modify a ring of particles to produce trails
+                if(abs(iz - 16000) < 1000) {
+                  //cp->attributes = ai[2];
+                }
+                /*
+                if (ring_count % 4 == 0 && i % 4 == 0) {
+                  if (k == 0) {
+                    cp->attributes = ai[2];
+                  }
+                } else {
+                  cp->function = NULL_PARTICLE;
+                }
+                */
+
+
+                if (random(4)) {
+                  PARTICLE * cp2 = current_particle();
+                  if (cp2) {
+                    *cp2 = *cp;
+                    cp2->age = random(96);
+                    uint16_t r = random(16,128);
+                    cp2->vx = (cp2->vx*r)/256;
+                    cp2->vy = (cp2->vy*r)/256;
+                    cp2->vz = (cp2->vz*r)/256;
+                    cp2->function = BURST_PARTICLE;
+                  }
+                }
+
+                if (k == 0) {
+                  //crackle particles
+                  if (do_crackle) {
+                    PARTICLE * cp2 = current_particle();
+                    if (cp2) {
+                      *cp2 = *cp;
+                      cp2->attributes = ai[4];
+                      cp2->function = CRACKLE_PARTICLE;
+                      cp2->age = -256;
+                    }
+
+                    if (do_double_crackle) {
+                      PARTICLE * cp3 = current_particle();
+                      if (cp3) {
+                        *cp3 = *cp;
+                        cp3->attributes = ai[5];
+                        cp3->function = CRACKLE_PARTICLE;
+                        cp3->age = 128;
+                        a[4]->m = (a[0]->m*2)/3;
+                      }
+                    }
+                  }
+                }
+                //cp->age = random(-20,20);
+                
+                /*
+                //pistil (smaller inner sphere)
+                if (random(3) == 0) {
+                  cp->vx /= 6;
+                  cp->vy /= 6;
+                  cp->vz /= 6;
+                  cp->h += 127;
+                  cp->age = -100;
+                }
+                */
+
+                //finally, add the velocity of the shell that produced this burst
+                cp->vx += start_vx;
+                cp->vy += start_vy;
+                cp->vz += start_vz;
+                
+
+
+
+              }
             }
-            //modify a ring of particles to produce trails
-            if(abs(iz - 16000) < 1000) {
-              cp->attributes = ai[2];
-            }
-            
-            //cp->age = random(-20,20);
-            
-            /*
-            //pistil (smaller inner sphere)
-            if (random(3) == 0) {
-              cp->vx /= 6;
-              cp->vy /= 6;
-              cp->vz /= 6;
-              cp->h += 127;
-              cp->age = -100;
-            }
-            */
-
-            //finally, add the velocity of the shell that produced this burst
-            cp->vx += start_vx;
-            cp->vy += start_vy;
-            cp->vz += start_vz;
-            
-
-
-
           }
         }
       }
@@ -450,9 +558,12 @@ class TEST3D: public LIGHT_SKETCH {
         led_screen.reverse_perspective(p);
         fs->y = p[1]; //start "on the ground"
         fs->z = 0;
-        uint8_t r = random(105);
+        uint16_t r = random(105);
+        //std::cout << "SIZE:" << r << "\n";
+
+        next_firework_frame = random(100,100+(r*5));
         fs->vy = r+200; //random launch velocity (burst height), weighted toward lower bursts
-        uint8_t r2 = (105-r)/6;
+        uint16_t r2 = (105-r)/6;
         fs->vx = random(-(r2+10),(r2+10)); //random side-to-side velocity
         //fs->vy = 300;
         fs->vz = random(-(r2+10),(r2+10));
@@ -492,7 +603,7 @@ class TEST3D: public LIGHT_SKETCH {
             cp->vy = (cp->vy*rv)/256;
             cp->vz = 0;
             cp->attributes = lift_attribute;
-            cp->function = 2;
+            cp->function = LIFT_PARTICLE;
             cp->age = random(1*256,3*256);
           }
         }
@@ -529,7 +640,7 @@ class TEST3D: public LIGHT_SKETCH {
                 cp->vy = fs->vy;
                 cp->vz = fs->vz;
                 cp->age = 32*8;
-                cp->function = 1;
+                cp->function = STAR_PARTICLE;
                 cp->attributes = fs->trail;
 
               }
@@ -563,10 +674,10 @@ class TEST3D: public LIGHT_SKETCH {
       if
       (
       abs(p.x) > 127 * 256L ||
-      abs(p.y) > 127 * 256L ||
+      abs(p.y) > 250 * 256L ||
       abs(p.z) > 127 * 256L
       ) {
-        p.function = 0;
+        p.function = NULL_PARTICLE;
         return;
       }
       PARTICLE_ATTRIBUTES * pa = &particle_attributes[p.attributes];
@@ -621,12 +732,12 @@ class TEST3D: public LIGHT_SKETCH {
 
     } //move_particle()
 
-    void star_particle(PARTICLE &p) {
+    void star_physics(PARTICLE &p) {
 
       //increment the particle's age
       p.age+=4;
 
-      if (p.age > 256*8) {p.function = 0; return;}
+      if (p.age > 256*8) {p.function = NULL_PARTICLE; return;}
       PARTICLE_ATTRIBUTES * pa = &particle_attributes[p.attributes];
 
       move_particle(p);
@@ -641,20 +752,130 @@ class TEST3D: public LIGHT_SKETCH {
           cp->vx = p.vx;
           cp->vy = p.vy;
           cp->vz = p.vz;
-          cp->age = p.age/16;
-          cp->function = 1;
+          cp->age = _max(p.age,256);
+          cp->function = STAR_PARTICLE;
           cp->attributes = pa->trail;
         }
       }
  
     } //star_particle()
 
+    void star_draw(uint16_t pi) {
+          PARTICLE * cp = &particles[pi];
+          PARTICLE_ATTRIBUTES * pa = &particle_attributes[cp->attributes];
+          uint16_t age = cp->age/8;
+          //darken (v = HSV value)
+          int16_t v_temp = 255;
+          uint8_t r = fmix32(pi);
+          r=0;
+          r = r/4 + (_max(pa->r-35,0))+32;
+          if (age > r) {
+            v_temp -= (age-r)*4;
+          }
+          uint8_t v = _min(_max(v_temp,0), pa->v);
+          if (v == 0) {
+            cp->function = NULL_PARTICLE;
+            return;
+          }
+          //colors become more saturated over time
+          uint8_t s = _max(_min(cp->age,pa->s),0);
+
+          VECTOR3 p(cp->x*2,cp->y*2,cp->z*2);
+          
+          draw_particle(p,pa->h,s,v);
+    }
+
+    void star_color_change_draw(uint16_t pi) {
+          PARTICLE * cp = &particles[pi];
+          PARTICLE_ATTRIBUTES * pa = &particle_attributes[cp->attributes];
+          int16_t age = cp->age;
+          uint8_t v = 0;
+          uint8_t s = 255;
+          if (age > 0) {
+            v = _min(age,255);
+          }
+          if (age > 2*256) {
+            v = _max(3*256-age, 0);
+          }
+          if (age > 3*256) {
+            cp->function = NULL_PARTICLE;
+          }
+
+          VECTOR3 p(cp->x*2,cp->y*2,cp->z*2);
+          
+          draw_particle(p,pa->h,s,v);
+    }
+
+    void crackle_draw(uint16_t pi) {
+
+          PARTICLE * cp = &particles[pi];
+          PARTICLE_ATTRIBUTES * pa = &particle_attributes[cp->attributes];
+          int16_t age = cp->age;
+          uint16_t r = fmix32(pi)%512;
+          
+          if (r < 256) {
+            r = 256 - r;
+            r = (((r*r)/256)+r)/2;
+            r = 256 - r;
+          }
+          if (r > 255) {
+            r -= 256;
+            r = (((r*r)/256)+r)/2;
+            r += 256;
+          }
+          r/=2;
+          age -= r;
+          if (age > 2*256) {
+            if (age < 2*256+32) {
+              VECTOR3 p(cp->x*2,cp->y*2,cp->z*2);
+              draw_particle(p,0,0,96);
+            } else {
+              cp->function = NULL_PARTICLE;
+            }
+          }
+
+    }
+
+    void burst_particle_draw(uint16_t pi) {
+
+          PARTICLE * cp = &particles[pi];
+          PARTICLE_ATTRIBUTES * pa = &particle_attributes[cp->attributes];
+          int16_t age = cp->age;
+          uint16_t r = fmix32(pi)%512;
+          if (age < 108) {
+              VECTOR3 p(cp->x*2,cp->y*2,cp->z*2);
+              if (age < 16) {
+                draw_particle(p,32,0,255);
+              } else {
+                draw_particle(p,32,128,214-age*2);
+              }
+            } else {
+              cp->function = NULL_PARTICLE;
+            }
+          
+
+    }
+
+    void draw_particle(VECTOR3& p, uint8_t h, uint8_t s, uint8_t v) {
+
+          //rotate all particles using our orientation matrix
+          rotate(p);
+
+          //translate vectors to coordinates
+          scale_z(p[2]);
+
+          //correct 3d perspective
+          if (led_screen.perspective(p)) {
+            int16_t v_temp2 = (p[2] + 200 * 256L) / 256L;
+            blendXY(led_screen, p[0], p[1], h, s, (_max(_min(v_temp2, 255), 0)*v)/255);
+          }
+    }
 
 
-    void lift_particle(PARTICLE &p) {
+    void lift_physics(PARTICLE &p) {
       //increment the particle's age
       p.age+=8;
-      if (p.age > 256*8) {p.function = 0; return;}
+      if (p.age > 256*8) {p.function = NULL_PARTICLE; return;}
       //PARTICLE_ATTRIBUTES * pa = &particle_attributes[p.attributes];
       move_particle(p);
  
@@ -667,14 +888,15 @@ class TEST3D: public LIGHT_SKETCH {
       for (int i = 0; i < NUM_PARTICLES; i++) {
         if (particles[i].function) {
           active_particles++;
-          (this->*particle_funcs[particles[i].function])(particles[i]);
+          (this->*particle_physics_functions[particles[i].function])(particles[i]);
         }
       }
     }
 
     //an array of function pointers to functions that modify the PARTICLE structure
     //referred to as a jump table?
-    void (TEST3D::*particle_funcs[3])(PARTICLE&) = {nullptr,&TEST3D::star_particle,&TEST3D::lift_particle};
+    void (TEST3D::*particle_physics_functions[6])(PARTICLE&) = {nullptr,&TEST3D::star_physics,&TEST3D::lift_physics,&TEST3D::star_physics,&TEST3D::star_physics,&TEST3D::star_physics};
+    void (TEST3D::*particle_draw_functions[6])(uint16_t pi) = {nullptr,&TEST3D::star_draw,&TEST3D::star_draw,&TEST3D::crackle_draw,&TEST3D::star_color_change_draw,&TEST3D::burst_particle_draw};
 
     //render the particles in 3D to the buffer
     void draw_particles() {
@@ -684,39 +906,8 @@ class TEST3D: public LIGHT_SKETCH {
 
       //draw the particles
       for (int i = 0; i < NUM_PARTICLES; i++) {
-        PARTICLE * cp = &particles[i];
-        if ( cp->function) {
-          PARTICLE_ATTRIBUTES * pa = &particle_attributes[cp->attributes];
-          uint16_t age = cp->age/8;
-          //darken (v = HSV value)
-          int16_t v_temp = 255;
-          uint8_t r = fmix32(i);
-          r = r/4 + (_max(pa->r-35,0))+32;
-          if (age > r) {
-            v_temp -= (age-r)*4;
-          }
-          uint8_t v = _min(_max(v_temp,0), pa->v);
-          if (v == 0) {
-            cp->function = 0;
-            continue;
-          }
-          //colors become more saturated over time
-          uint8_t s = _max(_min(cp->age,pa->s),0);
-          
-          //create a three-dimensional structure that will be rotated
-          VECTOR3 p(cp->x*2,cp->y*2,cp->z*2);
-
-          //rotate all particles using our orientation matrix
-          rotate(p);
-
-          //translate vectors to coordinates
-          scale_z(p[2]);
-
-          //correct 3d perspective
-          if (led_screen.perspective(p)) {
-            int16_t v_temp2 = (p[2] + 200 * 256L) / 256L;
-            blendXY(led_screen, p[0], p[1], pa->h, s, (_max(_min(v_temp2, 255), 0)*v)/255);
-          }
+        if (particles[i].function && particles[i].age >= 0) {
+          (this->*particle_draw_functions[particles[i].function])(i);
         }
       }
     }
@@ -788,8 +979,6 @@ class TEST3D: public LIGHT_SKETCH {
         effect_beat = 0;
         //reset();
       }
-      if (millis() - 16 > update_time) {
-        update_time = millis();
 
 
         static uint8_t cube_step = 0;
@@ -841,7 +1030,6 @@ class TEST3D: public LIGHT_SKETCH {
           LED_black();
         }
 
-      }
     } //loop();
 
 
@@ -1405,7 +1593,6 @@ void handle_fireworks() {
           //static uint16_t max_speed = 32768/8; //this is the max speed, above which particles will start to act weird (accelerating backwards)
           
           //spawn a new firework based on the number of frames that have been shown
-          static uint16_t next_firework_frame = 0;
           static uint32_t total_frame_count = millis()/8;
 
           //physics is locked at 125fps (1000/8)...
@@ -1425,7 +1612,6 @@ void handle_fireworks() {
             //launch shells
             if (frame_count>next_firework_frame) {
               frame_count = 0;
-              next_firework_frame = random(100,500);
               spawn_firework_shell();
             }
 
