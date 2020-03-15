@@ -811,8 +811,6 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
     uint32_t loop_time = millis();
     void loop() {
-      if (millis() - 16 > loop_time) {
-        loop_time = millis();
         static uint16_t bd = 1;
         static uint16_t gd = 1;
         static uint16_t ad = 1;
@@ -872,7 +870,6 @@ class MATTCLOCK: public LIGHT_SKETCH {
             break;
         }
 
-      }
 
     }//loop
 
