@@ -1,12 +1,12 @@
 #ifndef LIGHTS_UNTITLED_H
 #define LIGHTS_UNTITLED_H
 
-#define NUMBER_OF_CELLS 50
+#define NUMBER_OF_CELLS 100
 #define QUEUE_SIZE 4000
 
 #define BORDER_BUFFER 48
-#define LIGHTNING_ENABLE 0
-#define LIGHTNING_SPEED 10
+#define LIGHTNING_ENABLE 1
+#define LIGHTNING_SPEED 4
 
 class UNTITLED: public LIGHT_SKETCH {
 
@@ -14,9 +14,36 @@ class UNTITLED: public LIGHT_SKETCH {
 
     struct thing {
         VECTOR3 pos;
+        VECTOR3 pos2;
         VECTOR3 spd;
         CRGB rgb;
+        uint32_t max_distance;
+        uint32_t new_max_distance;
+        int16_t old_diff; //difference between 
+        uint16_t grow_count; //count the number of consecutive frames that our diff is growing
     };
+
+    struct particle {
+        VECTOR3 pos;
+        VECTOR3 spd;
+        uint8_t age=0;
+    };
+
+    #define NUM_SPARKS 255
+    particle particles[NUM_SPARKS];
+    uint8_t current_particle;
+    uint8_t lightning_var = 0;
+
+    uint16_t add_particle(VECTOR3 pos, VECTOR3 spd) {
+        uint16_t cp = current_particle;
+        particles[cp].pos = pos;
+        particles[cp].spd = spd;
+        particles[cp].age = 255;
+        current_particle++;
+        current_particle %= NUM_SPARKS;
+        return cp;
+
+    }
 
     thing things[NUMBER_OF_THINGS+1];
 
@@ -26,17 +53,23 @@ class UNTITLED: public LIGHT_SKETCH {
     int16_t queue_write = 0;
 
     struct PIXEL_DATA {
-        int8_t t = -1; //which thing has the shortest distance
         uint32_t dist = UINT32_MAX; //distance of t from this pixel
-        uint8_t age = 0;
-        uint8_t edge = 0;
-        uint8_t cnt = 0;
+        int8_t t:8; //which thing has the shortest distance
+        uint8_t age:8;
+        uint8_t edge_value:8;
+        uint8_t edge_distance:3;
+        uint8_t edge_cnt:3;
+        bool corner:1;
+        bool edge:1;
     };
 
     PIXEL_DATA grid[MATRIX_HEIGHT][MATRIX_WIDTH];
 
   public:
-    UNTITLED () {setup();}
+    UNTITLED () {
+        setup();
+        control_variables.add(lightning_var,"Lightning",0,255);
+    }
     ~UNTITLED () {}
 
     void next_effect() {}
@@ -45,9 +78,20 @@ class UNTITLED: public LIGHT_SKETCH {
         setup();
     }
     void setup() {
+        for (int y = 0; y < MATRIX_HEIGHT; y++) {  
+            for (int x = 0; x < MATRIX_WIDTH; x++) {
+                grid[y][x].t = -1;
+                grid[y][x].age = 0;
+                grid[y][x].edge_distance = 0;
+                grid[y][x].edge_value = 0;
+                grid[y][x].edge_cnt = 0;
+                grid[y][x].corner = false;
+                grid[y][x].edge = false;
+            }
+        }
         for (int i = 0; i < NUMBER_OF_CELLS; i++) {
-            things[i].pos.y = random(-BORDER_BUFFER*256,(MATRIX_HEIGHT+BORDER_BUFFER)*256);
-            things[i].pos.x = random(-BORDER_BUFFER*256,(MATRIX_WIDTH+BORDER_BUFFER)*256);
+            things[i].pos2.y = random(-BORDER_BUFFER*256,(MATRIX_HEIGHT+BORDER_BUFFER)*256);
+            things[i].pos2.x = random(-BORDER_BUFFER*256,(MATRIX_WIDTH+BORDER_BUFFER)*256);
             things[i].spd.y = random(-14,15);
             things[i].spd.x = random(-14,15);
             things[i].rgb = CHSV(random(256), 255, random(32,256));
@@ -62,21 +106,42 @@ class UNTITLED: public LIGHT_SKETCH {
         LED_black();
 
         //update our things
-        for (int i = 0; i < NUMBER_OF_CELLS; i++) {
-            things[i].pos.x += things[i].spd.x;
-            if (things[i].pos.x < -BORDER_BUFFER*256) {
-                things[i].pos.x += (BORDER_BUFFER*2-1)*256+MATRIX_WIDTH*256;
+        for (uint8_t i = 0; i < NUMBER_OF_CELLS; i++) {
+            things[i].max_distance = (things[i].max_distance*2+things[i].new_max_distance)/3;
+            things[i].new_max_distance = 0;
+            things[i].pos2.x += things[i].spd.x;
+            if (things[i].pos2.x < -BORDER_BUFFER*256) {
+                things[i].pos2.x += (BORDER_BUFFER*2-1)*256+MATRIX_WIDTH*256;
             }
-            if (things[i].pos.x > (MATRIX_WIDTH+BORDER_BUFFER)*256) {
-                things[i].pos.x -= (BORDER_BUFFER*2-1)*256+MATRIX_WIDTH*256;
+            if (things[i].pos2.x > (MATRIX_WIDTH+BORDER_BUFFER)*256) {
+                things[i].pos2.x -= (BORDER_BUFFER*2-1)*256+MATRIX_WIDTH*256;
             }
-            things[i].pos.y += things[i].spd.y;
-            if (things[i].pos.y < -BORDER_BUFFER*256) {
-                things[i].pos.y += (BORDER_BUFFER*2-1)*256+MATRIX_HEIGHT*256;
+            things[i].pos2.y += things[i].spd.y;
+            if (things[i].pos2.y < -BORDER_BUFFER*256) {
+                things[i].pos2.y += (BORDER_BUFFER*2-1)*256+MATRIX_HEIGHT*256;
             }
-            if (things[i].pos.y > (MATRIX_HEIGHT+BORDER_BUFFER)*256) {
-                things[i].pos.y -= (BORDER_BUFFER*2-1)*256+MATRIX_HEIGHT*256;
+            if (things[i].pos2.y > (MATRIX_HEIGHT+BORDER_BUFFER)*256) {
+                things[i].pos2.y -= (BORDER_BUFFER*2-1)*256+MATRIX_HEIGHT*256;
             }
+            things[i].pos.x = things[i].pos2.x;
+            things[i].pos.y = things[i].pos2.y;
+            //accelerate things away from the screen to avoid popping
+            if (things[i].pos2.x < 0) {
+                uint32_t overflow = abs(things[i].pos2.x);
+                things[i].pos.x -= (overflow*overflow)/1024;
+            } else if (things[i].pos2.x > MATRIX_WIDTH*256) {
+                uint32_t overflow = things[i].pos2.x-MATRIX_WIDTH*256;
+                things[i].pos.x += (overflow*overflow)/1024;
+            }
+
+            if (things[i].pos2.y < 0) {
+                uint32_t overflow = abs(things[i].pos2.y);
+                things[i].pos.y -= (overflow*overflow)/1024;
+            } else if (things[i].pos2.y > MATRIX_HEIGHT*256) {
+                uint32_t overflow = things[i].pos2.y-MATRIX_HEIGHT*256;
+                things[i].pos.y += (overflow*overflow)/1024;
+            }
+
             // for (int j = i+1; j < NUMBER_OF_CELLS; j++) {
             //     int dist_x = things[i].pos.x - things[j].pos.x;
             //     int dist_y = things[i].pos.y - things[j].pos.y;
@@ -95,7 +160,7 @@ class UNTITLED: public LIGHT_SKETCH {
         }
 
         //draw each thing to a grid of the 9 closest LEDs
-        for (int i = 0; i < NUMBER_OF_THINGS; i++) {
+        for (uint8_t i = 0; i < NUMBER_OF_THINGS; i++) {
             int32_t x = things[i].pos.x;
             int32_t y = things[i].pos.y;
             int32_t x2 = _max(_min(x/256, MATRIX_WIDTH-1),0);
@@ -105,8 +170,8 @@ class UNTITLED: public LIGHT_SKETCH {
             for (int32_t y3 = y2-1; y3 <= y2+1; y3++) {
                 for (int32_t x3 = x2-1; x3 <= x2+1; x3++) {
                     if (y3 >= 0 && y3 < MATRIX_HEIGHT && x3 >= 0 && x3 < MATRIX_WIDTH) {
-                        uint32_t a = _min(abs(x - x3*256),UINT16_MAX/4); //limit to avoid overflow
-                        uint32_t b = _min(abs(y - y3*256),UINT16_MAX/4);
+                        uint32_t a = _min(abs(x - x3*256),UINT16_MAX*2)/8; //limit to avoid overflow
+                        uint32_t b = _min(abs(y - y3*256),UINT16_MAX*2)/8;
                         //int c = sqrt(a*a + b*b);
                         uint32_t c = a*a + b*b;
                         //the closest thing is assigned to each pixel
@@ -149,6 +214,7 @@ class UNTITLED: public LIGHT_SKETCH {
 
             int this_t = grid[y][x].t;
             
+            grid[y][x].edge = 0;
             //check each adjacent pixel for the distance of the current pixel's thing
             for (int i = 0; i < 4; i++) {
                 int x2 = l[i][0];
@@ -158,8 +224,8 @@ class UNTITLED: public LIGHT_SKETCH {
                 if (y2 >= 0 && y2 < MATRIX_HEIGHT && x2 >= 0 && x2 < MATRIX_WIDTH && this_t != grid[y2][x2].t) {
                     
                     //calculate the distance between thing and pixel
-                    uint32_t a = _min(abs(things[this_t].pos.x - x2*256),UINT16_MAX/4);
-                    uint32_t b = _min(abs(things[this_t].pos.y - y2*256),UINT16_MAX/4);
+                    uint32_t a = _min(abs(things[this_t].pos.x - x2*256),UINT16_MAX*2)/8;
+                    uint32_t b = _min(abs(things[this_t].pos.y - y2*256),UINT16_MAX*2)/8;
                     uint32_t c = a*a + b*b;
                     //are we closer?
                     if (c < grid[y2][x2].dist) {
@@ -171,6 +237,11 @@ class UNTITLED: public LIGHT_SKETCH {
                         queue[queue_write][1] = y2;
                         queue_write++;
                         queue_write%=QUEUE_SIZE;
+                        grid[y2][x2].dist = c;
+                        leds[XY(x2,y2)] = things[this_t].rgb;
+                    } else {
+                        grid[y][x].edge = 1;
+                        grid[y2][x2].edge = 1;
                     }
                 }
             }
@@ -179,23 +250,19 @@ class UNTITLED: public LIGHT_SKETCH {
         }
 
 
-        //draw colors to leds
-        for (int y = 0; y < MATRIX_HEIGHT; y++) {
-            for (int x = 0; x < MATRIX_WIDTH; x++) {
-                leds[XY(x,y)] = things[grid[y][x].t].rgb;
-                //shading
-                uint32_t c = grid[y][x].dist/8192;
-                leds[XY(x,y)].r -= (uint8_t)_min(c/32,(uint8_t)leds[XY(x,y)].r);
-                leds[XY(x,y)].g -= (uint8_t)_min(c/32,(uint8_t)leds[XY(x,y)].g);
-                leds[XY(x,y)].b -= (uint8_t)_min(c/32,(uint8_t)leds[XY(x,y)].b);
-            }
-        }
 
 
         //edges/anti-aliasing
         //step through each pixel and find edges (does the adjacent pixel contain a different thing)
-        for (int y = 0; y < MATRIX_HEIGHT; y++) {
-            for (int x = 0; x < MATRIX_WIDTH; x++) {
+        bool do_debug = 1;
+        for (uint8_t y = 0; y < MATRIX_HEIGHT; y++) {
+            for (uint8_t x = 0; x < MATRIX_WIDTH; x++) {
+
+                //shading
+                CRGB rgb = gamma8_encode(get_shade(x,y));
+                leds[XY(x,y)] = rgb;
+
+                if (!grid[y][x].edge) {continue;}
                 //array of adjacent pixel coordinates
                 uint16_t l[4][2];
                 l[0][0] = x+1;
@@ -217,45 +284,96 @@ class UNTITLED: public LIGHT_SKETCH {
                     //  0 = 100% this pixel
                     //  255 = 100% adjacent pixel
                 int cnt = 0;
-                if(grid[y][x].age > 0) {
-                    grid[y][x].age = (grid[y][x].age*3)/4;
-                }
+                int16_t first_thing;
 
-                grid[y][x].edge = 0;
+                grid[y][x].edge_distance = 0;
                 for (int i = 0; i < 4; i++) {
                     int x2 = l[i][0];
                     int y2 = l[i][1];
                     //is the current pixel on the screen
                     if (y2 >= 0 && y2 < MATRIX_HEIGHT && x2 >= 0 && x2 < MATRIX_WIDTH && grid[y][x].t != grid[y2][x2].t) {
-                        grid[y][x].edge = 1;
-                        //lightning
-                        if (LIGHTNING_ENABLE && y == 64 && x == 64) {
-                            grid[y][x].age=255;
+                        if (cnt == 0) {
+                            first_thing = grid[y2][x2].t;
+                        } else if (grid[y2][x2].t != first_thing) {
+                            grid[y][x].corner = true;
+                        }
+                        grid[y][x].edge_distance = 1;
+
+                        if(lightning_var) {
+                            //spawn lightning
+                            static uint32_t lightning_time = 0;
+                            static uint32_t lightning_led = random(NUM_LEDS);
+                            static uint8_t lightning_cnt = 0;
+                            //reset the counter for each pixel if our lightning count overflows
+                            if (lightning_cnt == 0) {
+                                grid[y][x].edge_cnt = 0;
+                            }
+                            if (LIGHTNING_ENABLE && millis() > lightning_time && XY(x,y) > lightning_led) {
+                                grid[y][x].age=255;
+                                lightning_cnt++;
+                                lightning_cnt %= 8;
+                                grid[y][x].edge_cnt=lightning_cnt;
+                                lightning_time = millis() + random(10000);
+                                lightning_led = random(NUM_LEDS);
+                            }
                         }
                         //calculate the midpoint between the two things
                         int x_diff = things[grid[y2][x2].t].pos.x-things[grid[y][x].t].pos.x;
                         int y_diff = things[grid[y2][x2].t].pos.y-things[grid[y][x].t].pos.y;
                         int x_mid = (things[grid[y2][x2].t].pos.x+things[grid[y][x].t].pos.x)/2;
                         int y_mid = (things[grid[y2][x2].t].pos.y+things[grid[y][x].t].pos.y)/2;
+
                         //calculate the slope of the line between the two things
                         // float slope = 0;
                         // if (x_diff != 0) {
                         //     slope = (1.f*y_diff)/(1.f*x_diff);
                         // }
                         //calculate the perpendicular slope
-                        float neg_slope = 0;
+                        //float neg_slope = 0;
+                        int neg_slope_x = 1;
+                        int neg_slope_y = 1;
                         if (y_diff != 0) {
-                            neg_slope = -(1.f*x_diff)/(1.f*y_diff);
+                            neg_slope_y = y_diff;
+                        }
+                        if (x_diff != 0) {
+                            neg_slope_x = -x_diff;
                         }
                         //calculate the intercept
-                        int intercept = y_mid - (x_mid * neg_slope);
+                        int intercept = y_mid - (x_mid * neg_slope_x)/neg_slope_y;
                         //now we can calculate the absolute coordinates at which the line intersects with each side of our pixel
                         #define OFFSET 128
-                        int y_actual = (x*256-OFFSET)*neg_slope+intercept;
-                        int x_actual = ((y*256-OFFSET)-intercept)/neg_slope;
-                        int y2_actual = ((x+1)*256-OFFSET)*neg_slope+intercept;
-                        int x2_actual = (((y+1)*256-OFFSET)-intercept)/neg_slope;
+                        int y_actual = ((x*256-OFFSET)*neg_slope_x)/neg_slope_y+intercept;
+                        int x_actual = (((y*256-OFFSET)-intercept)*neg_slope_y)/neg_slope_x;
+                        int y2_actual = (((x+1)*256-OFFSET)*neg_slope_x)/neg_slope_y+intercept;
+                        int x2_actual = ((((y+1)*256-OFFSET)-intercept)*neg_slope_y)/neg_slope_x;
+ 
+                        
+                        //record the max distance of the cell boundary from the cell
+                        if (abs(neg_slope_x) < abs(neg_slope_y)) {
+                            //drawXY_fine(led_screen, x*256, y_actual, 0, 255, 255);
+                            int y_actual_no_offset = ((x*256)*neg_slope_x)/neg_slope_y+intercept;
+                            int x_diff2 = x*256 - things[grid[y][x].t].pos.x;
+                            x_diff2 = _min(abs(x_diff2),UINT16_MAX*2)/8;
+                            int y_diff2 = y_actual_no_offset - things[grid[y][x].t].pos.y;
+                            y_diff2 = _min(abs(y_diff2),UINT16_MAX*2)/8;
+                            int max_ = (x_diff2)*(x_diff2) + (y_diff2)*(y_diff2);
+                            things[grid[y][x].t].new_max_distance = _max(things[grid[y][x].t].new_max_distance, max_);
+                        } else {
+                            //drawXY_fine(led_screen, x_actual, y*256, 160, 255, 255);
+                            int x_actual_no_offset = (((y*256)-intercept)*neg_slope_y)/neg_slope_x; 
+                            int x_diff2 = x_actual_no_offset - things[grid[y][x].t].pos.x;
+                            x_diff2 = _min(abs(x_diff2),UINT16_MAX*2)/8;
+                            int y_diff2 = y*256 - things[grid[y][x].t].pos.y;
+                            y_diff2 = _min(abs(y_diff2),UINT16_MAX*2)/8;
+                            int max_ = (x_diff2)*(x_diff2) + (y_diff2)*(y_diff2);
+                            things[grid[y][x].t].new_max_distance = _max(things[grid[y][x].t].new_max_distance, max_);
+                        }
+                        //drawXY_fine(led_screen, x2_actual_no_offset, y2_actual_no_offset, 96, 255, 255);
 
+                        //LED_show();
+                        //things[grid[y2][x2].t].new_max_distance = _max(things[grid[y2][x2].t].new_max_distance, max_);
+                        //things[grid[y][x].t].new_max_distance = 100000;
+                        //things[grid[y2][x2].t].new_max_distance = 100000;
                         //find the relative intersect position along each side
                         //0 = one end ("left")
                         //1-255 = somewhere in the middle
@@ -272,23 +390,16 @@ class UNTITLED: public LIGHT_SKETCH {
                         int xb_test = x_b >= 0 && x_b <= 256;
 
                         //get the two potential color values
-                        CRGB rgb0 = things[grid[y][x].t].rgb;
-                        CRGB rgb1 = things[grid[y2][x2].t].rgb;
 
                         //shading
-                        uint32_t c = grid[y][x].dist/8192;
-                        rgb0.r -= (uint8_t)_min(c/32,(uint8_t)rgb0.r);
-                        rgb0.g -= (uint8_t)_min(c/32,(uint8_t)rgb0.g);
-                        rgb0.b -= (uint8_t)_min(c/32,(uint8_t)rgb0.b);
+                        CRGB rgb0 = get_shade(x,y);
 
-                        uint32_t c2 = grid[y2][x2].dist/8192;
-                        rgb1.r -= (uint8_t)_min(c/32,(uint8_t)rgb1.r);
-                        rgb1.g -= (uint8_t)_min(c/32,(uint8_t)rgb1.g);
-                        rgb1.b -= (uint8_t)_min(c/32,(uint8_t)rgb1.b);
+                        CRGB rgb1 = get_shade(x2,y2);
 
-                        rgb0 = gamma8_decode(rgb0);
-                        rgb1 = gamma8_decode(rgb1);
                         CRGB rgb_new = rgb0;
+                        
+                        int b = 0;
+                        grid[y][x].edge_value = 0;
 
                         if (ya_test && yb_test) {
                             //split top-bottom
@@ -296,7 +407,7 @@ class UNTITLED: public LIGHT_SKETCH {
                             int b1 = y_b;
                             b0 = _max(_min(b0,255),0);
                             b1 = _max(_min(b1,255),0);
-                            int b = (b0+b1)/2;
+                            b = (b0+b1)/2;
                             if (things[grid[y][x].t].pos.y > things[grid[y2][x2].t].pos.y) {
                                 b = 255-b;
                             }
@@ -309,7 +420,7 @@ class UNTITLED: public LIGHT_SKETCH {
                             int b1 = x_b;
                             b0 = _max(_min(b0,255),0);
                             b1 = _max(_min(b1,255),0);
-                            int b = (b0+b1)/2;
+                            b = (b0+b1)/2;
                             if (things[grid[y][x].t].pos.x > things[grid[y2][x2].t].pos.x) {
                                 b = 255-b;
                             }
@@ -321,7 +432,7 @@ class UNTITLED: public LIGHT_SKETCH {
                             int b1 = 256-x_a;
                             b0 = _max(_min(b0,255),0);
                             b1 = _max(_min(b1,255),0);
-                            int b = (b0*b1)/2;
+                            b = (b0*b1)/2;
                             b /= 256;
                             if (things[grid[y][x].t].pos.x < things[grid[y2][x2].t].pos.x) {
                                 b = 255-b;
@@ -336,7 +447,7 @@ class UNTITLED: public LIGHT_SKETCH {
                             int b1 = x_b;
                             b0 = _max(_min(b0,255),0);
                             b1 = _max(_min(b1,255),0);
-                            int b = (b0*b1)/2;
+                            b = (b0*b1)/2;
                             b /= 256;
                             if (things[grid[y][x].t].pos.x > things[grid[y2][x2].t].pos.x) {
                                 b = 255-b;
@@ -350,7 +461,7 @@ class UNTITLED: public LIGHT_SKETCH {
                             int b1 = x_a;
                             b0 = _max(_min(b0,255),0);
                             b1 = _max(_min(b1,255),0);
-                            int b = (b0*b1)/2;
+                            b = (b0*b1)/2;
                             b /= 256;
                             if (things[grid[y][x].t].pos.x > things[grid[y2][x2].t].pos.x) {
                                 b = 255-b;
@@ -366,7 +477,7 @@ class UNTITLED: public LIGHT_SKETCH {
                             int b1 = 256-x_b;
                             b0 = _max(_min(b0,255),0);
                             b1 = _max(_min(b1,255),0);
-                            int b = (b0*b1)/2;
+                            b = (b0*b1)/2;
                             b /= 256;
                             if (things[grid[y][x].t].pos.x < things[grid[y2][x2].t].pos.x) {
                                 b = 255-b;
@@ -415,97 +526,198 @@ class UNTITLED: public LIGHT_SKETCH {
 
 
 
-                        //leds[XY(x3,y3)]   = gamma8_encode(nblend(rgb1, rgb0, b));
-                        grid[y][x].cnt++;
+                        cnt++;
                         CRGB rgb_old = gamma8_decode(leds[XY(x,y)]);
-                        leds[XY(x,y)] = gamma8_encode(nblend(rgb_old, rgb_new, 255/grid[y][x].cnt));
+                        leds[XY(x,y)] = gamma8_encode(nblend(rgb_old, rgb_new, 255/cnt));
+
+                        if (lightning_var) {
+                            //figure out some lightning shading stuff
+                            grid[y][x].edge_value = _min(_max(abs((127-b))*2, 0), 255);
+                            grid[y][x].edge_value = 255-grid[y][x].edge_value;
+                            grid[y][x].edge_value = _min(grid[y][x].edge_value*4, 255);
+                        }
                     }
                 }
 
 
-                if(grid[y][x].age > 0) {
-                    leds[XY(x,y)] += grid[y][x].age;
-                }
 
             }
         }
 
-        //calculate lightning in the forward direction
-        for (int y = 0; y < MATRIX_HEIGHT; y++) {
-            for (int x = 0; x < MATRIX_WIDTH; x++) {
-                //array of adjacent pixel coordinates
-                uint16_t l[4][2];
-                l[0][0] = x+1;
-                l[0][1] = y;
-                l[1][0] = x;
-                l[1][1] = y+1;
-                l[2][0] = x-1;
-                l[2][1] = y;
-                l[3][0] = x;
-                l[3][1] = y-1;
+        if (lightning_var) {
+            //calculate lightning in the forward direction
+            for (uint8_t y = 0; y < MATRIX_HEIGHT; y++) {
+                for (uint8_t x = 0; x < MATRIX_WIDTH; x++) {
+                    leds[XY(x,y)] /= 2;
 
-                for (int i = 0; i < 4; i++) {
-                    int x2 = l[i][0];
-                    int y2 = l[i][1];
-                    if (y2 >= 0 && y2 < MATRIX_HEIGHT && x2 >= 0 && x2 < MATRIX_WIDTH && grid[y][x].edge && grid[y2][x2].edge) {
-                        if (grid[y][x].age == 0 && grid[y2][x2].age > 150 && grid[y2][x2].edge < LIGHTNING_SPEED) {
-                            grid[y][x].age = 255;
-                            grid[y][x].edge = grid[y2][x2].edge+1;
-                        }
-                        if (grid[y2][x2].age == 0 && grid[y][x].age > 150 && grid[y][x].edge < LIGHTNING_SPEED) {
-                            grid[y2][x2].age = 255;
-                            grid[y2][x2].edge = grid[y][x].edge+1;
+                    //lightning
+                    if(grid[y][x].age) {
+                        int amount = (grid[y][x].age * grid[y][x].edge_value)/255;
+                        leds[XY(x,y)].r = qadd8(leds[XY(x,y)].r,amount);
+                        leds[XY(x,y)].g = qadd8(leds[XY(x,y)].g,amount);
+                        leds[XY(x,y)].b = qadd8(leds[XY(x,y)].b,amount);
+                        grid[y][x].age = (grid[y][x].age*6)/7;
+                    }
+
+                    if (!grid[y][x].edge) {continue;}
+                    //array of adjacent pixel coordinates
+                    uint16_t l[4][2];
+                    l[0][0] = x+1;
+                    l[0][1] = y;
+                    l[1][0] = x;
+                    l[1][1] = y+1;
+                    l[2][0] = x-1;
+                    l[2][1] = y;
+                    l[3][0] = x;
+                    l[3][1] = y-1;
+
+                    for (int i = 0; i < 4; i++) {
+                        int x2 = l[i][0];
+                        int y2 = l[i][1];
+                        if (y2 >= 0 && y2 < MATRIX_HEIGHT && x2 >= 0 && x2 < MATRIX_WIDTH && grid[y][x].edge_distance && grid[y2][x2].edge_distance) {
+                            if (grid[y][x].age == 0 && grid[y2][x2].age > 150 && grid[y][x].edge_cnt < grid[y2][x2].edge_cnt && grid[y2][x2].edge_distance < LIGHTNING_SPEED) {
+                                grid[y][x].age = 255;
+                                grid[y][x].edge_distance = grid[y2][x2].edge_distance+1;
+                                grid[y][x].edge_cnt = grid[y2][x2].edge_cnt;
+                                if(grid[y][x].corner) {
+                                    add_particle(VECTOR3(x*256,y*256,0), VECTOR3(random(-500,500), random(-250,250), 0));
+                                }
+                            }
+                            if (grid[y2][x2].age == 0 && grid[y][x].age > 150 && grid[y][x].edge_cnt > grid[y2][x2].edge_cnt  && grid[y][x].edge_distance < LIGHTNING_SPEED) {
+                                grid[y2][x2].age = 255;
+                                grid[y2][x2].edge_distance = grid[y][x].edge_distance+1;
+                                grid[y2][x2].edge_cnt = grid[y][x].edge_cnt;
+                                if(grid[y2][x2].corner) {
+                                    add_particle(VECTOR3(x2*256,y2*256,0), VECTOR3(random(-500,500), random(-250,250), 0));
+                                }
+                            }
                         }
                     }
+
                 }
-
             }
-        }
 
 
-        //calculate lightning in the reverse direction
-        for (int y = MATRIX_HEIGHT-1; y >= 0; y--) {
-            for (int x = MATRIX_WIDTH-1; x >= 0; x--) {
-                //array of adjacent pixel coordinates
-                uint16_t l[4][2];
-                l[0][0] = x+1;
-                l[0][1] = y;
-                l[1][0] = x;
-                l[1][1] = y+1;
-                l[2][0] = x-1;
-                l[2][1] = y;
-                l[3][0] = x;
-                l[3][1] = y-1;
+            //calculate lightning in the reverse direction
+            for (int y = MATRIX_HEIGHT-1; y >= 0; y--) {
+                for (int x = MATRIX_WIDTH-1; x >= 0; x--) {
+                    if (!grid[y][x].edge) {continue;}
+                    //array of adjacent pixel coordinates
+                    uint16_t l[4][2];
+                    l[0][0] = x+1;
+                    l[0][1] = y;
+                    l[1][0] = x;
+                    l[1][1] = y+1;
+                    l[2][0] = x-1;
+                    l[2][1] = y;
+                    l[3][0] = x;
+                    l[3][1] = y-1;
 
-                for (int i = 0; i < 4; i++) {
-                    int x2 = l[i][0];
-                    int y2 = l[i][1];
-                    if (y2 >= 0 && y2 < MATRIX_HEIGHT && x2 >= 0 && x2 < MATRIX_WIDTH && grid[y][x].edge && grid[y2][x2].edge) {
-                        if (grid[y][x].age == 0 && grid[y2][x2].age > 150 && grid[y2][x2].edge < LIGHTNING_SPEED) {
-                            grid[y][x].age = 255;
-                            grid[y][x].edge = grid[y2][x2].edge+1;
-                        }
-                        if (grid[y2][x2].age == 0 && grid[y][x].age > 150 && grid[y][x].edge < LIGHTNING_SPEED) {
-                            grid[y2][x2].age = 255;
-                            grid[y2][x2].edge = grid[y][x].edge+1;
+                    for (int i = 0; i < 4; i++) {
+                        int x2 = l[i][0];
+                        int y2 = l[i][1];
+                        if (y2 >= 0 && y2 < MATRIX_HEIGHT && x2 >= 0 && x2 < MATRIX_WIDTH && grid[y][x].edge_distance && grid[y2][x2].edge_distance) {
+                            if (grid[y][x].age == 0 && grid[y2][x2].age > 150 && grid[y][x].edge_cnt < grid[y2][x2].edge_cnt && grid[y2][x2].edge_distance < LIGHTNING_SPEED) {
+                                grid[y][x].age = 255;
+                                grid[y][x].edge_distance = grid[y2][x2].edge_distance+1;
+                                grid[y][x].edge_cnt = grid[y2][x2].edge_cnt;
+                                if(grid[y][x].corner) {
+                                    add_particle(VECTOR3(x*256,y*256,0), VECTOR3(random(-500,500), random(-250,250), 0));
+                                }
+                            }
+                            if (grid[y2][x2].age == 0 && grid[y][x].age > 150 && grid[y][x].edge_cnt > grid[y2][x2].edge_cnt  && grid[y][x].edge_distance < LIGHTNING_SPEED) {
+                                grid[y2][x2].age = 255;
+                                grid[y2][x2].edge_distance = grid[y][x].edge_distance+1;
+                                grid[y2][x2].edge_cnt = grid[y][x].edge_cnt;
+                                if(grid[y2][x2].corner) {
+                                    add_particle(VECTOR3(x2*256,y2*256,0), VECTOR3(random(-500,500), random(-250,250), 0));
+                                }
+                            }
                         }
                     }
-                }
 
+                }
             }
+
+            //handle particles
+            for (uint8_t i = 0; i < NUM_SPARKS; i++) {
+                if (particles[i].age) {
+                    if (particles[i].pos.x < -10*256 || particles[i].pos.x > MATRIX_WIDTH*256+10*256) {
+                        particles[i].age = 0;
+                        continue;
+                    }
+                    uint8_t b = 128;
+                    if (particles[i].age < 64) {
+                        b = particles[i].age*2;
+                    }
+                    VECTOR3 spd = particles[i].spd;
+                    spd /= 3;
+                    particles[i].pos += spd;
+                    blendXY(led_screen, particles[i].pos, CRGB(b,b,b));
+                    particles[i].pos += spd;
+                    blendXY(led_screen, particles[i].pos, CRGB(b,b,b));
+                    particles[i].pos += spd;
+                    blendXY(led_screen, particles[i].pos, CRGB(b,b,b));
+                    particles[i].age--;
+                    particles[i].spd.y -= 20;
+                    //hit the ground
+                    if(particles[i].pos.y < 0 && particles[i].spd.y < 0) {
+                        int new_particle = 0;
+                        if (particles[i].spd.y < -512 ) {
+                            new_particle = 1;
+                        }
+                        particles[i].spd.y = (-particles[i].spd.y*random(4,6))/12;
+                        particles[i].spd.x *= .8f;
+
+                        if (new_particle) {
+                            VECTOR3 spd = particles[i].spd;
+                            particles[i].spd.y *= .7f;
+                            spd.y *= .75f;
+                            particles[i].spd.x = random(-300,-50);
+                            spd.x = random(50,300);
+                            particles[add_particle(particles[i].pos, spd)].age = particles[i].age;
+                        }
+
+                    }
+                    //fade quickly if resting on the ground
+                    if (abs(particles[i].spd.y) < 10 && particles[i].pos.y < 256) {
+                        particles[i].age = (particles[i].age*7)/10;
+                    }
+                }
+            }
+
         }
 
         //reset the grid
-        for (int y = 0; y < MATRIX_HEIGHT; y++) {
-            for (int x = 0; x < MATRIX_WIDTH; x++) {
+        for (uint8_t y = 0; y < MATRIX_HEIGHT; y++) {
+            for (uint8_t x = 0; x < MATRIX_WIDTH; x++) {
                 grid[y][x].dist = UINT32_MAX;
                 grid[y][x].t = -1;
-                grid[y][x].cnt = 0;
+                grid[y][x].corner = false;
+                // if (grid[y][x].edge) {
+                //     leds[XY(x,y)] = CRGB::White;
+                // }
             }
         }
 
 
        
+    }
+
+    CRGB get_shade(uint16_t x, uint16_t y) {
+
+        CRGB rgb = things[grid[y][x].t].rgb;
+        int32_t max_dist = (things[grid[y][x].t].max_distance)/200;
+        int32_t c = 0;
+        if (max_dist != 0) {
+            c = grid[y][x].dist/max_dist;
+        }
+        c = _min(_max(255-c,32),255);
+        rgb.r = (rgb.r*c)/255;
+        rgb.g = (rgb.g*c)/255;
+        rgb.b = (rgb.b*c)/255;
+        return rgb;
+        
     }
 
 };   
