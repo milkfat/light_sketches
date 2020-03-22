@@ -2,7 +2,7 @@
 #define LIGHTS_UNTITLED_H
 
 #define NUMBER_OF_CELLS 100
-#define QUEUE_SIZE 4000
+#define QUEUE_SIZE 1000
 
 #define BORDER_BUFFER 48
 #define LIGHTNING_ENABLE 1
@@ -13,19 +13,18 @@ class UNTITLED: public LIGHT_SKETCH {
     #define NUMBER_OF_THINGS (NUMBER_OF_CELLS)
 
     struct thing {
-        VECTOR3 pos;
-        VECTOR3 pos2;
-        VECTOR3 spd;
+        VECTOR2 pos; //the absolute position on the screen, calculated from virtual position
+        VECTOR2 pos2; //the virtual position, this is the variable to be adjusted by spd
+        VECTOR2_8s spd;
         CRGB rgb;
         uint32_t max_distance;
         uint32_t new_max_distance;
-        int16_t old_diff; //difference between 
-        uint16_t grow_count; //count the number of consecutive frames that our diff is growing
+        bool on_screen = false;
     };
 
     struct particle {
-        VECTOR3 pos;
-        VECTOR3 spd;
+        VECTOR2 pos;
+        VECTOR2 spd;
         uint8_t age=0;
     };
 
@@ -34,7 +33,7 @@ class UNTITLED: public LIGHT_SKETCH {
     uint8_t current_particle;
     uint8_t lightning_var = 0;
 
-    uint16_t add_particle(VECTOR3 pos, VECTOR3 spd) {
+    uint16_t add_particle(VECTOR2 pos, VECTOR2 spd) {
         uint16_t cp = current_particle;
         particles[cp].pos = pos;
         particles[cp].spd = spd;
@@ -52,8 +51,10 @@ class UNTITLED: public LIGHT_SKETCH {
     int16_t queue_read = 0;
     int16_t queue_write = 0;
 
-    struct PIXEL_DATA {
-        uint32_t dist = UINT32_MAX; //distance of t from this pixel
+    class PIXEL_DATA {
+        uint16_t dist = UINT16_MAX; //distance of t from this pixel
+
+      public:
         int8_t t:8; //which thing has the shortest distance
         uint8_t age:8;
         uint8_t edge_value:8;
@@ -61,6 +62,14 @@ class UNTITLED: public LIGHT_SKETCH {
         uint8_t edge_cnt:3;
         bool corner:1;
         bool edge:1;
+
+        inline void set_dist(uint32_t d) {
+            dist = d>>6;
+        }
+
+        inline uint32_t get_dist() {
+            return dist<<6;
+        }
     };
 
     PIXEL_DATA grid[MATRIX_HEIGHT][MATRIX_WIDTH];
@@ -107,7 +116,12 @@ class UNTITLED: public LIGHT_SKETCH {
 
         //update our things
         for (uint8_t i = 0; i < NUMBER_OF_CELLS; i++) {
-            things[i].max_distance = (things[i].max_distance*2+things[i].new_max_distance)/3;
+            if (things[i].on_screen) {
+                things[i].max_distance = (things[i].max_distance*2+things[i].new_max_distance)/3;
+            } else {
+                things[i].max_distance = UINT32_MAX;
+            }
+            things[i].on_screen = false;
             things[i].new_max_distance = 0;
             things[i].pos2.x += things[i].spd.x;
             if (things[i].pos2.x < -BORDER_BUFFER*256) {
@@ -176,10 +190,10 @@ class UNTITLED: public LIGHT_SKETCH {
                         uint32_t c = a*a + b*b;
                         //the closest thing is assigned to each pixel
                         //if two things are the exact same distance from a pixel, then we pick the first one (from the thing array) 
-                        if (c < grid[y3][x3].dist || (c == grid[y3][x3].dist && i > grid[y3][x3].t)) {
+                        if (c < grid[y3][x3].get_dist() || (c == grid[y3][x3].get_dist() && i > grid[y3][x3].t)) {
                             //record thing and distance
                             grid[y3][x3].t = i;
-                            grid[y3][x3].dist = c;
+                            grid[y3][x3].set_dist(c);
                             //add this pixel to our queue for reprocessing
                             queue[queue_write][0] = x3;
                             queue[queue_write][1] = y3;
@@ -228,16 +242,16 @@ class UNTITLED: public LIGHT_SKETCH {
                     uint32_t b = _min(abs(things[this_t].pos.y - y2*256),UINT16_MAX*2)/8;
                     uint32_t c = a*a + b*b;
                     //are we closer?
-                    if (c < grid[y2][x2].dist) {
+                    if (c < grid[y2][x2].get_dist()) {
                         //record information to the grid
                         grid[y2][x2].t = this_t;
-                        grid[y2][x2].dist = c;
+                        grid[y2][x2].set_dist(c);
                         //add this pixel to the queue to be processed
                         queue[queue_write][0] = x2;
                         queue[queue_write][1] = y2;
                         queue_write++;
                         queue_write%=QUEUE_SIZE;
-                        grid[y2][x2].dist = c;
+                        grid[y2][x2].set_dist(c);
                         leds[XY(x2,y2)] = things[this_t].rgb;
                     } else {
                         grid[y][x].edge = 1;
@@ -261,6 +275,7 @@ class UNTITLED: public LIGHT_SKETCH {
                 //shading
                 CRGB rgb = gamma8_encode(get_shade(x,y));
                 leds[XY(x,y)] = rgb;
+                things[grid[y][x].t].on_screen = true;
 
                 if (!grid[y][x].edge) {continue;}
                 //array of adjacent pixel coordinates
@@ -580,7 +595,7 @@ class UNTITLED: public LIGHT_SKETCH {
                                 grid[y][x].edge_distance = grid[y2][x2].edge_distance+1;
                                 grid[y][x].edge_cnt = grid[y2][x2].edge_cnt;
                                 if(grid[y][x].corner) {
-                                    add_particle(VECTOR3(x*256,y*256,0), VECTOR3(random(-500,500), random(-250,250), 0));
+                                    add_particle(VECTOR2(x*256,y*256), VECTOR2(random(-500,500), random(-250,250)));
                                 }
                             }
                             if (grid[y2][x2].age == 0 && grid[y][x].age > 150 && grid[y][x].edge_cnt > grid[y2][x2].edge_cnt  && grid[y][x].edge_distance < LIGHTNING_SPEED) {
@@ -588,7 +603,7 @@ class UNTITLED: public LIGHT_SKETCH {
                                 grid[y2][x2].edge_distance = grid[y][x].edge_distance+1;
                                 grid[y2][x2].edge_cnt = grid[y][x].edge_cnt;
                                 if(grid[y2][x2].corner) {
-                                    add_particle(VECTOR3(x2*256,y2*256,0), VECTOR3(random(-500,500), random(-250,250), 0));
+                                    add_particle(VECTOR2(x2*256,y2*256), VECTOR2(random(-500,500), random(-250,250)));
                                 }
                             }
                         }
@@ -622,7 +637,7 @@ class UNTITLED: public LIGHT_SKETCH {
                                 grid[y][x].edge_distance = grid[y2][x2].edge_distance+1;
                                 grid[y][x].edge_cnt = grid[y2][x2].edge_cnt;
                                 if(grid[y][x].corner) {
-                                    add_particle(VECTOR3(x*256,y*256,0), VECTOR3(random(-500,500), random(-250,250), 0));
+                                    add_particle(VECTOR2(x*256,y*256), VECTOR2(random(-500,500), random(-250,250)));
                                 }
                             }
                             if (grid[y2][x2].age == 0 && grid[y][x].age > 150 && grid[y][x].edge_cnt > grid[y2][x2].edge_cnt  && grid[y][x].edge_distance < LIGHTNING_SPEED) {
@@ -630,7 +645,7 @@ class UNTITLED: public LIGHT_SKETCH {
                                 grid[y2][x2].edge_distance = grid[y][x].edge_distance+1;
                                 grid[y2][x2].edge_cnt = grid[y][x].edge_cnt;
                                 if(grid[y2][x2].corner) {
-                                    add_particle(VECTOR3(x2*256,y2*256,0), VECTOR3(random(-500,500), random(-250,250), 0));
+                                    add_particle(VECTOR2(x2*256,y2*256), VECTOR2(random(-500,500), random(-250,250)));
                                 }
                             }
                         }
@@ -650,7 +665,7 @@ class UNTITLED: public LIGHT_SKETCH {
                     if (particles[i].age < 64) {
                         b = particles[i].age*2;
                     }
-                    VECTOR3 spd = particles[i].spd;
+                    VECTOR2 spd = particles[i].spd;
                     spd /= 3;
                     particles[i].pos += spd;
                     blendXY(led_screen, particles[i].pos, CRGB(b,b,b));
@@ -670,7 +685,7 @@ class UNTITLED: public LIGHT_SKETCH {
                         particles[i].spd.x *= .8f;
 
                         if (new_particle) {
-                            VECTOR3 spd = particles[i].spd;
+                            VECTOR2 spd = particles[i].spd;
                             particles[i].spd.y *= .7f;
                             spd.y *= .75f;
                             particles[i].spd.x = random(-300,-50);
@@ -691,7 +706,7 @@ class UNTITLED: public LIGHT_SKETCH {
         //reset the grid
         for (uint8_t y = 0; y < MATRIX_HEIGHT; y++) {
             for (uint8_t x = 0; x < MATRIX_WIDTH; x++) {
-                grid[y][x].dist = UINT32_MAX;
+                grid[y][x].set_dist(UINT32_MAX);
                 grid[y][x].t = -1;
                 grid[y][x].corner = false;
                 // if (grid[y][x].edge) {
@@ -710,7 +725,7 @@ class UNTITLED: public LIGHT_SKETCH {
         int32_t max_dist = (things[grid[y][x].t].max_distance)/200;
         int32_t c = 0;
         if (max_dist != 0) {
-            c = grid[y][x].dist/max_dist;
+            c = grid[y][x].get_dist()/max_dist;
         }
         c = _min(_max(255-c,32),255);
         rgb.r = (rgb.r*c)/255;

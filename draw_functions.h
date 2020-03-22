@@ -3,6 +3,7 @@
 
 #include "led_screen.h"
 #include "vector3.h"
+#include "vector2.h"
 #include "scale.h"
 #include "gamma.h"
 #include "math_helpers.h"
@@ -178,6 +179,10 @@ static inline __attribute__ ((always_inline)) void blendXY(PERSPECTIVE& screen_o
 
 
 static inline __attribute__ ((always_inline)) void blendXY(PERSPECTIVE& screen_object, const VECTOR3& point, CRGB rgb) {
+  blendXY(screen_object, point.x, point.y, rgb);
+}
+
+static inline __attribute__ ((always_inline)) void blendXY(PERSPECTIVE& screen_object, const VECTOR2& point, CRGB rgb) {
   blendXY(screen_object, point.x, point.y, rgb);
 }
 
