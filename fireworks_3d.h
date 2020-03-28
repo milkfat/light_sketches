@@ -82,16 +82,16 @@ class FIREWORKS_3D: public LIGHT_SKETCH {
 
   private:
 
-  #define NUM_PARTICLES 2000
-  PARTICLE particles[NUM_PARTICLES];
+  #define NUM_FIREWORK_PARTICLES 2000
+  PARTICLE particles[NUM_FIREWORK_PARTICLES];
   
   PARTICLE * current_particle() {
     static uint16_t cp = 0;
     uint16_t cnt = 0;
     PARTICLE * cpo = nullptr;
-    while (cnt < NUM_PARTICLES) {
+    while (cnt < NUM_FIREWORK_PARTICLES) {
       cp++;
-      if (cp > NUM_PARTICLES-1) {
+      if (cp > NUM_FIREWORK_PARTICLES-1) {
         cp = 0;
       }
       if (!particles[cp].function) {
@@ -131,7 +131,7 @@ class FIREWORKS_3D: public LIGHT_SKETCH {
   public:
     void next_effect() {
      
-        for (int i = 0; i < NUM_PARTICLES; i++) {
+        for (int i = 0; i < NUM_FIREWORK_PARTICLES; i++) {
           particles[i].function = NULL_PARTICLE;
         }
 
@@ -509,7 +509,7 @@ class FIREWORKS_3D: public LIGHT_SKETCH {
     //here we call the handling function for this particle
     void handle_particles() {
       int active_particles = 0;
-      for (int i = 0; i < NUM_PARTICLES; i++) {
+      for (int i = 0; i < NUM_FIREWORK_PARTICLES; i++) {
         if (particles[i].function) {
           active_particles++;
           (this->*particle_physics_functions[particles[i].function])(particles[i]);
@@ -529,7 +529,7 @@ class FIREWORKS_3D: public LIGHT_SKETCH {
       LED_black();
 
       //draw the particles
-      for (int i = 0; i < NUM_PARTICLES; i++) {
+      for (int i = 0; i < NUM_FIREWORK_PARTICLES; i++) {
         if (particles[i].function && particles[i].age >= 0) {
           (this->*particle_draw_functions[particles[i].function])(i);
         }
@@ -539,8 +539,8 @@ class FIREWORKS_3D: public LIGHT_SKETCH {
 
 
     void setup() {
-      //particles = (PARTICLE*) malloc (NUM_PARTICLES * sizeof(PARTICLE));
-      for (int i = 0; i < NUM_PARTICLES; i++) {
+      //particles = (PARTICLE*) malloc (NUM_FIREWORK_PARTICLES * sizeof(PARTICLE));
+      for (int i = 0; i < NUM_FIREWORK_PARTICLES; i++) {
         particles[i].x = random(-30 * 256L, 30 * 256L);
         particles[i].y = -127*256;
         particles[i].z = random(-148 * 256L, 148 * 256L);

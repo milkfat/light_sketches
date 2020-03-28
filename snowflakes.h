@@ -28,6 +28,7 @@ class SNOWFLAKES: public LIGHT_SKETCH {
         int32_t rx = 0;
         int32_t ry = 0;
         int32_t rz = 0;
+        VECTOR3 norm;
         int32_t flag = 0;
         uint8_t on_screen;
     };
@@ -212,7 +213,10 @@ class SNOWFLAKES: public LIGHT_SKETCH {
             if (current_effect % 2) {
                 rgb = CHSV(0,0,v);
             }
-
+            int b = 64+(abs(flake->norm.z)*3)/4;
+            rgb.r = (b*rgb.r)/255;
+            rgb.g = (b*rgb.g)/255;
+            rgb.b = (b*rgb.b)/255;
             if (current_effect/2 % 2) {
                 draw_simple_flake(flake, rgb);
             } else {
@@ -264,6 +268,7 @@ class SNOWFLAKES: public LIGHT_SKETCH {
         rotate_y(normal, flake->ry/256);
         rotate_z(normal, flake->rz/256);
         led_screen.matrix.rotate(normal);
+        flake->norm = normal;
 
         //figure out the magnitude of our x and z components (horizontal motion)
         //multiply by inverse y

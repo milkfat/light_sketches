@@ -33,6 +33,7 @@ class FIRE2: public LIGHT_SKETCH {
     uint8_t buffer_mod = 0;
     uint8_t smoke_divisor = 1;
 
+    bool flame_button = false;
     bool flame_on = false;
 
     struct pixel {
@@ -215,6 +216,7 @@ class FIRE2: public LIGHT_SKETCH {
       //   xorder[i] = i;
       // }
       //order = reinterpret_cast<uint16_t*>(height_map[0]);
+      control_variables.add(flame_button,"Fire!", 1);
       for (int i = 0; i < FIRE_GRID_WIDTH*FIRE_GRID_HEIGHT; i++) {
         order[i] = i;
       }
@@ -613,7 +615,7 @@ class FIRE2: public LIGHT_SKETCH {
         
 
         static FLAMETHROWER_CYCLE * current_flame = get_current_flame();
-        if (button2_down && !flame_on) {
+        if ((button2_down || flame_button) && !flame_on) {
           flame_on = true;
           current_flame->fuel_on = true;
           current_flame->active = true;
@@ -628,7 +630,7 @@ class FIRE2: public LIGHT_SKETCH {
           }
         }
 
-        if (!button2_down && flame_on) {
+        if (!(button2_down || flame_button) && flame_on) {
           flame_on = false;
           current_flame->fuel_on = false;
           current_flame = get_current_flame();

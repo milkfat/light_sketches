@@ -43,6 +43,7 @@ class LIGHT_SKETCH {
 #include "draw_height_map.h"
 #include "cube.h"
 
+void ws_send_sketch_controls() {};
 
 //this is an abstract object for storing registered light sketches
 class REGISTER_BASE {
@@ -299,6 +300,7 @@ class LIGHT_SKETCHES {
       next_light_sketch %= number_of_light_sketches;
       current_light_sketch=next_light_sketch;
       light_sketches[current_light_sketch]->create();
+      ws_send_sketch_controls();
     }
 
     void loop() {
@@ -418,19 +420,22 @@ LIGHT_SKETCHES light_sketches;
 // #include "balls_squishy.h"
  #include "balls2d.h"
 //  #include "cinco_de_mayo.h"
-//  #include "curvy.h"
+  #include "curvy.h"
 //  #include "fire.h"
+#include "fireworks_3d.h"
 //  #include "growcircle.h"
-  #include "mattclock.h"
+#include "the_matrix.h"
+//  #include "mattclock.h"
 //  #include "metaballs.h"
 // #include "orbit.h"
 // #include "neon.h"
+#include "particles.h"
 // #include "plasma_globe.h"
 // #include "shapes.h"
 // #include "simplex.h"
  #include "snowflakes.h"
 //  #include "test2d.h"
- #include "test3d.h"
+// #include "test3d.h"
 // //#include "tree_sim.h"
 // #include "phosphene.h"
 #include "untitled.h"

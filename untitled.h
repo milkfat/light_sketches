@@ -5,12 +5,13 @@
 #define QUEUE_SIZE 1000
 
 #define BORDER_BUFFER 48
-#define LIGHTNING_ENABLE 1
 #define LIGHTNING_SPEED 4
 
 class UNTITLED: public LIGHT_SKETCH {
 
     #define NUMBER_OF_THINGS (NUMBER_OF_CELLS)
+
+    int16_t height_map[HEIGHTMAP_HEIGHT][HEIGHTMAP_WIDTH];
 
     struct thing {
         VECTOR2 pos; //the absolute position on the screen, calculated from virtual position
@@ -31,7 +32,12 @@ class UNTITLED: public LIGHT_SKETCH {
     #define NUM_SPARKS 255
     particle particles[NUM_SPARKS];
     uint8_t current_particle;
-    uint8_t lightning_var = 0;
+    bool lightning_var = 1; //1 = timer based lightning
+    uint8_t lightning_cnt = 0; //how many lightning bolts have spawned
+    uint8_t lightning_continue = 0; //the number frames to continue processing lightning
+    bool button_status = 0;
+    bool button_down = 0;
+    bool do_lightning = 0;
 
     uint16_t add_particle(VECTOR2 pos, VECTOR2 spd) {
         uint16_t cp = current_particle;
@@ -51,10 +57,9 @@ class UNTITLED: public LIGHT_SKETCH {
     int16_t queue_read = 0;
     int16_t queue_write = 0;
 
-    class PIXEL_DATA {
-        uint16_t dist = UINT16_MAX; //distance of t from this pixel
+    struct PIXEL_DATA {
 
-      public:
+        uint16_t dist = UINT16_MAX; //distance of t from this pixel
         int8_t t:8; //which thing has the shortest distance
         uint8_t age:8;
         uint8_t edge_value:8;
@@ -77,7 +82,8 @@ class UNTITLED: public LIGHT_SKETCH {
   public:
     UNTITLED () {
         setup();
-        control_variables.add(lightning_var,"Lightning",0,255);
+        control_variables.add(lightning_var,"Lightning");
+        control_variables.add(button_status,"Thor!", 1);
     }
     ~UNTITLED () {}
 
@@ -87,6 +93,7 @@ class UNTITLED: public LIGHT_SKETCH {
         setup();
     }
     void setup() {
+        height_map_ptr = &height_map;
         for (int y = 0; y < MATRIX_HEIGHT; y++) {  
             for (int x = 0; x < MATRIX_WIDTH; x++) {
                 grid[y][x].t = -1;
@@ -111,6 +118,14 @@ class UNTITLED: public LIGHT_SKETCH {
     
 
     void loop() {
+        if (button_status && !button_down) {
+            button_down = 1;
+            do_lightning = 1;
+        }
+        if (!button_status && button_down) {
+            button_down = 0;
+        }
+
         LED_show();
         LED_black();
 
@@ -314,24 +329,28 @@ class UNTITLED: public LIGHT_SKETCH {
                         }
                         grid[y][x].edge_distance = 1;
 
+                        static uint32_t lightning_led = random(NUM_LEDS);
                         if(lightning_var) {
-                            //spawn lightning
+                            //spawn lightning on a timed basis
                             static uint32_t lightning_time = 0;
-                            static uint32_t lightning_led = random(NUM_LEDS);
-                            static uint8_t lightning_cnt = 0;
-                            //reset the counter for each pixel if our lightning count overflows
-                            if (lightning_cnt == 0) {
-                                grid[y][x].edge_cnt = 0;
-                            }
-                            if (LIGHTNING_ENABLE && millis() > lightning_time && XY(x,y) > lightning_led) {
-                                grid[y][x].age=255;
-                                lightning_cnt++;
-                                lightning_cnt %= 8;
-                                grid[y][x].edge_cnt=lightning_cnt;
+                            if (millis() > lightning_time && XY(x,y) > lightning_led) {
+                                spawn_lightning(x,y);
                                 lightning_time = millis() + random(10000);
                                 lightning_led = random(NUM_LEDS);
                             }
                         }
+
+                        if(do_lightning) {
+                            //spawn lightning on demand
+                            if (XY(x,y) > lightning_led) {
+                                spawn_lightning(x,y);
+                                do_lightning = 0;
+                                lightning_led = random(NUM_LEDS);
+                            }
+                        }
+
+
+
                         //calculate the midpoint between the two things
                         int x_diff = things[grid[y2][x2].t].pos.x-things[grid[y][x].t].pos.x;
                         int y_diff = things[grid[y2][x2].t].pos.y-things[grid[y][x].t].pos.y;
@@ -545,7 +564,7 @@ class UNTITLED: public LIGHT_SKETCH {
                         CRGB rgb_old = gamma8_decode(leds[XY(x,y)]);
                         leds[XY(x,y)] = gamma8_encode(nblend(rgb_old, rgb_new, 255/cnt));
 
-                        if (lightning_var) {
+                        if (lightning_continue) {
                             //figure out some lightning shading stuff
                             grid[y][x].edge_value = _min(_max(abs((127-b))*2, 0), 255);
                             grid[y][x].edge_value = 255-grid[y][x].edge_value;
@@ -559,11 +578,11 @@ class UNTITLED: public LIGHT_SKETCH {
             }
         }
 
-        if (lightning_var) {
+        if (lightning_continue) {
+            lightning_continue--;
             //calculate lightning in the forward direction
             for (uint8_t y = 0; y < MATRIX_HEIGHT; y++) {
                 for (uint8_t x = 0; x < MATRIX_WIDTH; x++) {
-                    leds[XY(x,y)] /= 2;
 
                     //lightning
                     if(grid[y][x].age) {
@@ -572,6 +591,7 @@ class UNTITLED: public LIGHT_SKETCH {
                         leds[XY(x,y)].g = qadd8(leds[XY(x,y)].g,amount);
                         leds[XY(x,y)].b = qadd8(leds[XY(x,y)].b,amount);
                         grid[y][x].age = (grid[y][x].age*6)/7;
+                        lightning_continue = 2;
                     }
 
                     if (!grid[y][x].edge) {continue;}
@@ -654,53 +674,65 @@ class UNTITLED: public LIGHT_SKETCH {
                 }
             }
 
-            //handle particles
-            for (uint8_t i = 0; i < NUM_SPARKS; i++) {
-                if (particles[i].age) {
-                    if (particles[i].pos.x < -10*256 || particles[i].pos.x > MATRIX_WIDTH*256+10*256) {
-                        particles[i].age = 0;
-                        continue;
-                    }
-                    uint8_t b = 128;
-                    if (particles[i].age < 64) {
-                        b = particles[i].age*2;
-                    }
-                    VECTOR2 spd = particles[i].spd;
-                    spd /= 3;
-                    particles[i].pos += spd;
-                    blendXY(led_screen, particles[i].pos, CRGB(b,b,b));
-                    particles[i].pos += spd;
-                    blendXY(led_screen, particles[i].pos, CRGB(b,b,b));
-                    particles[i].pos += spd;
-                    blendXY(led_screen, particles[i].pos, CRGB(b,b,b));
-                    particles[i].age--;
-                    particles[i].spd.y -= 20;
-                    //hit the ground
-                    if(particles[i].pos.y < 0 && particles[i].spd.y < 0) {
-                        int new_particle = 0;
-                        if (particles[i].spd.y < -512 ) {
-                            new_particle = 1;
-                        }
-                        particles[i].spd.y = (-particles[i].spd.y*random(4,6))/12;
-                        particles[i].spd.x *= .8f;
+        }
 
-                        if (new_particle) {
-                            VECTOR2 spd = particles[i].spd;
-                            particles[i].spd.y *= .7f;
-                            spd.y *= .75f;
-                            particles[i].spd.x = random(-300,-50);
-                            spd.x = random(50,300);
-                            particles[add_particle(particles[i].pos, spd)].age = particles[i].age;
-                        }
+        for (uint8_t y = 0; y < MATRIX_HEIGHT; y++) {
+            for (uint8_t x = 0; x < MATRIX_WIDTH; x++) {
+                height_map[y][x] = grid[y][x].dist*3;
+            }
+        }
 
+        LED_black();
+        //move heightmap to LEDs
+        height_map_to_LED(-128*256, 100, 100, -30, -20);
+
+        //handle particles
+        for (uint8_t i = 0; i < NUM_SPARKS; i++) {
+            if (particles[i].age) {
+                if (particles[i].pos.x < -10*256 || particles[i].pos.x > MATRIX_WIDTH*256+10*256) {
+                    particles[i].age = 0;
+                    continue;
+                }
+                uint8_t b = 128;
+                if (particles[i].age < 64) {
+                    b = particles[i].age*2;
+                }
+                VECTOR2 spd = particles[i].spd;
+                spd /= 3;
+                particles[i].pos += spd;
+                blendXY(led_screen, particles[i].pos, CRGB(b,b,b));
+                particles[i].pos += spd;
+                blendXY(led_screen, particles[i].pos, CRGB(b,b,b));
+                particles[i].pos += spd;
+                blendXY(led_screen, particles[i].pos, CRGB(b,b,b));
+                particles[i].age--;
+                particles[i].spd.y -= 20;
+                //hit the ground
+                if(particles[i].pos.y < 0 && particles[i].spd.y < 0) {
+                    int new_particle = 0;
+                    if (particles[i].spd.y < -512 ) {
+                        new_particle = abs(particles[i].spd.y);
                     }
-                    //fade quickly if resting on the ground
-                    if (abs(particles[i].spd.y) < 10 && particles[i].pos.y < 256) {
-                        particles[i].age = (particles[i].age*7)/10;
+                    particles[i].spd.y = (-particles[i].spd.y*random(4,6))/12;
+                    particles[i].spd.x *= .8f;
+
+                    if (new_particle) {
+                        VECTOR2 spd = particles[i].spd;
+                        //particles[i].spd.y *= .7f;
+                        //spd.y *= .75f;
+                        particles[i].spd.y -= random(particles[i].spd.y/4);
+                        spd.y -= random(spd.y/4);
+                        particles[i].spd.x = -random(10,new_particle/2);
+                        spd.x = random(10,new_particle/2);
+                        particles[add_particle(particles[i].pos, spd)].age = particles[i].age;
                     }
+
+                }
+                //fade quickly if resting on the ground
+                if (abs(particles[i].spd.y) < 10 && particles[i].pos.y < 256) {
+                    particles[i].age = (particles[i].age*7)/10;
                 }
             }
-
         }
 
         //reset the grid
@@ -733,6 +765,25 @@ class UNTITLED: public LIGHT_SKETCH {
         rgb.b = (rgb.b*c)/255;
         return rgb;
         
+    }
+
+    void spawn_lightning(uint16_t x, uint16_t y) {
+        grid[y][x].age=255;
+        if (lightning_cnt < 7) {
+            lightning_cnt++;
+        } else {
+            lightning_cnt = 0;
+        }
+        if (lightning_cnt == 0) {
+            for (int y2 = 0; y2 < MATRIX_HEIGHT; y2++) {
+                for (int x2 = 0; x2 < MATRIX_WIDTH; x2++) {
+                    grid[y2][x2].edge_cnt = 0;
+                }
+            }
+            lightning_cnt = 1;
+        }
+        grid[y][x].edge_cnt=lightning_cnt;
+        lightning_continue = 20;
     }
 
 };   

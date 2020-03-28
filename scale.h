@@ -16,28 +16,28 @@ static inline __attribute__ ((always_inline)) void scale_update() {
 }
 
 static inline __attribute__ ((always_inline)) void scale_z(int32_t& z) {
-    z += z_scaler;
+    //z += z_scaler;
 }
 
 static inline __attribute__ ((always_inline)) void scale_z(int32_t p[3]) {
-    scale_z(p[2]);
+    //scale_z(p[2]);
 }
 
 static inline __attribute__ ((always_inline)) void scale_z(VECTOR3& p) {
-    scale_z(p.z);
+    //scale_z(p.z);
 }
 
 
 static inline __attribute__ ((always_inline)) void reverse_scale_z(int32_t& z) {
-    z -= z_scaler;
+    //z -= z_scaler;
 }
 
 static inline __attribute__ ((always_inline)) void reverse_scale_z(int32_t p[3]) {
-    reverse_scale_z(p[2]);
+    //reverse_scale_z(p[2]);
 }
 
 static inline __attribute__ ((always_inline)) void reverse_scale_z(VECTOR3& p) {
-    reverse_scale_z(p.z);
+    //reverse_scale_z(p.z);
 }
 
 #endif

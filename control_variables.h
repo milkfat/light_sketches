@@ -7,13 +7,18 @@ class CONTROL_VARIABLES {
     int number_of_variables = 0;
 
     struct CONTROL_VARIABLE {
-        uint8_t* ui8_t;
-        uint16_t* ui16_t;
-        uint32_t* ui32_t;
-        int8_t* i8_t;
-        int16_t* i16_t;
-        int32_t* i32_t;
-        CRGB* rgb;
+
+        union {
+            uint8_t* ui8_t;
+            uint16_t* ui16_t;
+            uint32_t* ui32_t;
+            int8_t* i8_t;
+            int16_t* i16_t;
+            int32_t* i32_t;
+            CRGB* rgb;
+            bool* boo;
+        };
+
         int32_t range_min=0;
         int32_t range_max=0;
         const char * name;
@@ -68,6 +73,7 @@ class CONTROL_VARIABLES {
         chr = cv[pos].name;
         return 1;
     }
+
     int read(int& pos, CRGB& var, const char * & chr) {
         if (!(pos >= 0 && pos < number_of_variables)) {
             return 0;
@@ -76,6 +82,25 @@ class CONTROL_VARIABLES {
         switch (cv[pos].type) {
             case 7:
                 var = *cv[pos].rgb;
+                break;
+            default:
+                return 0;
+        }
+        chr = cv[pos].name;
+        return 1;
+    }
+
+    int read(int& pos, bool& var, const char * & chr) {
+        if (!(pos >= 0 && pos < number_of_variables)) {
+            return 0;
+        }
+
+        switch (cv[pos].type) {
+            case 8:
+                var = *cv[pos].boo;
+                break;
+            case 9:
+                var = *cv[pos].boo;
                 break;
             default:
                 return 0;
@@ -131,12 +156,42 @@ class CONTROL_VARIABLES {
         return -2;
     }
 
+    int get(int pos, bool& b) {
+        if (!(pos >= 0 && pos < number_of_variables)) {
+            return pos;
+            return -1;
+        }
+
+        switch (cv[pos].type) {
+            case 8:
+                b = *cv[pos].boo;
+                break;
+            case 9:
+                b = *cv[pos].boo;
+                break;
+            default:
+                return 1;
+        }
+        return -2;
+    }
+
     int add(CRGB& rgb, const char * name) {
         if(number_of_variables > MAX_NUMBER_OF_CONTROL_VARIABLES-1) {
             return 0;
         }
         cv[number_of_variables].rgb = &rgb;
         cv[number_of_variables].type = 7;
+        cv[number_of_variables].name = name;
+        number_of_variables++;
+        return 1;
+    };
+
+    int add(bool& b, const char * name, bool momentary = 0) {
+        if(number_of_variables > MAX_NUMBER_OF_CONTROL_VARIABLES-1) {
+            return 0;
+        }
+        cv[number_of_variables].boo = &b;
+        cv[number_of_variables].type = (momentary) ? 9: 8;
         cv[number_of_variables].name = name;
         number_of_variables++;
         return 1;
@@ -217,7 +272,7 @@ class CONTROL_VARIABLES {
     void clear() {
         number_of_variables = 0;
     }
-    int set(int pos, int val) {
+    int set(int& pos, int& val) {
         if(!(pos >= 0 && pos < number_of_variables)) {
             return 0;
         }
@@ -245,13 +300,30 @@ class CONTROL_VARIABLES {
         }
         return 1;
     }
-    int set(int pos, CRGB rgb) {
+    int set(int& pos, CRGB& rgb) {
         if(!(pos >= 0 && pos < number_of_variables)) {
             return 0;
         }
         switch (cv[pos].type) {
             case 7:
                 *cv[pos].rgb = rgb;
+                break;
+            default:
+                return 0;
+        }
+        return 1;
+    }
+
+    int set(int& pos, bool& b) {
+        if(!(pos >= 0 && pos < number_of_variables)) {
+            return 0;
+        }
+        switch (cv[pos].type) {
+            case 8:
+                *cv[pos].boo = b;
+                break;
+            case 9:
+                *cv[pos].boo = b;
                 break;
             default:
                 return 0;

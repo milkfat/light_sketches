@@ -487,4 +487,52 @@ void handle_text() {
   old_display_text=display_text;
 } //handle_text()
 
+
+uint8_t draw_character(uint8_t font, uint8_t chr, int32_t chr_x, int32_t chr_y, CRGB rgb = CRGB(255,0,0), uint16_t scale = 255, const bool& subtractive = 0) {
+  //ADAFRUIT FONTS
+    
+        uint16_t letter = chr; //letter position, minus 20 for non-used characters
+        letter -= 32;
+        uint16_t letter_location = font_glyphs[font-1][letter][0]; ///< Pointer into GFXfont->bitmap
+        uint8_t letter_width = font_glyphs[font-1][letter][1];    ///< Bitmap dimensions in pixels
+        uint8_t letter_height = font_glyphs[font-1][letter][2];   ///< Bitmap dimensions in pixels
+        uint8_t letter_xAdvance = font_glyphs[font-1][letter][3]; ///< Distance to advance cursor (x axis)
+        int8_t letter_xOffset = font_glyphs[font-1][letter][4];  ///< X dist from cursor pos to UL corner
+        int8_t letter_yOffset = font_glyphs[font-1][letter][5];  ///< Y dist from cursor pos to UL corner
+        int8_t center_offset = (MATRIX_WIDTH-letter_width)/2;
+        for (int y = 0; y < letter_height; y++) {
+            for (int x = 0;x < letter_width; x++) {
+              uint8_t pixel_bit = bitRead(font_bitmaps[font-1][letter_location+(y*letter_width+x)/8],7-(y*letter_width+x)%8);
+              if (pixel_bit) {
+                long u = x*(scale+1);
+                long v = (letter_height-y)*(scale+1);
+                u += chr_x;
+                v += chr_y;
+                blendXY(led_screen, u, v, rgb, subtractive );
+                //drawXY_fine(led_screen, u, v, 0, 0, 255 );
+                
+                
+              }
+            }
+        }
+        return letter_xAdvance;
+}
+
+void draw_characters(uint8_t font, const char * chr, int32_t chr_x, int32_t chr_y, const CRGB& rgb = CRGB(255,0,0)) {
+  int x_offset = 0;
+  int pos = 0;
+  while (true) {
+    if (chr[pos] == '\0') {
+      break;
+    }
+    x_offset += draw_character(font, chr[pos], chr_x+x_offset, chr_y, rgb);
+    pos++;
+  }
+}
+
+
+void draw_characters(uint8_t font, std::string chr, int32_t chr_x, int32_t chr_y, const CRGB& rgb = CRGB(255,0,0)) {
+    draw_characters(font, chr.c_str(), chr_x, chr_y, rgb);
+}
+
 #endif

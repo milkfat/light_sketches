@@ -111,6 +111,22 @@ struct VECTOR3_CLASS {
 
   }
 
+  int32_t inline __attribute__((always_inline))  unit_ip() {
+
+    int32_t length = sqrt16(x*x+y*y+z*z);
+    if (length != 0) {
+      x = (x*255)/length;
+      y = (y*255)/length;
+      z = (z*255)/length;
+    } else {
+      x = 0;
+      y = 0;
+      z = 0;
+    }
+    return length;
+
+  }
+
 };
 
 

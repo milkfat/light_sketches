@@ -4,6 +4,7 @@
 #include "vector3.h"
 #include "matrix.h"
 
+#define MATRIX_PRECISION 4
 
 class PERSPECTIVE {
 
@@ -38,30 +39,25 @@ class PERSPECTIVE {
 
     //take X,Y,Z coordinate
     //modifies X,Y to screen coordinates
-    #define MATRIX_PRECISION 4
 
     inline __attribute__ ((always_inline)) void update() {
 
-            Cz = camera_scaler; //camera Z
-            Sz = screen_scaler; //projection screen Z (between camera and object)
+            Cz = camera_scaler/MATRIX_PRECISION; //camera Z
+            Sz = screen_scaler/MATRIX_PRECISION; //projection screen Z (between camera and object)
             Cz2 = Cz/2;
             Sz2 = Sz/2;
     }
 
     inline __attribute__ ((always_inline)) bool perspective(int32_t& x, int32_t& y, int32_t& z) {
-        if (z < Sz) {
+        z+=z_offset;
+        z/=MATRIX_PRECISION;
+        if (z < Cz) {
             x+=x_offset;
             y+=y_offset;
-            z+=z_offset;
             x/=MATRIX_PRECISION;//half precision to double each axis of our available coordinate space
             y/=MATRIX_PRECISION;
-            z/=MATRIX_PRECISION;
-            int32_t zCz = (z-Cz);
-            if (zCz == 0) {
-                zCz = 1;
-            }
-            x = ( x * ((Sz - Cz)) ) / zCz + ((screen_width * 128)/MATRIX_PRECISION);
-            y = ( y * ((Sz - Cz)) ) / zCz + ((screen_height * 128)/MATRIX_PRECISION);
+            x = ( x * ((Sz - Cz)) ) / (z-Cz) + ((screen_width * 128)/MATRIX_PRECISION);
+            y = ( y * ((Sz - Cz)) ) / (z-Cz) + ((screen_height * 128)/MATRIX_PRECISION);
             x*=MATRIX_PRECISION;
             y*=MATRIX_PRECISION;
             z*=MATRIX_PRECISION;

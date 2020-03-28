@@ -110,8 +110,17 @@ static inline __attribute__ ((always_inline)) uint8_t gamma8_add_linear8(const u
   return gamma16_encode( _min( ( gamma16_decode(gval) + (lval << 8) ), 65535) );
 }
 
+static inline __attribute__ ((always_inline)) uint8_t gamma8_sub_linear8(const uint8_t& gval, const uint8_t& lval) {
+  //add an 8-bit linear value to an 8-bit gamma encoded value  
+  return gamma16_encode( _max( ( gamma16_decode(gval) - (lval << 8) ), 0) );
+}
+
 static inline __attribute__ ((always_inline)) void color_add_linear8(uint8_t& value, const uint8_t& value2) {
   value = gamma8_add_linear8(value, value2);
+}
+
+static inline __attribute__ ((always_inline)) void color_sub_linear8(uint8_t& value, const uint8_t& value2) {
+  value = gamma8_sub_linear8(value, value2);
 }
 
 static inline __attribute__ ((always_inline)) uint8_t gamma8_add_linear16(const uint8_t& gval, const uint16_t& lval) {
@@ -129,9 +138,16 @@ static inline __attribute__ ((always_inline)) void color_add_linear8(CRGB& rgb, 
   color_add_linear8(rgb.b, rgb2.b);
 }
 
+static inline __attribute__ ((always_inline)) void color_sub_linear8(CRGB& rgb, const CRGB& rgb2) {
+  color_sub_linear8(rgb.r, rgb2.r);
+  color_sub_linear8(rgb.g, rgb2.g);
+  color_sub_linear8(rgb.b, rgb2.b);
+}
+
 static inline __attribute__ ((always_inline)) void color_scale(uint8_t& value, const uint8_t& scaler) {
 
-  value = gamma16_encode(((gamma16_decode(value)*scaler)/255));
+  //value = gamma16_encode(((gamma16_decode(value)*scaler)/255));
+  value = (value*scaler)/255;
 
 }
 
@@ -148,6 +164,13 @@ static inline __attribute__ ((always_inline)) void color_add_scaled_linear(CRGB&
   color_add_linear8(rgb.r, (rgb2.r*scaler)/255);
   color_add_linear8(rgb.g, (rgb2.g*scaler)/255);
   color_add_linear8(rgb.b, (rgb2.b*scaler)/255);
+}
+
+
+static inline __attribute__ ((always_inline)) void color_sub_scaled_linear(CRGB& rgb, const CRGB& rgb2, const uint8_t& scaler) {
+  color_sub_linear8(rgb.r, (rgb2.r*scaler)/255);
+  color_sub_linear8(rgb.g, (rgb2.g*scaler)/255);
+  color_sub_linear8(rgb.b, (rgb2.b*scaler)/255);
 }
 
 static inline __attribute__ ((always_inline)) void color_blend_linear(CRGB& rgb1, const CRGB& rgb2, const uint8_t& brightness) {
