@@ -49,13 +49,13 @@ static inline __attribute__ ((always_inline)) void drawXY_blend_gamma(PERSPECTIV
 
 }
 
-static inline __attribute__ ((always_inline)) void drawXY_blend_gamma( PERSPECTIVE& screen_object, const int& x, const int& y, const int& z, const CRGB& rgb_in, const uint8_t& brightness = 255, const bool& ignore_z = true) {
-  
+static inline __attribute__ ((always_inline)) bool drawXY_blend_gamma( PERSPECTIVE& screen_object, const int& x, const int& y, const int& z, CRGB rgb, const uint8_t& brightness = 255, const bool& ignore_z = true) {
+  bool on_screen = false;
   //treat RGB values as gamma 2.2
   //must be decoded, added, then re-encoded
   uint32_t led = XY(x,y);
   if (led >= 0 && led < NUM_LEDS-1) {
-
+    on_screen = true;
     int z_depth = z/16;
     if (z_buffer == nullptr || z_depth >= (*z_buffer)[x][y]) {
 
@@ -64,13 +64,12 @@ static inline __attribute__ ((always_inline)) void drawXY_blend_gamma( PERSPECTI
       }
       
       //uint8_t bri = _clamp8(100 - z/768);
-      uint32_t bri = _max(led_screen.camera_scaler - z,0)/256;
-      bri /= 2;
-      bri = _min(bri,255);
-      bri = (bri*bri)>>8;
-      bri = 255-bri;
+     // std::cout << screen_object.camera_scaler << " " << z << " ";
+      uint32_t bri = _max(screen_object.camera_scaler - z,0)/256;
+      bri = (bri*bri)/512;
+      bri = 255-_min(bri,255);
+      //std::cout << bri << "\n";
       
-      CRGB rgb = rgb_in;
       color_scale(rgb, bri);
       
       drawXY_blend_gamma(screen_object, led, rgb, brightness);
@@ -79,6 +78,7 @@ static inline __attribute__ ((always_inline)) void drawXY_blend_gamma( PERSPECTI
     }
 
   }
+  return on_screen;
 
 }
 
@@ -117,9 +117,9 @@ static inline __attribute__ ((always_inline)) bool drawXYZ(PERSPECTIVE& screen_o
   return on_screen;
 }
 
-static inline __attribute__ ((always_inline)) void drawXYZ2(PERSPECTIVE& screen_object, const int32_t& x, const int32_t& y, const int32_t& z, const CRGB& rgb, const uint8_t& brightness = 255, const bool& ignore_z = true) {
+static inline __attribute__ ((always_inline)) bool drawXYZ2(PERSPECTIVE& screen_object, const int32_t& x, const int32_t& y, const int32_t& z, const CRGB& rgb, const uint8_t& brightness = 255, const bool& ignore_z = true) {
   
-  drawXY_blend_gamma(screen_object, x, y, z, rgb, brightness, ignore_z);
+  return drawXY_blend_gamma(screen_object, x, y, z, rgb, brightness, ignore_z);
 
 }
 

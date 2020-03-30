@@ -359,6 +359,67 @@ static void draw_line_ybuffer(const int32_t& x1i, const int32_t& y1i, const int3
 }
 
 
+static void draw_line_ybuffer_fine(Y_BUF y_buffer2[MATRIX_HEIGHT][2], VECTOR3 a, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 b_rgb) {
+
+  //a.y += 128;
+  //b.y += 128;
+
+/*
+
+  x_start, x_end
+
+  x_end - x_start = x_dist
+  
+  x_travel = x_now - x_start
+
+  y_start + (y_dist * x_travel) / x_dist
+
+*/
+    if (a.y > b.y) {
+        VECTOR3 temp = a;
+        VECTOR3 temp_rgb = a_rgb;
+        a = b;
+        a_rgb = b_rgb;
+        b = temp;
+        b_rgb = temp_rgb;
+    }
+    VECTOR3 dist = b-a;
+    VECTOR3 dist_rgb = b_rgb-a_rgb;
+
+    if (dist.y != 0) {
+      VECTOR3 c;
+      c.y = (a.y+255)/256;
+      c.y*=256;
+      int32_t y_end = b.y/256;
+      y_end*=256;
+      while (c.y <= y_end) {
+        if (c.y >= 0 && c.y < MATRIX_HEIGHT*256) {
+          int32_t y_travel = c.y - a.y;
+          y_travel = _max(_min(y_travel,dist.y),0);
+          c.x = a.x + (dist.x * y_travel) / dist.y;
+          c.z = a.z + (dist.z * y_travel) / dist.y;
+          VECTOR3 c_rgb = a_rgb + (dist_rgb * y_travel) / dist.y;
+          y_buffer_min = _min(c.y/256,y_buffer_min);
+          y_buffer_max = _max(c.y/256,y_buffer_max);
+          if (c.x < y_buffer2[c.y/256][0].position.x) {
+            y_buffer2[c.y/256][0].position = c;
+            y_buffer2[c.y/256][0].ratio = c_rgb;
+          }
+          if (c.x > y_buffer2[c.y/256][1].position.x) {
+            y_buffer2[c.y/256][1].position = c;
+            y_buffer2[c.y/256][1].ratio = c_rgb;
+          }
+        }
+        //drawXY(led_screen,a.x,a.y,0,0,255);
+        c.y+=256;
+        
+
+      }
+    }
+  
+
+
+}
 
 static void draw_line_ybuffer(Y_BUF y_buffer2[MATRIX_HEIGHT][2], VECTOR3 a, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 b_rgb) {
 

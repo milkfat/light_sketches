@@ -66,6 +66,7 @@ int32_t x_buffer[MATRIX_WIDTH][2]; //stores the min/max Y values per X so that w
 struct Y_BUF {
   VECTOR3 position;
   VECTOR3 ratio;
+  uint8_t opacity = 255;
 };
 //Y_BUF* y_buffer2[MATRIX_HEIGHT];
 

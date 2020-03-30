@@ -2,17 +2,17 @@
 #define LIGHTS_SCALE_H
 
 
-static int z_scaler;
-uint8_t debug_scaler = 128;
+//static int z_scaler;
+//uint8_t debug_scaler = 128;
 
 static inline __attribute__ ((always_inline)) void scale_update() {
-    static uint32_t update_time = 0;
-    if (millis() - 16 > update_time) {
-        update_time = millis();
+    // static uint32_t update_time = 0;
+    // if (millis() - 16 > update_time) {
+    //     update_time = millis();
 
-        z_scaler = -100 * 256 + (200 * 256 * debug_scaler) / 256;
+    //     z_scaler = -100 * 256 + (200 * 256 * debug_scaler) / 256;
 
-    }
+    // }
 }
 
 static inline __attribute__ ((always_inline)) void scale_z(int32_t& z) {
