@@ -390,9 +390,10 @@ static void draw_line_ybuffer_fine(Y_BUF y_buffer2[MATRIX_HEIGHT][2], VECTOR3 a,
       VECTOR3 c;
       c.y = (a.y+255)/256;
       c.y*=256;
+      c.y = _max(c.y,0);
       int32_t y_end = b.y/256;
       y_end*=256;
-      while (c.y <= y_end) {
+      while (c.y <= _min(y_end,MATRIX_HEIGHT*256)) {
         if (c.y >= 0 && c.y < MATRIX_HEIGHT*256) {
           int32_t y_travel = c.y - a.y;
           y_travel = _max(_min(y_travel,dist.y),0);

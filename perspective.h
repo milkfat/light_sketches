@@ -21,8 +21,8 @@ class PERSPECTIVE {
 
 
     public:
-        int32_t camera_scaler = 232*256;
-        int32_t screen_scaler = 100*256;
+        VECTOR3 camera_position = VECTOR3(0,0,232*256);
+        int32_t screen_distance = camera_position.z - 100*256;
         const int32_t screen_width;
         const int32_t screen_height;
         CRGB * screen_buffer;
@@ -33,17 +33,24 @@ class PERSPECTIVE {
         int32_t y_offset = 0;
         int32_t z_offset = 0;
 
-        MATRIX matrix = MATRIX(&rotation_alpha, &rotation_beta, &rotation_gamma);
+        MATRIX matrix = MATRIX(&rotation_alpha, &rotation_beta, &rotation_gamma, &camera_position);
         
         PERSPECTIVE (const uint& width, const uint& height) : screen_width(width), screen_height(height) {}
 
     //take X,Y,Z coordinate
     //modifies X,Y to screen coordinates
 
+    void camera_move (VECTOR3 v) {
+        matrix.rotate(v);
+        v.x = -v.x;
+        v.y = -v.y;
+        camera_position+=v;
+    }
+
     inline __attribute__ ((always_inline)) void update() {
 
-            Cz = camera_scaler/MATRIX_PRECISION; //camera Z
-            Sz = screen_scaler/MATRIX_PRECISION; //projection screen Z (between camera and object)
+            Cz = camera_position.z/MATRIX_PRECISION; //camera Z
+            Sz = (camera_position.z-screen_distance)/MATRIX_PRECISION; //projection screen Z (between camera and object)
             Cz2 = Cz/2;
             Sz2 = Sz/2;
     }
@@ -52,6 +59,8 @@ class PERSPECTIVE {
         z+=z_offset;
         z/=MATRIX_PRECISION;
         if (z < Cz) {
+            x-=camera_position.x;
+            y-=camera_position.y;
             x+=x_offset;
             y+=y_offset;
             x/=MATRIX_PRECISION;//half precision to double each axis of our available coordinate space
@@ -93,6 +102,8 @@ class PERSPECTIVE {
         x*=MATRIX_PRECISION;
         y*=MATRIX_PRECISION;
         z*=MATRIX_PRECISION;
+        x-=camera_position.x;
+        y-=camera_position.y;
         x-=x_offset;
         y-=y_offset;
         z-=z_offset;

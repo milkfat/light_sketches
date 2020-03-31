@@ -4,12 +4,12 @@
 // #define MATRIX_HEIGHT 250
 
 #define WINDOW_WIDTH 200
-#define WINDOW_HEIGHT 1000
+#define WINDOW_HEIGHT 650
 #define MATRIX_WIDTH 32
 #define MATRIX_HEIGHT 128
 #define SCREEN_WIDTH 32
 #define SCREEN_HEIGHT 128
-    
+     
 //misc libraries
 #include <iostream>
 #include <string>
@@ -45,6 +45,19 @@ uint32_t debug_micros0 = 0;
 uint32_t debug_micros1 = 0;
 //     uint32_t debug_time2 = micros();
 //     debug_micros1 += micros() - debug_time2;
+uint8_t button_mult = 1;
+bool button_forward = false;
+bool button_reverse = false;
+bool button_up = false;
+bool button_down = false;
+bool button_left = false;
+bool button_right = false;
+bool button_ra0 = false;
+bool button_ra1 = false;
+bool button_rb0 = false;
+bool button_rb1 = false;
+bool button_rg0 = false;
+bool button_rg1 = false;
 
 void update_matrix();
 
@@ -107,7 +120,9 @@ void put_pixel(SDL_Surface * surface, int x, int y, uint32_t p) {
 	((uint32_t*)pixel)[2] = p;
 	((uint32_t*)pixel)[3] = p;
 }
-
+void log_camera_coordinates() {
+	std::cout << "camera: " << (int32_t)led_screen.camera_position.x << " " << (int32_t)led_screen.camera_position.y << " " << (int32_t)led_screen.camera_position.z << "\n";
+}
 //this function is called whenever the screen needs to be updated
 void update_matrix() {
 
@@ -166,6 +181,8 @@ void update_matrix() {
 						break;
 				}
 			} else {
+				button_mult = (event.key.keysym.mod & KMOD_SHIFT) ? 5 : 1;
+				int mult = (event.key.keysym.mod & KMOD_SHIFT) ? 5 : 1;
 				switch (event.key.keysym.sym)
 				{
 					case SDLK_ESCAPE: done=SDL_TRUE; break;
@@ -176,34 +193,51 @@ void update_matrix() {
 					case SDLK_r: reset_sketch=true; break;
 					case SDLK_c: debug_flag=true; break;
 
-					case SDLK_l: (event.key.keysym.mod & KMOD_SHIFT) ? led_screen.rotation_alpha+=5 : led_screen.rotation_alpha++; break;
-					case SDLK_j: (event.key.keysym.mod & KMOD_SHIFT) ? led_screen.rotation_alpha-=5 : led_screen.rotation_alpha--; break;
-					case SDLK_i: (event.key.keysym.mod & KMOD_SHIFT) ? led_screen.rotation_beta+=5 : led_screen.rotation_beta++; break;
-					case SDLK_k: (event.key.keysym.mod & KMOD_SHIFT) ? led_screen.rotation_beta-=5 : led_screen.rotation_beta--; break;
-					case SDLK_o: (event.key.keysym.mod & KMOD_SHIFT) ? led_screen.rotation_gamma+=5 : led_screen.rotation_gamma++; break;
-					case SDLK_u: (event.key.keysym.mod & KMOD_SHIFT) ? led_screen.rotation_gamma-=5 : led_screen.rotation_gamma--; break;
+					case SDLK_l: button_ra0 = true; break;
+					case SDLK_j: button_ra1 = true; break;
+					case SDLK_i: button_rb0 = true; break;
+					case SDLK_k: button_rb1 = true; break;
+					case SDLK_o: button_rg0 = true; break;
+					case SDLK_u: button_rg1 = true; break;
 
-					case SDLK_d: (event.key.keysym.mod & KMOD_SHIFT) ? pc_screen.rotation_alpha+=5 : pc_screen.rotation_alpha++; break;
-					case SDLK_a: (event.key.keysym.mod & KMOD_SHIFT) ? pc_screen.rotation_alpha-=5 : pc_screen.rotation_alpha--; break;
-					case SDLK_w: (event.key.keysym.mod & KMOD_SHIFT) ? pc_screen.rotation_beta+=5 : pc_screen.rotation_beta++; break;
-					case SDLK_s: (event.key.keysym.mod & KMOD_SHIFT) ? pc_screen.rotation_beta-=5 : pc_screen.rotation_beta--; break;
-					case SDLK_e: (event.key.keysym.mod & KMOD_SHIFT) ? pc_screen.rotation_gamma+=5 : pc_screen.rotation_gamma++; break;
-					case SDLK_q: (event.key.keysym.mod & KMOD_SHIFT) ? pc_screen.rotation_gamma-=5 : pc_screen.rotation_gamma--; break;
+					case SDLK_d: pc_screen.rotation_alpha+=mult; break;
+					case SDLK_a: pc_screen.rotation_alpha-=mult; break;
+					case SDLK_w: pc_screen.rotation_beta+=mult; break;
+					case SDLK_s: pc_screen.rotation_beta-=mult; break;
+					case SDLK_e: pc_screen.rotation_gamma+=mult; break;
 
 					case SDLK_t: typing_mode=true; SDL_StartTextInput(); break;
-					case SDLK_LEFT:  led_screen.camera_scaler-=256; std::cout << "camera: " << (int32_t)led_screen.camera_scaler << "\n"; break;
-					case SDLK_RIGHT: led_screen.camera_scaler+=256; std::cout << "camera: " << (int32_t)led_screen.camera_scaler << "\n"; break;
-					case SDLK_UP:    led_screen.screen_scaler-=256; std::cout << "screen: " << (int32_t)led_screen.screen_scaler << "\n"; break;
-					case SDLK_DOWN:  led_screen.screen_scaler+=256; std::cout << "screen: " << (int32_t)led_screen.screen_scaler << "\n"; break; 
+					case SDLK_UP:  button_forward = true; break;
+					case SDLK_DOWN: button_reverse = true; break;
+					case SDLK_MINUS:  button_up = true; break;
+					case SDLK_LEFTBRACKET:  button_down = true; break;
+					case SDLK_LEFT:  button_left = true; break;
+					case SDLK_RIGHT: button_right = true; break;
+					case SDLK_p:    led_screen.screen_distance-=256; std::cout << "screen: " << (int32_t)led_screen.screen_distance << "\n"; break;
+					case SDLK_RIGHTBRACKET:  led_screen.screen_distance+=256; std::cout << "screen: " << (int32_t)led_screen.screen_distance << "\n"; break; 
 				}
 			}
 			break;
 
 		case SDL_KEYUP:
+			button_mult = (event.key.keysym.mod & KMOD_SHIFT) ? 5 : 1;
 			switch (event.key.keysym.sym)
 			{
+				case SDLK_l: button_ra0 = false; break;
+				case SDLK_j: button_ra1 = false; break;
+				case SDLK_i: button_rb0 = false; break;
+				case SDLK_k: button_rb1 = false; break;
+				case SDLK_o: button_rg0 = false; break;
+				case SDLK_u: button_rg1 = false; break;
+
+				case SDLK_UP: button_forward = false; break;
+				case SDLK_DOWN: button_reverse = false; break;
+				case SDLK_MINUS: button_up = false; break;
+				case SDLK_LEFTBRACKET: button_down = false; break;
 				case SDLK_f: button2_down=false; break;
 				case SDLK_g: button1_down=false; break;
+				case SDLK_LEFT:  button_left = false; break;
+				case SDLK_RIGHT: button_right = false; break;
 			}
 			break;
 		}
@@ -285,7 +319,18 @@ int main(int argc, char **argv){
 				next_frame = next_frame + frames{1};
 				
 				light_sketches.loop();
-
+				if (button_forward) led_screen.camera_move(VECTOR3(0,0,-512*button_mult));
+				if (button_reverse) led_screen.camera_move(VECTOR3(0,0,512*button_mult));
+				if (button_up) led_screen.camera_move(VECTOR3(0,-512*button_mult,0));
+				if (button_down) led_screen.camera_move(VECTOR3(0,512*button_mult,0));
+				if (button_left) led_screen.camera_move(VECTOR3(512*button_mult,0,0));
+				if (button_right) led_screen.camera_move(VECTOR3(-512*button_mult,0,0));
+				if (button_ra0) led_screen.rotation_alpha+=button_mult;
+				if (button_ra1) led_screen.rotation_alpha-=button_mult;
+				if (button_rb0) led_screen.rotation_beta+=button_mult;
+				if (button_rb1) led_screen.rotation_beta-=button_mult;
+				if (button_rg0) led_screen.rotation_gamma+=button_mult;
+				if (button_rg1) led_screen.rotation_gamma-=button_mult;
 				handle_text();
 
 				if (spacebar) {

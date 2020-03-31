@@ -363,10 +363,10 @@ void handle_text() {
                   //normal text drawn to the image
                   //drawXY_fine(led_screen, u+offsets[offset_pos]*256, v+offsets[offset_pos+1]*256, hue, text_saturation, text_brightness  );
                   //draw some cubes... this is a fucking mess!
-                  int32_t z = (led_screen.camera_scaler-65*256)-text_animation[i] + (fmix32((i+1)*(y*8+x))%(400*256));
+                  int32_t z = (led_screen.camera_position.z-65*256)-text_animation[i] + (fmix32((i+1)*(y*8+x))%(400*256));
                       z = _max(z,35*256);
                       z = 0;
-                      if (z < led_screen.camera_scaler-5*256) {;
+                      if (z < led_screen.camera_position.z-5*256) {;
                           VECTOR3 p((u+offsets[offset_pos]*256)*7-7*3*256,(v+offsets[offset_pos+1]*256-22000)*7,0);
                           cube_ang3 = 0;
                           if ( cube_ang2 % (65536*4) < 65536 ) {
@@ -375,7 +375,7 @@ void handle_text() {
                           }
                           rotate_y(p,cube_ang3); //rotates the cube as part of a letter (around the letter's y-axis)
                           p.z += z;
-                          if (p.z < led_screen.camera_scaler-512 && p.z < led_screen.screen_scaler) {
+                          if (p.z < led_screen.camera_position.z-512 && p.z < (led_screen.camera_position.z - led_screen.screen_distance)) {
                             draw_cube( p, VECTOR3(512,512,512), VECTOR3_8(0,cube_ang3,0), CHSV(hue,sat,255), persist);
                           }
 

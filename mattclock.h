@@ -714,7 +714,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
               c_step-=1;
             }
             c_step = _max(c_step, 0);
-            led_screen.camera_scaler-=c_step;
+            led_screen.camera_position.z-=c_step;
           } else {
             if (c_step != 0) {
               //std::cout << "STOP\n";
@@ -762,8 +762,8 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
       check_boundaries(true);
 
-      led_screen.camera_scaler = 300*256;
-      led_screen.screen_scaler = 111*256;
+      led_screen.camera_position.z = 300*256;
+      led_screen.screen_distance = 300*256-111*256;
       
       if (current_effect == TEXT_CLOCK) {
         display_text = "";
@@ -784,15 +784,15 @@ class MATTCLOCK: public LIGHT_SKETCH {
         erase_delay = 100;
         draw_delay = 400;
       } else if (current_effect == TEXT_CLOCK) {
-        //led_screen.screen_scaler = 169*256;
+        //led_screen.screen_distance = 169*256;
       }
     }
 
     void setup() {
       z_buffer = &_z_buffer;
       control_variables.add(rgb_clock, "Color");
-      control_variables.add(led_screen.camera_scaler, "Camera Z", 0, 256*256);
-      control_variables.add(led_screen.screen_scaler, "Screen Z", 0, 256*256);
+      control_variables.add(led_screen.camera_position.z, "Camera Z", 0, 256*256);
+      control_variables.add(led_screen.screen_distance, "Screen Z", 0, 256*256);
       control_variables.add(led_screen.y_offset, "Y offset", -256*256*4, 256*256*4);
 
       for (int i = 0; i < 6; i++) {

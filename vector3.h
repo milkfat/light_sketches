@@ -97,10 +97,8 @@ struct VECTOR3_CLASS {
   VECTOR3_CLASS<T> inline __attribute__((always_inline))  unit() {
 
     VECTOR3_CLASS<T> norm = *this;
-    uint32_t m = _max(_max(abs(x),abs(y)),abs(z))/128;
-    if (m) {
-      norm/=m;
-    }
+    uint32_t m = _max(_max(abs(x),abs(y)),abs(z))/128+1;
+    norm/=m;
     int32_t length = sqrt16(norm.x*norm.x+norm.y*norm.y+norm.z*norm.z);
     if (length != 0) {
       norm.x = (x*255)/length;
@@ -118,11 +116,9 @@ struct VECTOR3_CLASS {
   int32_t inline __attribute__((always_inline))  unit_ip() {
 
     VECTOR3_CLASS<int32_t> norm = *this;
-    uint32_t m = _max(_max(abs(x),abs(y)),abs(z))/128;
+    uint32_t m = _max(_max(abs(x),abs(y)),abs(z))/128+1;
     norm = *this;
-    if (m) {
-      norm/=m;
-    }
+    norm/=m;
     int32_t length = sqrt16(norm.x*norm.x+norm.y*norm.y+norm.z*norm.z);
     //int32_t length = sqrt16(x*x+y*y+z*z);
     if (length != 0) {

@@ -149,8 +149,8 @@ class SNOWFLAKES: public LIGHT_SKETCH {
             flake_reset(&snowflakes[i], true);
         }
         control_variables.add(num_snowflakes, "Number of flakes", 0, 50);
-        control_variables.add(led_screen.camera_scaler, "Camera Z", 0, 256*256);
-        control_variables.add(led_screen.screen_scaler, "Screen Z", 0, 256*256);
+        control_variables.add(led_screen.camera_position.z, "Camera Z", 0, 256*256);
+        control_variables.add(led_screen.screen_distance, "Screen Z", 0, 256*256);
 
     }
 

@@ -24,6 +24,9 @@ class CURVY: public LIGHT_SKETCH {
 
     Z_BUF _z_buffer;
 
+    #define NUM_CURVY_EFFECTS 2
+    uint8_t current_effect = 0;
+
 
     CRGB temp_led[NUM_LEDS+1];
 
@@ -105,6 +108,8 @@ class CURVY: public LIGHT_SKETCH {
   public:
 
     void next_effect() {
+      current_effect++;
+      current_effect%=NUM_CURVY_EFFECTS;
     }
 
     void setup() {
@@ -737,6 +742,10 @@ void draw_jelly(JELLY& jelly) {
       }
     }
     
+    inline bool dt(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& norm_a, VECTOR3& norm_b, VECTOR3& norm_c, const CRGB& rgb = CRGB(255,255,255)) {
+      return (current_effect) ? draw_triangle_fine(a,b,c,norm_a,norm_b,norm_c,rgb) : draw_triangle(a,b,c,norm_a,norm_b,norm_c,rgb);
+        
+    }
 
     void draw_tentacles(JELLY& jelly) {
       tentacle_segment (*tentacles)[NUM_TENTACLE_SEGMENTS] = jelly.tentacles;
@@ -992,20 +1001,20 @@ void draw_jelly(JELLY& jelly) {
 
         //if (points_2d[a].z > -200*256) {
 
-          draw_triangle( points_2d[a],points_2d[b],points_2d[j],tnorm,right,right,rgb );
-          draw_triangle( points_2d[b],points_2d[g],points_2d[j],right,tnorm2,right,rgb );
-          draw_triangle( points_2d[b],points_2d[a],points_2d[j],left,atnorm,left,rgb );
-          draw_triangle( points_2d[g],points_2d[b],points_2d[j],atnorm2,left,left,rgb );
+          dt( points_2d[a],points_2d[b],points_2d[j],tnorm,right,right,rgb );
+          dt( points_2d[b],points_2d[g],points_2d[j],right,tnorm2,right,rgb );
+          dt( points_2d[b],points_2d[a],points_2d[j],left,atnorm,left,rgb );
+          dt( points_2d[g],points_2d[b],points_2d[j],atnorm2,left,left,rgb );
           
-          draw_triangle(points_2d[c],points_2d[b],points_2d[i],down,back,right,rgb);
-          draw_triangle(points_2d[d],points_2d[c],points_2d[i],front,down,right,rgb);
-          draw_triangle(points_2d[e],points_2d[d],points_2d[i],up,front,right,rgb);
-          draw_triangle(points_2d[b],points_2d[e],points_2d[i],back,up,right,rgb);
+          dt(points_2d[c],points_2d[b],points_2d[i],down,back,right,rgb);
+          dt(points_2d[d],points_2d[c],points_2d[i],front,down,right,rgb);
+          dt(points_2d[e],points_2d[d],points_2d[i],up,front,right,rgb);
+          dt(points_2d[b],points_2d[e],points_2d[i],back,up,right,rgb);
 
-          draw_triangle(points_2d[b],points_2d[c],points_2d[h],back,down,left,rgb);
-          draw_triangle(points_2d[c],points_2d[d],points_2d[h],down,front,left,rgb);
-          draw_triangle(points_2d[d],points_2d[e],points_2d[h],front,up,left,rgb);
-          draw_triangle(points_2d[e],points_2d[b],points_2d[h],up,back,left,rgb);
+          dt(points_2d[b],points_2d[c],points_2d[h],back,down,left,rgb);
+          dt(points_2d[c],points_2d[d],points_2d[h],down,front,left,rgb);
+          dt(points_2d[d],points_2d[e],points_2d[h],front,up,left,rgb);
+          dt(points_2d[e],points_2d[b],points_2d[h],up,back,left,rgb);
 
         // } else {
 

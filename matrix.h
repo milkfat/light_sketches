@@ -10,14 +10,16 @@ class MATRIX {
     float * rotation_alpha;
     float * rotation_beta;
     float * rotation_gamma;
+    VECTOR3 * camera_position;
 
     //3D ROTATION MATRIX VARIABLES
     public:
     
-    MATRIX(float * a, float * b, float * g) {
+    MATRIX(float * a, float * b, float * g, VECTOR3 * c) {
         rotation_alpha = a;
         rotation_beta = b;
         rotation_gamma = g;
+        camera_position = c;
         update();
     }
 
@@ -86,6 +88,22 @@ class MATRIX {
 
         }
 
+        void rotate_camera (int32_t in_x, int32_t in_y, int32_t in_z, int32_t& out_x, int32_t& out_y, int32_t& out_z) {
+        
+            //update the matrix if necessary
+            update();
+            in_x -= camera_position->x;
+            in_y -= camera_position->y;
+            in_z -= camera_position->z;
+            out_x = in_x * matrix[0][0] + in_y * matrix[0][1] + in_z * matrix[0][2];
+            out_z = -(in_x * matrix[1][0] + in_y * matrix[1][1] + in_z * matrix[1][2]);
+            out_y = in_x * matrix[2][0] + in_y * matrix[2][1] + in_z * matrix[2][2];
+            out_x += camera_position->x;
+            out_y += camera_position->y;
+            out_z += camera_position->z;
+
+        }
+
         void rotate (VECTOR3& in) {
             VECTOR3 temp;
             temp.x = in.x;
@@ -93,9 +111,17 @@ class MATRIX {
             temp.z = in.z;
             rotate(temp.x, temp.y, temp.z, in.x, in.y, in.z);
         }
+
+        void rotate_camera (VECTOR3& in) {
+            rotate_camera(in.x, in.y, in.z, in.x, in.y, in.z);
+        }
         
         void rotate (VECTOR3& in, VECTOR3& out) {
             rotate(in.x, in.y, in.z, out.x, out.y, out.z);
+        }
+
+        void rotate_camera(VECTOR3& in, VECTOR3& out) {
+            rotate_camera(in.x, in.y, in.z, out.x, out.y, out.z);
         }
             
 
