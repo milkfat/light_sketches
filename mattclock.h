@@ -317,9 +317,9 @@ class MATTCLOCK: public LIGHT_SKETCH {
       led_screen.matrix.rotate(p,p1);
 
       //translate vectors to coordinates
-      p0[2] += -180 * 256 + (200 * 256 * debug_scaler) / 256;
+      p0[2] += -180 * 256 + (200 * 256) / 256;
 
-      p1[2] += -180 * 256 + (200 * 256 * debug_scaler) / 256;
+      p1[2] += -180 * 256 + (200 * 256) / 256;
 
       led_screen.perspective(p0);
       led_screen.perspective(p1);
@@ -388,8 +388,8 @@ class MATTCLOCK: public LIGHT_SKETCH {
           led_screen.matrix.rotate(p, p1);
 
           //translate vectors to coordinates
-          p0[2] += -180 * 256 + (200 * 256 * debug_scaler) / 256;
-          p1[2] += -180 * 256 + (200 * 256 * debug_scaler) / 256;
+          p0[2] += -180 * 256 + (200 * 256) / 256;
+          p1[2] += -180 * 256 + (200 * 256) / 256;
         
           led_screen.perspective(p0);
           led_screen.perspective(p1);
@@ -714,7 +714,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
               c_step-=1;
             }
             c_step = _max(c_step, 0);
-            led_screen.camera_position.z-=c_step;
+            led_screen.screen_distance-=c_step;
           } else {
             if (c_step != 0) {
               //std::cout << "STOP\n";
@@ -762,7 +762,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
       check_boundaries(true);
 
-      led_screen.camera_position.z = 300*256;
+      led_screen.camera_position.z = 200*256;
       led_screen.screen_distance = 300*256-111*256;
       
       if (current_effect == TEXT_CLOCK) {
@@ -1002,7 +1002,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
           led_screen.matrix.rotate(p, p0);
 
           //translate vectors to coordinates
-          p0[2] += -180 * 256 + (200 * 256 * debug_scaler) / 256;
+          p0[2] += -180 * 256 + (200 * 256) / 256;
 
           //correct 3d perspective
           led_screen.perspective(p0);
