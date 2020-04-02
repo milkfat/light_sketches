@@ -32,6 +32,7 @@ class PERSPECTIVE {
         int32_t x_offset = 0;
         int32_t y_offset = 0;
         int32_t z_offset = 0;
+        uint8_t light_falloff = 8; //(bitshift value, 1 = near, 16 = far)
 
         MATRIX matrix = MATRIX(&rotation_alpha, &rotation_beta, &rotation_gamma, &camera_position);
         
@@ -39,6 +40,7 @@ class PERSPECTIVE {
 
     //take X,Y,Z coordinate
     //modifies X,Y to screen coordinates
+
 
     void camera_move (VECTOR3 v) {
         matrix.rotate(v);
@@ -53,6 +55,18 @@ class PERSPECTIVE {
             Sz = (camera_position.z-screen_distance)/MATRIX_PRECISION; //projection screen Z (between camera and object)
             Cz2 = Cz/2;
             Sz2 = Sz/2;
+    }
+
+    void reset_camera () {
+        camera_position = VECTOR3(0,0,232*256);
+        screen_distance = camera_position.z - 100*256;
+        x_offset = 0;
+        y_offset = 0;
+        z_offset = 0;
+        rotation_alpha = 0;
+        rotation_beta = 90;
+        rotation_gamma = 0;
+        update();
     }
 
     inline __attribute__ ((always_inline)) bool perspective(int32_t& x, int32_t& y, int32_t& z) {

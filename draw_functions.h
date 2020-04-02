@@ -65,7 +65,7 @@ static inline __attribute__ ((always_inline)) bool drawXY_blend_gamma( PERSPECTI
       
       //uint8_t bri = _clamp8(100 - z/768);
      // std::cout << screen_object.camera_position.z << " " << z << " ";
-      uint32_t bri = _max(screen_object.camera_position.z - z,0)/256;
+      uint32_t bri = _max(screen_object.camera_position.z - z,0)>>screen_object.light_falloff;
       bri = (bri*bri)/512;
       bri = 255-_min(bri,255);
       //std::cout << bri << "\n";
@@ -95,7 +95,7 @@ static inline __attribute__ ((always_inline)) bool drawXYZ(PERSPECTIVE& screen_o
 
       //uint8_t bri = _clamp8(100 - z/768);
      // std::cout << screen_object.camera_position.z << " " << z << " ";
-      uint32_t bri = _max(screen_object.camera_position.z - z,0)/256;
+      uint32_t bri = _max(screen_object.camera_position.z - z,0)>>screen_object.light_falloff;
       bri = (bri*bri)/512;
       bri = 255-_min(bri,255);
       //std::cout << bri << "\n";

@@ -297,6 +297,9 @@ class LIGHT_SKETCHES {
       light_sketches[current_light_sketch]->destroy();
       height_map_ptr = nullptr;
       z_buffer = nullptr;
+      y_buffer2 = nullptr;
+      led_screen.light_falloff = 8;
+      led_screen.reset_camera();
       next_light_sketch %= number_of_light_sketches;
       current_light_sketch=next_light_sketch;
       light_sketches[current_light_sketch]->create();
@@ -425,7 +428,7 @@ LIGHT_SKETCHES light_sketches;
 #include "fireworks_3d.h"
 //  #include "growcircle.h"
 #include "the_matrix.h"
-//  #include "mattclock.h"
+#include "mattclock.h"
 //  #include "metaballs.h"
 // #include "orbit.h"
 // #include "neon.h"
@@ -437,6 +440,7 @@ LIGHT_SKETCHES light_sketches;
 //  #include "test2d.h"
 // #include "test3d.h"
 // //#include "tree_sim.h"
+#include "tunnel.h"
 // #include "phosphene.h"
 #include "untitled.h"
 // #include "waves.h"

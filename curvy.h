@@ -23,6 +23,7 @@ class CURVY: public LIGHT_SKETCH {
   private:
 
     Z_BUF _z_buffer;
+    Y_BUF2 _y_buffer2;
 
     #define NUM_CURVY_EFFECTS 2
     uint8_t current_effect = 0;
@@ -114,6 +115,7 @@ class CURVY: public LIGHT_SKETCH {
 
     void setup() {
       z_buffer = &_z_buffer;
+      y_buffer2 = &_y_buffer2;
       led_screen.rotation_alpha = 0;
       led_screen.rotation_beta = 90;
       led_screen.rotation_gamma = 0;

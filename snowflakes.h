@@ -140,6 +140,7 @@ class SNOWFLAKES: public LIGHT_SKETCH {
     }
 
     void setup() {
+        led_screen.light_falloff = 10;
         z_buffer = &_z_buffer;
         led_screen.rotation_alpha = 0;
         led_screen.rotation_beta = 90;

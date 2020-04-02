@@ -63,12 +63,35 @@ int32_t x_buffer[MATRIX_WIDTH][2]; //stores the min/max Y values per X so that w
 //int16_t * z_buffer[MATRIX_WIDTH];
 
 
+
 struct Y_BUF {
-  VECTOR3 position;
-  VECTOR3 ratio;
-  uint8_t opacity = 255;
+    VECTOR3 position;
+    VECTOR3 ratio;
+    uint8_t opacity = 255;
 };
-//Y_BUF* y_buffer2[MATRIX_HEIGHT];
+
+class Y_BUF2 {
+  Y_BUF buf[MATRIX_HEIGHT][2];
+
+ public:
+  void reset() {
+      for (int y = 0; y < MATRIX_HEIGHT; y++) {
+        buf[y][0].position = VECTOR3(INT32_MAX,0,0);
+        buf[y][1].position = VECTOR3(INT32_MIN,0,0);
+      }
+  }
+
+  Y_BUF2 () {
+    reset();
+  }
+  // Overloading [] operator to access elements in array style 
+  Y_BUF* operator[] (int index) {
+    return &(buf[index][0]);
+  } 
+
+};
+
+Y_BUF2* y_buffer2 = nullptr;
 
 class Z_BUF {
   int16_t buf[MATRIX_WIDTH][MATRIX_HEIGHT];

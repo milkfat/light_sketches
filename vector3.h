@@ -83,6 +83,14 @@ struct VECTOR3_CLASS {
     return *this;
   }
 
+  //overload *=
+  inline VECTOR3_CLASS<T>& operator*= (const int& rhs) {
+    this->x *= rhs;
+    this->y *= rhs;
+    this->z *= rhs;
+    return *this;
+  }
+
   inline T& operator[] (const int& index)
   {
       return index == 0 ? x : index == 1 ? y : z;

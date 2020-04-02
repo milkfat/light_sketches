@@ -84,6 +84,7 @@
 
     //draw a triangle and calculate x,y,z as well as the ratio of a-b-c for each pixel
     bool draw_triangle(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& norm_a, VECTOR3& norm_b, VECTOR3& norm_c, const CRGB& rgb = CRGB(255,255,255)) {
+      if (!y_buffer2) return 0;
       bool on_screen = false;
 
       int orientation = ((b.y-a.y))*((c.x-b.x)) - ((c.y-b.y))*((b.x-a.x));
@@ -91,16 +92,15 @@
       
       if ( orientation < 0 ) {
       
-        Y_BUF y_buffer2[MATRIX_HEIGHT][2];
-        reset_y_buffer2(y_buffer2);
+        y_buffer2->reset();
 
         static const VECTOR3 a_val(255,0,0);
         static const VECTOR3 b_val(0,255,0);
         static const VECTOR3 c_val(0,0,255);
 
-        draw_line_ybuffer(y_buffer2, a, a_val, b, b_val);
-        draw_line_ybuffer(y_buffer2, b, b_val, c, c_val);
-        draw_line_ybuffer(y_buffer2, c, c_val, a, a_val);
+        draw_line_ybuffer(a, a_val, b, b_val);
+        draw_line_ybuffer(b, b_val, c, c_val);
+        draw_line_ybuffer(c, c_val, a, a_val);
 
         // CRGB rgb(a_norm.x,a_norm.y,a_norm.z);
 
@@ -111,58 +111,57 @@
         //fill between the pixels of our lines
         for (int y = _max(y_buffer_min,0); y <= _min(y_buffer_max,MATRIX_HEIGHT-1); y++) {
 
-            int32_t dist_x = y_buffer2[y][1].position.x - y_buffer2[y][0].position.x;
+            int32_t dist_x = (*y_buffer2)[y][1].position.x - (*y_buffer2)[y][0].position.x;
 
           if (dist_x >= 0) {
 
 
-            VECTOR3 * ratio  = &y_buffer2[y][0].ratio;
-            VECTOR3 * ratio2 = &y_buffer2[y][1].ratio;
-            // std::cout << "a: " << ratio->x << ", " << ratio->y << ", " << ratio->z << "\n";
-            // std::cout << "b: " << ratio2->x << ", " << ratio2->y << ", " << ratio2->z << "\n\n";
+            VECTOR3 ratio  = (*y_buffer2)[y][0].ratio;
+            VECTOR3 accum_ratio = ratio*256;
+            VECTOR3 step_ratio = (*y_buffer2)[y][1].ratio - ratio;
+            step_ratio*=256;
+            if (dist_x > 0) {
+              step_ratio/=dist_x;
+            }
 
-            VECTOR3 err_ratio(0,0,0);
+            int32_t x = (*y_buffer2)[y][0].position.x;
 
-            VECTOR3 dist_ratio = *ratio2 - *ratio;
-            VECTOR3 a_dist_ratio = abs(dist_ratio);
-            VECTOR3 step_ratio( sgn(dist_ratio.x), sgn(dist_ratio.y), sgn(dist_ratio.z) );
+            int32_t z = (*y_buffer2)[y][0].position.z;
+            int32_t accum_z = z*256;
+            int32_t step_z = (*y_buffer2)[y][1].position.z - z;
+            step_z*=256;
+            if (dist_x > 0) {
+              step_z/=dist_x;
+            }
 
-            int32_t x = y_buffer2[y][0].position.x;
+            while (x <= (*y_buffer2)[y][1].position.x) {
 
-            int32_t z = y_buffer2[y][0].position.z;
-            int32_t err_z = 0;
-            int32_t dist_z = y_buffer2[y][1].position.z - y_buffer2[y][0].position.z;
-            int32_t a_dist_z = abs(dist_z);
-            int32_t step_z = sgn(dist_z);
-            while (x <= y_buffer2[y][1].position.x) {
-
-              VECTOR3 norm = ( (norm_a*ratio->x)/255 + (norm_b*ratio->y)/255 + (norm_c*ratio->z)/255 ).unit();
+              VECTOR3 norm = ( (norm_a*ratio.x)/255 + (norm_b*ratio.y)/255 + (norm_c*ratio.z)/255 ).unit();
 
               CRGB new_rgb;
 
-              //new_rgb.r = _max((ratio->x*norm.z)/255,0);
-              //new_rgb.g = _max((ratio->y*norm.z)/255,0);
-              //new_rgb.b = _max((ratio->z*norm.z)/255,0);
               uint8_t norm_bri = (_min(_max(norm.z,0),255)*3)/4 + 64;
 
-              new_rgb.r = (norm_bri*rgb.r)/256;
-              new_rgb.g = (norm_bri*rgb.g)/256;
-              new_rgb.b = (norm_bri*rgb.b)/256;
+              new_rgb.r = (norm_bri*rgb.r)>>8;
+              new_rgb.g = (norm_bri*rgb.g)>>8;
+              new_rgb.b = (norm_bri*rgb.b)>>8;
 
               on_screen = drawXYZ(led_screen, x, y, z*256, new_rgb,false) || on_screen; //gamma
               x++;
             
               if (dist_x > 0) {
+                accum_ratio+=step_ratio;
+                ratio = accum_ratio/256;
+                
 
-                iterate(*ratio,step_ratio,a_dist_ratio,err_ratio,dist_x);
+                //iterate(ratio,step_ratio,a_dist_ratio,err_ratio,dist_x);
 
-                err_z += a_dist_z;
-                while (err_z >= dist_x) {
-                    z += step_z;
-                    err_z -= dist_x;
-                }
+                
+                accum_z+=step_z;
+                z = accum_z/256;
                 
               }
+              
 
             }
             // CRGB rgb(  y_buffer2[y][0].ratio.x, y_buffer2[y][0].ratio.y, y_buffer2[y][0].ratio.z );
@@ -197,6 +196,7 @@
 
     //draw a triangle and calculate x,y,z as well as the ratio of a-b-c for each pixel
     bool draw_triangle_rgb(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& norm_a, VECTOR3& norm_b, VECTOR3& norm_c, CRGB rgb_ai, CRGB rgb_bi, CRGB rgb_ci) {
+      if (!y_buffer2) return 0;
       bool on_screen = false;
 
       int orientation = ((b.y-a.y))*((c.x-b.x)) - ((c.y-b.y))*((b.x-a.x));
@@ -211,16 +211,15 @@
         rgb_b.unit_ip();
         rgb_c.unit_ip();
 
-        Y_BUF y_buffer2[MATRIX_HEIGHT][2];
-        reset_y_buffer2(y_buffer2);
+        reset_y_buffer2();
 
         static const VECTOR3 a_val(255,0,0);
         static const VECTOR3 b_val(0,255,0);
         static const VECTOR3 c_val(0,0,255);
 
-        draw_line_ybuffer(y_buffer2, a, a_val, b, b_val);
-        draw_line_ybuffer(y_buffer2, b, b_val, c, c_val);
-        draw_line_ybuffer(y_buffer2, c, c_val, a, a_val);
+        draw_line_ybuffer(a, a_val, b, b_val);
+        draw_line_ybuffer(b, b_val, c, c_val);
+        draw_line_ybuffer(c, c_val, a, a_val);
 
         // CRGB rgb(a_norm.x,a_norm.y,a_norm.z);
 
@@ -231,33 +230,33 @@
         //fill between the pixels of our lines
         for (int y = _max(y_buffer_min,0); y <= _min(y_buffer_max,MATRIX_HEIGHT-1); y++) {
 
-            int32_t dist_x = y_buffer2[y][1].position.x - y_buffer2[y][0].position.x;
+            int32_t dist_x = (*y_buffer2)[y][1].position.x - (*y_buffer2)[y][0].position.x;
 
           if (dist_x >= 0) {
 
 
-            VECTOR3 * ratio  = &y_buffer2[y][0].ratio;
-            VECTOR3 * ratio2 = &y_buffer2[y][1].ratio;
-            // std::cout << "a: " << ratio->x << ", " << ratio->y << ", " << ratio->z << "\n";
-            // std::cout << "b: " << ratio2->x << ", " << ratio2->y << ", " << ratio2->z << "\n\n";
+            VECTOR3 ratio  = (*y_buffer2)[y][0].ratio;
+            VECTOR3 accum_ratio = ratio*256;
+            VECTOR3 step_ratio = (*y_buffer2)[y][1].ratio - ratio;
+            step_ratio*=256;
+            if (dist_x > 0) {
+              step_ratio/=dist_x;
+            }
 
-            VECTOR3 err_ratio(0,0,0);
+            int32_t x = (*y_buffer2)[y][0].position.x;
 
-            VECTOR3 dist_ratio = *ratio2 - *ratio;
-            VECTOR3 a_dist_ratio = abs(dist_ratio);
-            VECTOR3 step_ratio( sgn(dist_ratio.x), sgn(dist_ratio.y), sgn(dist_ratio.z) );
+            int32_t z = (*y_buffer2)[y][0].position.z;
+            int32_t accum_z = z*256;
+            int32_t step_z = (*y_buffer2)[y][1].position.z - z;
+            step_z*=256;
+            if (dist_x > 0) {
+              step_z/=dist_x;
+            }
+            
+           while (x <= (*y_buffer2)[y][1].position.x) {
 
-            int32_t x = y_buffer2[y][0].position.x;
-
-            int32_t z = y_buffer2[y][0].position.z;
-            int32_t err_z = 0;
-            int32_t dist_z = y_buffer2[y][1].position.z - y_buffer2[y][0].position.z;
-            int32_t a_dist_z = abs(dist_z);
-            int32_t step_z = sgn(dist_z);
-            while (x <= y_buffer2[y][1].position.x) {
-
-              VECTOR3 norm = ( (norm_a*ratio->x)/255 + (norm_b*ratio->y)/255 + (norm_c*ratio->z)/255 ).unit();
-              VECTOR3 rgb0 = ( (rgb_a*ratio->x)/255 + (rgb_b*ratio->y)/255 + (rgb_c*ratio->z)/255 )/3;
+              VECTOR3 norm = ( (norm_a*ratio.x)/255 + (norm_b*ratio.y)/255 + (norm_c*ratio.z)/255 ).unit();
+              VECTOR3 rgb0 = ( (rgb_a*ratio.x)/255 + (rgb_b*ratio.y)/255 + (rgb_c*ratio.z)/255 )/3;
               CRGB rgb = CRGB(rgb0.x,rgb0.y,rgb0.z);
               CRGB new_rgb;
 
@@ -274,14 +273,15 @@
               x++;
             
               if (dist_x > 0) {
+                accum_ratio+=step_ratio;
+                ratio = accum_ratio/256;
+                
 
-                iterate(*ratio,step_ratio,a_dist_ratio,err_ratio,dist_x);
+                //iterate(ratio,step_ratio,a_dist_ratio,err_ratio,dist_x);
 
-                err_z += a_dist_z;
-                while (err_z >= dist_x) {
-                    z += step_z;
-                    err_z -= dist_x;
-                }
+                
+                accum_z+=step_z;
+                z = accum_z/256;
                 
               }
 
@@ -319,22 +319,22 @@
 
 //draw a triangle and calculate x,y,z as well as the ratio of a-b-c for each pixel
     bool draw_triangle_fine(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& norm_a, VECTOR3& norm_b, VECTOR3& norm_c, const CRGB& rgb = CRGB(255,255,255)) {
+      if (!y_buffer2) return 0;
       bool on_screen = false;
 
       int orientation = ((b.y-a.y))*((c.x-b.x)) - ((c.y-b.y))*((b.x-a.x));
       //int orientation = ((b.y-a.y)/256)*((c.x-b.x)/256) - ((c.y-b.y)/256)*((b.x-a.x)/256);
       
       if ( orientation < 0 ) {
-        Y_BUF y_buffer2[MATRIX_HEIGHT][2];
-        reset_y_buffer2(y_buffer2);
+        reset_y_buffer2();
 
         static const VECTOR3 a_val(255,0,0);
         static const VECTOR3 b_val(0,255,0);
         static const VECTOR3 c_val(0,0,255);
 
-        draw_line_ybuffer_fine(y_buffer2, a, a_val, b, b_val);
-        draw_line_ybuffer_fine(y_buffer2, b, b_val, c, c_val);
-        draw_line_ybuffer_fine(y_buffer2, c, c_val, a, a_val);
+        draw_line_ybuffer_fine(a, a_val, b, b_val);
+        draw_line_ybuffer_fine(b, b_val, c, c_val);
+        draw_line_ybuffer_fine(c, c_val, a, a_val);
 
         // CRGB rgb(a_norm.x,a_norm.y,a_norm.z);
 
@@ -344,32 +344,36 @@
         
         //fill between the pixels of our lines
         for (int y = _max(y_buffer_min,0); y <= _min(y_buffer_max,MATRIX_HEIGHT-1); y++) {
-            int32_t dist_x = y_buffer2[y][1].position.x/256 - y_buffer2[y][0].position.x/256;
+            int32_t dist_x = (*y_buffer2)[y][1].position.x/256 - (*y_buffer2)[y][0].position.x/256;
 
           if (dist_x >= 0) {
 
 
-            VECTOR3 * ratio  = &y_buffer2[y][0].ratio;
-            VECTOR3 * ratio2 = &y_buffer2[y][1].ratio;
-        
+            VECTOR3 ratio  = (*y_buffer2)[y][0].ratio;
+            VECTOR3 accum_ratio = ratio*256;
+            VECTOR3 step_ratio = (*y_buffer2)[y][1].ratio - ratio;
+            step_ratio*=256;
+            if (dist_x > 0) {
+              step_ratio/=dist_x;
+            }
 
-            VECTOR3 err_ratio(0,0,0);
-            VECTOR3 dist_ratio = *ratio2 - *ratio;
-            VECTOR3 a_dist_ratio = abs(dist_ratio);
-            VECTOR3 step_ratio( sgn(dist_ratio.x), sgn(dist_ratio.y), sgn(dist_ratio.z) );
+            int32_t x = (*y_buffer2)[y][0].position.x/256;
+            int32_t remainder_low = 255-(((*y_buffer2)[y][0].position.x+512)%256);
+            int32_t remainder_high = ((*y_buffer2)[y][1].position.x+512)%256;
 
-            int32_t x = _max(y_buffer2[y][0].position.x/256,0);
-            int32_t remainder_low = 255-((y_buffer2[y][0].position.x+512)%256);
-            int32_t remainder_high = (y_buffer2[y][1].position.x+512)%256;
+            int32_t z = (*y_buffer2)[y][0].position.z;
+            int32_t accum_z = z*256;
+            int32_t step_z = (*y_buffer2)[y][1].position.z - z;
+            step_z*=256;
+            if (dist_x > 0) {
+              step_z/=dist_x;
+            }
+            
+           
+            
+            while (x <= _min((*y_buffer2)[y][1].position.x/256,MATRIX_WIDTH-1)) {
 
-            int32_t z = y_buffer2[y][0].position.z;
-            int32_t err_z = 0;
-            int32_t dist_z = y_buffer2[y][1].position.z - y_buffer2[y][0].position.z;
-            int32_t a_dist_z = abs(dist_z);
-            int32_t step_z = sgn(dist_z);
-            while (x <= _min(y_buffer2[y][1].position.x/256,MATRIX_WIDTH-1)) {
-
-              VECTOR3 norm = ( (norm_a*ratio->x)/255 + (norm_b*ratio->y)/255 + (norm_c*ratio->z)/255 ).unit();
+              VECTOR3 norm = ( (norm_a*ratio.x)/255 + (norm_b*ratio.y)/255 + (norm_c*ratio.z)/255 ).unit();
 
               CRGB new_rgb;
 
@@ -378,12 +382,12 @@
               //new_rgb.g = _max((ratio->y*norm.z)/255,0);
               //new_rgb.b = _max((ratio->z*norm.z)/255,0);
               uint8_t norm_bri = (_min(_max(norm.z,0),255)*3)/4 + 64; //minimum brightness 64
-                if (x == y_buffer2[y][0].position.x/256) {
+                if (x == (*y_buffer2)[y][0].position.x/256) {
                     new_rgb.r = (norm_bri*rgb.r)/(255);
                     new_rgb.g = (norm_bri*rgb.g)/(255);
                     new_rgb.b = (norm_bri*rgb.b)/(255);
                     on_screen = drawXYZ2(led_screen, x, y, z, new_rgb,remainder_low,false) || on_screen; //gamma
-                } else if (x == y_buffer2[y][1].position.x/256) {
+                } else if (x == (*y_buffer2)[y][1].position.x/256) {
                     new_rgb.r = (norm_bri*rgb.r)/(255);
                     new_rgb.g = (norm_bri*rgb.g)/(255);
                     new_rgb.b = (norm_bri*rgb.b)/(255);
@@ -398,14 +402,15 @@
               x++;
             
               if (dist_x > 0) {
+                accum_ratio+=step_ratio;
+                ratio = accum_ratio/256;
+                
 
-                iterate(*ratio,step_ratio,a_dist_ratio,err_ratio,dist_x);
+                //iterate(ratio,step_ratio,a_dist_ratio,err_ratio,dist_x);
 
-                err_z += a_dist_z;
-                while (err_z >= dist_x) {
-                    z += step_z;
-                    err_z -= dist_x;
-                }
+                
+                accum_z+=step_z;
+                z = accum_z/256;
                 
               }
 

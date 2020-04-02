@@ -359,7 +359,7 @@ static void draw_line_ybuffer(const int32_t& x1i, const int32_t& y1i, const int3
 }
 
 
-static void draw_line_ybuffer_fine(Y_BUF y_buffer2[MATRIX_HEIGHT][2], VECTOR3 a, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 b_rgb) {
+static void draw_line_ybuffer_fine(VECTOR3 a, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 b_rgb) {
 
   //a.y += 128;
   //b.y += 128;
@@ -375,6 +375,7 @@ static void draw_line_ybuffer_fine(Y_BUF y_buffer2[MATRIX_HEIGHT][2], VECTOR3 a,
   y_start + (y_dist * x_travel) / x_dist
 
 */
+    if (!y_buffer2) return;
     if (a.y > b.y) {
         VECTOR3 temp = a;
         VECTOR3 temp_rgb = a_rgb;
@@ -402,13 +403,13 @@ static void draw_line_ybuffer_fine(Y_BUF y_buffer2[MATRIX_HEIGHT][2], VECTOR3 a,
           VECTOR3 c_rgb = a_rgb + (dist_rgb * y_travel) / dist.y;
           y_buffer_min = _min(c.y/256,y_buffer_min);
           y_buffer_max = _max(c.y/256,y_buffer_max);
-          if (c.x < y_buffer2[c.y/256][0].position.x) {
-            y_buffer2[c.y/256][0].position = c;
-            y_buffer2[c.y/256][0].ratio = c_rgb;
+          if (c.x < (*y_buffer2)[c.y/256][0].position.x) {
+            (*y_buffer2)[c.y/256][0].position = c;
+            (*y_buffer2)[c.y/256][0].ratio = c_rgb;
           }
-          if (c.x > y_buffer2[c.y/256][1].position.x) {
-            y_buffer2[c.y/256][1].position = c;
-            y_buffer2[c.y/256][1].ratio = c_rgb;
+          if (c.x > (*y_buffer2)[c.y/256][1].position.x) {
+            (*y_buffer2)[c.y/256][1].position = c;
+            (*y_buffer2)[c.y/256][1].ratio = c_rgb;
           }
         }
         //drawXY(led_screen,a.x,a.y,0,0,255);
@@ -422,8 +423,8 @@ static void draw_line_ybuffer_fine(Y_BUF y_buffer2[MATRIX_HEIGHT][2], VECTOR3 a,
 
 }
 
-static void draw_line_ybuffer(Y_BUF y_buffer2[MATRIX_HEIGHT][2], VECTOR3 a, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 b_rgb) {
-
+static void draw_line_ybuffer(VECTOR3 a, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 b_rgb) {
+  if (!y_buffer2) return;
   a += 128;
   b += 128;
   a /= 256;
@@ -459,13 +460,13 @@ static void draw_line_ybuffer(Y_BUF y_buffer2[MATRIX_HEIGHT][2], VECTOR3 a, VECT
         y_buffer_min = _min(a.y,y_buffer_min);
         y_buffer_max = _max(a.y,y_buffer_max);
         //TODO: take into account a.z when a.x is equal, if necessary
-        if (a.x < y_buffer2[a.y][0].position.x) {
-          y_buffer2[a.y][0].position = a;
-          y_buffer2[a.y][0].ratio = a_rgb;
+        if (a.x < (*y_buffer2)[a.y][0].position.x) {
+          (*y_buffer2)[a.y][0].position = a;
+          (*y_buffer2)[a.y][0].ratio = a_rgb;
         }
-        if (a.x > y_buffer2[a.y][1].position.x) {
-          y_buffer2[a.y][1].position = a;
-          y_buffer2[a.y][1].ratio = a_rgb;
+        if (a.x > (*y_buffer2)[a.y][1].position.x) {
+          (*y_buffer2)[a.y][1].position = a;
+          (*y_buffer2)[a.y][1].ratio = a_rgb;
         }
       }
       //drawXY(led_screen,a.x,a.y,0,0,255);
@@ -493,13 +494,13 @@ static void draw_line_ybuffer(Y_BUF y_buffer2[MATRIX_HEIGHT][2], VECTOR3 a, VECT
       if (a.y >= 0 && a.y < MATRIX_HEIGHT) {
         y_buffer_min = _min(a.y,y_buffer_min);
         y_buffer_max = _max(a.y,y_buffer_max);
-        if (a.x < y_buffer2[a.y][0].position.x) {
-          y_buffer2[a.y][0].position = a;
-          y_buffer2[a.y][0].ratio = a_rgb;
+        if (a.x < (*y_buffer2)[a.y][0].position.x) {
+          (*y_buffer2)[a.y][0].position = a;
+          (*y_buffer2)[a.y][0].ratio = a_rgb;
         }
-        if (a.x > y_buffer2[a.y][1].position.x) {
-          y_buffer2[a.y][1].position = a;
-          y_buffer2[a.y][1].ratio = a_rgb;
+        if (a.x > (*y_buffer2)[a.y][1].position.x) {
+          (*y_buffer2)[a.y][1].position = a;
+          (*y_buffer2)[a.y][1].ratio = a_rgb;
         }
       }
       //drawXY(led_screen,a.x,a.y,0,0,255);

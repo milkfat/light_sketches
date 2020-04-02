@@ -11,6 +11,7 @@ class PARTICLES: public LIGHT_SKETCH {
     #define NUM_PARTICLE_EFFECTS 3
     int current_effect = 2;
     struct PARTICLE {
+        VECTOR3 old_pos;
         VECTOR3 pos;
         VECTOR3 spd;
         bool active;
@@ -28,6 +29,7 @@ class PARTICLES: public LIGHT_SKETCH {
     }
 
     void setup() {
+        led_screen.light_falloff = 10;
         for (int i = 0; i < NUM_PARTICLES; i++) {
             particles[i].active = false;
             particles[i].pos.z = 0;
@@ -73,6 +75,11 @@ class PARTICLES: public LIGHT_SKETCH {
             particles[current_particle].pos.x = random(MATRIX_WIDTH*256);
             particles[current_particle].pos.x = MATRIX_WIDTH*128;
             particles[current_particle].pos.y = MATRIX_HEIGHT*256;
+            particles[current_particle].pos.z = 0;
+            VECTOR3 p;
+            led_screen.matrix.rotate(particles[current_particle].pos,p);
+            led_screen.perspective(p);
+            particles[current_particle].old_pos = p;
             particles[current_particle].spd.x = random(-100,100);
             particles[current_particle].spd.y = random(-50,1);
             particles[current_particle].rgb = CRGB::White;
@@ -109,6 +116,11 @@ class PARTICLES: public LIGHT_SKETCH {
             particles[current_particle].active = 1;
             particles[current_particle].pos.x = MATRIX_WIDTH*128;
             particles[current_particle].pos.y = MATRIX_HEIGHT*128;
+            particles[current_particle].pos.z = 0;
+            VECTOR3 p;
+            led_screen.matrix.rotate(particles[current_particle].pos,p);
+            led_screen.perspective(p);
+            particles[current_particle].old_pos = p;
             particles[current_particle].spd.x = (sin16(angle) * vel)/INT16_MAX;
             particles[current_particle].spd.y = (cos16(angle) * vel)/INT16_MAX;
             if (random(2)) {
@@ -144,28 +156,32 @@ class PARTICLES: public LIGHT_SKETCH {
             leds[i].g = (leds[i].g*200)/256;
             leds[i].b = (leds[i].b*200)/256;
         }
-        if (random(100)==0) {
-        int cnt = 1;
-        while (cnt--) {
-            uint16_t angle = random(UINT16_MAX);
-            uint8_t vel = random(20,256);
-            particles[current_particle].active = 1;
-            particles[current_particle].pos.x = 0;
-            particles[current_particle].pos.y = MATRIX_HEIGHT*140;
-            particles[current_particle].pos.z = 0;
-            particles[current_particle].spd.x = (sin16(angle) * vel)/INT16_MAX;
-            particles[current_particle].spd.y = (cos16(angle) * vel)/INT16_MAX;
-            particles[current_particle].spd.z = (cos16(angle) * vel)/INT16_MAX;
-            if (random(2)) {
-                particles[current_particle].spd.x*=-1;
+        if (random(10)==0) {
+            int cnt = 1;
+            while (cnt--) {
+                uint16_t angle = random(UINT16_MAX);
+                uint8_t vel = random(20,256);
+                particles[current_particle].active = 1;
+                particles[current_particle].pos.x = 0;
+                particles[current_particle].pos.y = MATRIX_HEIGHT*140;
+                particles[current_particle].pos.z = 0;
+                VECTOR3 p;
+                led_screen.matrix.rotate(particles[current_particle].pos,p);
+                led_screen.perspective(p);
+                particles[current_particle].old_pos = p;
+                particles[current_particle].spd.x = (sin16(angle) * vel)/INT16_MAX;
+                particles[current_particle].spd.y = (cos16(angle) * vel)/INT16_MAX;
+                particles[current_particle].spd.z = (cos16(angle) * vel)/INT16_MAX;
+                if (random(2)) {
+                    particles[current_particle].spd.x*=-1;
+                }
+                if (random(2)) {
+                    particles[current_particle].spd.y*=-1;
+                }
+                particles[current_particle].rgb = CHSV(random(256),255,255);
+                current_particle++;
+                current_particle%=NUM_PARTICLES;
             }
-            if (random(2)) {
-                particles[current_particle].spd.y*=-1;
-            }
-            particles[current_particle].rgb = CHSV(random(256),255,255);
-            current_particle++;
-            current_particle%=NUM_PARTICLES;
-        }
         }
 
         for (int i = 0; i < NUM_PARTICLES; i++) {
@@ -186,11 +202,27 @@ class PARTICLES: public LIGHT_SKETCH {
                     //rotate with our global matrix
                     led_screen.matrix.rotate(particles[i].pos, p);
                     //translate vectors to coordinates
-                    scale_z(p);
+                    //scale_z(p);
                     //correct 3d perspective
                     led_screen.perspective(p);
-
-                    blendXY(led_screen, p, particles[i].rgb); 
+                    uint16_t dist = _max(abs(p.x-particles[i].old_pos.x), abs(p.y-particles[i].old_pos.y));
+                    uint8_t dist_b = dist >> 8;
+                    // CRGB rgb = particles[i].rgb;
+                    // rgb/=dist;
+                    // gamma8_encode(rgb);
+                    if (dist_b) {
+                        uint16_t r = particles[i].rgb.r<<8;
+                        uint16_t g = particles[i].rgb.g<<8;
+                        uint16_t b = particles[i].rgb.b<<8;
+                        r/=dist;
+                        g/=dist;
+                        b/=dist;
+                        CRGB rgb = CRGB(gamma8_encode(r),gamma8_encode(g),gamma8_encode(b));
+                        draw_line_fine(led_screen, p, particles[i].old_pos, rgb, -10000, 255, 255, true);
+                    } else {
+                        blendXY(led_screen, p, particles[i].rgb); 
+                    }
+                    particles[i].old_pos = p;
                     if (p.x < -64*256 || p.x > MATRIX_WIDTH*256*2 || p.y < -64*256 || p.y > MATRIX_HEIGHT*256*2 || length < 8) {
         
                         particles[i].active = false;
