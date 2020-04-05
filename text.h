@@ -375,7 +375,7 @@ void handle_text() {
                           }
                           rotate_y(p,cube_ang3); //rotates the cube as part of a letter (around the letter's y-axis)
                           p.z += z;
-                          if (p.z < led_screen.camera_position.z-512 && p.z < (led_screen.camera_position.z - led_screen.screen_distance)) {
+                          if (p.z < led_screen.camera_position.z-512) {
                             draw_cube( p, VECTOR3(512,512,512), VECTOR3_8(0,cube_ang3,0), CHSV(hue,sat,255), persist);
                           }
 

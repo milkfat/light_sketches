@@ -75,6 +75,8 @@ class Y_BUF2 {
 
  public:
   void reset() {
+      y_buffer_min = MATRIX_HEIGHT-1;
+      y_buffer_max = 0;
       for (int y = 0; y < MATRIX_HEIGHT; y++) {
         buf[y][0].position = VECTOR3(INT32_MAX,0,0);
         buf[y][1].position = VECTOR3(INT32_MIN,0,0);

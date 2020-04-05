@@ -109,9 +109,9 @@ struct VECTOR3_CLASS {
     norm/=m;
     int32_t length = sqrt16(norm.x*norm.x+norm.y*norm.y+norm.z*norm.z);
     if (length != 0) {
-      norm.x = (x*255)/length;
-      norm.y = (y*255)/length;
-      norm.z = (z*255)/length;
+      norm.x = (norm.x*255)/length;
+      norm.y = (norm.y*255)/length;
+      norm.z = (norm.z*255)/length;
     } else {
       norm.x = 0;
       norm.y = 0;

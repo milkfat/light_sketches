@@ -95,9 +95,7 @@ class CURVY: public LIGHT_SKETCH {
     #define NUM_TENTACLES NUM_JELLY_SEGMENTS
     #define NUM_TENTACLE_SEGMENTS 20
     struct tentacle_segment {
-      int32_t x = -20*256;
-      int32_t y = -150*256;
-      int32_t z = 0;
+      VECTOR3 pos = VECTOR3(-20*256,-150*256,0);
       float vx = 0;
       float vy = 0;
       float vz = 0;
@@ -363,9 +361,9 @@ class CURVY: public LIGHT_SKETCH {
         //reset tentacles
         for (int i = 0; i < NUM_TENTACLES; i++) {
           for (int j = 0; j < NUM_TENTACLE_SEGMENTS; j++) {
-            jelly.tentacles[i][j].x = jelly.x;
-            jelly.tentacles[i][j].y = jelly.y;
-            jelly.tentacles[i][j].z = jelly.z;
+            jelly.tentacles[i][j].pos.x = jelly.x;
+            jelly.tentacles[i][j].pos.y = jelly.y;
+            jelly.tentacles[i][j].pos.z = jelly.z;
             jelly.tentacles[i][j].vx = 0;
             jelly.tentacles[i][j].vy = 0;
             jelly.tentacles[i][j].vz = 0;
@@ -402,9 +400,9 @@ class CURVY: public LIGHT_SKETCH {
 void draw_jelly(JELLY& jelly) {
 
       jelly.on_screen = false;
-      int32_t jelly_lines[NUM_JELLY_SEGMENTS/2][5][2];
+      VECTOR3 jelly_lines[NUM_JELLY_SEGMENTS/2][5];
       
-      int32_t ring_points[NUM_JELLY_SEGMENTS][2];
+      VECTOR3 ring_points[NUM_JELLY_SEGMENTS];
 
       //a jellyfish consists of a segment rotated around an axis (the center of the jellyfish)
       //each segment is made up of three points
@@ -483,23 +481,18 @@ void draw_jelly(JELLY& jelly) {
 
         //update the tentacles
 
-        jelly.tentacles[i][0].x = p1[0];
-        jelly.tentacles[i][0].y = p1[1];
-        jelly.tentacles[i][0].z = p1[2];
+        jelly.tentacles[i][0].pos.x = p1[0];
+        jelly.tentacles[i][0].pos.y = p1[1];
+        jelly.tentacles[i][0].pos.z = p1[2];
 
-        jelly.tentacles[i][1].x = p2[0];
-        jelly.tentacles[i][1].y = p2[1];
-        jelly.tentacles[i][1].z = p2[2];
+        jelly.tentacles[i][1].pos.x = p2[0];
+        jelly.tentacles[i][1].pos.y = p2[1];
+        jelly.tentacles[i][1].pos.z = p2[2];
 
         //rotate the jellyfish as part of our global 3d matrix
         led_screen.matrix.rotate(p0);
         led_screen.matrix.rotate(p1);
         led_screen.matrix.rotate(p2);
-
-        //some sort of screen scaling
-        scale_z(p0);
-        scale_z(p1);
-        scale_z(p2);
 
         //map our 3d coordinates to screen coordinates
         led_screen.perspective(p0);
@@ -521,36 +514,43 @@ void draw_jelly(JELLY& jelly) {
         }
         
         if (i < 5) {
-          jelly_lines[i][2][0] = p0[0];
-          jelly_lines[i][2][1] = p0[1];
-          jelly_lines[i][1][0] = p1[0];
-          jelly_lines[i][1][1] = p1[1];
-          jelly_lines[i][0][0] = p2[0];
-          jelly_lines[i][0][1] = p2[1];
+          jelly_lines[i][2].x = p0[0];
+          jelly_lines[i][2].y = p0[1];
+          jelly_lines[i][2].z = p0[2];
+          jelly_lines[i][1].x = p1[0];
+          jelly_lines[i][1].y = p1[1];
+          jelly_lines[i][1].z = p1[2];
+          jelly_lines[i][0].x = p2[0];
+          jelly_lines[i][0].y = p2[1];
+          jelly_lines[i][0].z = p2[2];
          } else {
-          jelly_lines[i-5][3][0] = p1[0];
-          jelly_lines[i-5][3][1] = p1[1];
-          jelly_lines[i-5][4][0] = p2[0];
-          jelly_lines[i-5][4][1] = p2[1];
+          jelly_lines[i-5][3].x = p1[0];
+          jelly_lines[i-5][3].y = p1[1];
+          jelly_lines[i-5][3].z = p1[2];
+          jelly_lines[i-5][4].x = p2[0];
+          jelly_lines[i-5][4].y = p2[1];
+          jelly_lines[i-5][4].z = p2[2];
          }
 
 
         //add the outer point of each segment to an array
         //we use this array to draw a circle around the jelly at the end
-        ring_points[i][0] = p2[0];
-        ring_points[i][1] = p2[1];
+        ring_points[i].x = p2[0];
+        ring_points[i].y = p2[1];
+        ring_points[i].z = p2[2];
         
       }
 
-        int bri = jelly.z/1000+150;
-        bri = _max(_min(bri,255),0);
+        // int bri = jelly.z/1000+150;
+        // bri = _max(_min(bri,255),0);
+        CRGB rgb = CHSV(212,80,150);
      for (int i = 0; i < NUM_JELLY_SEGMENTS/2; i++) {
         //draw each segment
-        matt_curve8(jelly_lines[i], 5,212,80,bri,false,false,true,255,128);
+        matt_curve8(led_screen, jelly_lines[i], 5,rgb,false,false,true,255,128);
      }
 
       //draw a circle tying the jelly's segments together
-      matt_curve8(ring_points,NUM_JELLY_SEGMENTS,212,80,bri,false,true,true,255,128);
+      matt_curve8(led_screen,ring_points,NUM_JELLY_SEGMENTS,rgb,false,true,true,255,128);
       
       draw_tentacles(jelly);
 }
@@ -600,23 +600,23 @@ void draw_jelly(JELLY& jelly) {
               tentacle_segment* e = &temp1;
               
               //a,c midpoint
-              d->x = (a->x + c->x) / 2;
-              d->y = (a->y + c->y) / 2;
-              d->z = (a->z + c->z) / 2;
+              d->pos.x = (a->pos.x + c->pos.x) / 2;
+              d->pos.y = (a->pos.y + c->pos.y) / 2;
+              d->pos.z = (a->pos.z + c->pos.z) / 2;
               
               //b,d midpoint -- this is our target for point b (or j)
-              e->x = (b->x + d->x) / 2;
-              e->y = (b->y + d->y) / 2;
-              e->z = (b->z + d->z) / 2;
+              e->pos.x = (b->pos.x + d->pos.x) / 2;
+              e->pos.y = (b->pos.y + d->pos.y) / 2;
+              e->pos.z = (b->pos.z + d->pos.z) / 2;
 
 
-              int32_t dx = (d->x - e->x);
-              int32_t dy = (d->y - e->y);
-              int32_t dz = (d->z - e->z);
+              int32_t dx = (d->pos.x - e->pos.x);
+              int32_t dy = (d->pos.y - e->pos.y);
+              int32_t dz = (d->pos.z - e->pos.z);
 
-              int32_t acx = a->x - c->x;
-              int32_t acy = a->y - c->y;
-              int32_t acz = a->z - c->z;
+              int32_t acx = a->pos.x - c->pos.x;
+              int32_t acy = a->pos.y - c->pos.y;
+              int32_t acz = a->pos.z - c->pos.z;
 
               int32_t ac = sqrt( acx*acx + acy*acy + acz*acz);
 
@@ -631,9 +631,9 @@ void draw_jelly(JELLY& jelly) {
               dz = (dz*ac)/255;
               
               if (j > 1) {
-                b->x += dx;
-                b->y += dy;
-                b->z += dz;
+                b->pos.x += dx;
+                b->pos.y += dy;
+                b->pos.z += dz;
                 b->vx += dx/2;
                 b->vy += dy/2;
                 b->vz += dz/2;
@@ -644,17 +644,17 @@ void draw_jelly(JELLY& jelly) {
               dz = -dz;
 
               if (j > 2) {
-                a->x += dx;
-                a->y += dy;
-                a->z += dz;
+                a->pos.x += dx;
+                a->pos.y += dy;
+                a->pos.z += dz;
                 a->vx += dx/2;
                 a->vy += dy/2;
                 a->vz += dz/2;
               }
 
-              c->x += dx;
-              c->y += dy;
-              c->z += dz;
+              c->pos.x += dx;
+              c->pos.y += dy;
+              c->pos.z += dz;
               c->vx += dx/2;
               c->vy += dy/2;
               c->vz += dz/2;
@@ -667,9 +667,9 @@ void draw_jelly(JELLY& jelly) {
 
 
             // TENSION/COMPRESSION FORCE
-            int32_t dx = (a->x - b->x);
-            int32_t dy = (a->y - b->y);
-            int32_t dz = (a->z - b->z);
+            int32_t dx = (a->pos.x - b->pos.x);
+            int32_t dy = (a->pos.y - b->pos.y);
+            int32_t dz = (a->pos.z - b->pos.z);
 
             int32_t d2 = dx*dx + dy*dy + dz*dz;
 
@@ -694,9 +694,9 @@ void draw_jelly(JELLY& jelly) {
                             
               //if our current speed is less than the overage distance, then speed up
               
-              b->x += dx/2;
-              b->y += dy/2;
-              b->z += dz/2;
+              b->pos.x += dx/2;
+              b->pos.y += dy/2;
+              b->pos.z += dz/2;
               b->vx += dx/2;
               b->vy += dy/2;
               b->vz += dz/2;
@@ -711,9 +711,9 @@ void draw_jelly(JELLY& jelly) {
                 dz *= -1;
                 
                 //if our current speed is less than the overage distance, then speed up
-                a->x += dx;
-                a->y += dy;
-                a->z += dz;
+                a->pos.x += dx;
+                a->pos.y += dy;
+                a->pos.z += dz;
                 a->vx += dx/2;
                 a->vy += dy/2;
                 a->vz += dz/2;
@@ -733,9 +733,9 @@ void draw_jelly(JELLY& jelly) {
             }
 
             //update position
-            b->x += b->vx;
-            b->y += b->vy;
-            b->z += b->vz;
+            b->pos.x += b->vx;
+            b->pos.y += b->vy;
+            b->pos.z += b->vz;
 
             
           }
@@ -752,40 +752,39 @@ void draw_jelly(JELLY& jelly) {
     void draw_tentacles(JELLY& jelly) {
       tentacle_segment (*tentacles)[NUM_TENTACLE_SEGMENTS] = jelly.tentacles;
       for (int i = 0; i < NUM_JELLY_SEGMENTS; i++) {
-        int32_t tentacle_points[NUM_TENTACLE_SEGMENTS][2];
+        VECTOR3 tentacle_points[NUM_TENTACLE_SEGMENTS];
         for (int j = 0; j < NUM_TENTACLE_SEGMENTS; j++) {
 
-          int32_t p[3];
-          p[0] = tentacles[i][j].x;
-          p[1] = tentacles[i][j].y;
-          p[2] = tentacles[i][j].z;
+          VECTOR3 p;
+          p.x = tentacles[i][j].pos.x;
+          p.y = tentacles[i][j].pos.y;
+          p.z = tentacles[i][j].pos.z;
 
           //rotate with global matrix
           led_screen.matrix.rotate(p);
-
-          //some sort of screen scaling
-          scale_z(p);
 
           //map our 3d coordinates to screen coordinates
           led_screen.perspective(p);
 
           if (!jelly.on_screen) {
-          if (p[0] >= 0 && p[0] < MATRIX_WIDTH*256 && p[1] >= 0 && p[1] < MATRIX_HEIGHT*256) {
+          if (p.x >= 0 && p.x < MATRIX_WIDTH*256 && p.y >= 0 && p.y < MATRIX_HEIGHT*256) {
             jelly.on_screen = true;
           }
 
         }
           if (j > 0) {
-            tentacle_points[j-1][0] = p[0];
-            tentacle_points[j-1][1] = p[1];
+            tentacle_points[j-1].x = p.x;
+            tentacle_points[j-1].y = p.y;
+            tentacle_points[j-1].z = p.z;
           }
         
         }
 
         
-        int bri = jelly.z/1000+150;
-        bri = _max(_min(bri,255),0);
-        matt_curve8(tentacle_points,NUM_TENTACLE_SEGMENTS-1,212,48,bri,false,false,true,255,255);
+        // int bri = jelly.z/1000+150;
+        // bri = _max(_min(bri,255),0);
+        CRGB rgb = CHSV(212,48,150);
+        matt_curve8(led_screen,tentacle_points,NUM_TENTACLE_SEGMENTS-1,rgb,false,false,true,255,255);
         //matt_curve8(tentacle_points,NUM_TENTACLE_SEGMENTS-1,96,80,160,false,false,true,255,255);
       }
     }

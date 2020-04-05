@@ -124,7 +124,7 @@
               step_ratio/=dist_x;
             }
 
-            int32_t x = (*y_buffer2)[y][0].position.x;
+            int32_t x = _max((*y_buffer2)[y][0].position.x,0);
 
             int32_t z = (*y_buffer2)[y][0].position.z;
             int32_t accum_z = z*256;
@@ -134,10 +134,10 @@
               step_z/=dist_x;
             }
 
-            while (x <= (*y_buffer2)[y][1].position.x) {
+            while (x <= _min((*y_buffer2)[y][1].position.x, MATRIX_WIDTH)) {
 
               VECTOR3 norm = ( (norm_a*ratio.x)/255 + (norm_b*ratio.y)/255 + (norm_c*ratio.z)/255 ).unit();
-
+              
               CRGB new_rgb;
 
               uint8_t norm_bri = (_min(_max(norm.z,0),255)*3)/4 + 64;
@@ -176,9 +176,6 @@
         
         }
 
-        y_buffer_max = 0;
-        y_buffer_min = MATRIX_HEIGHT-1;
-
       }
 
       if (!on_screen) {
@@ -211,7 +208,9 @@
         rgb_b.unit_ip();
         rgb_c.unit_ip();
 
-        reset_y_buffer2();
+        y_buffer2->reset();
+        y_buffer_max = 0;
+        y_buffer_min = MATRIX_HEIGHT-1;
 
         static const VECTOR3 a_val(255,0,0);
         static const VECTOR3 b_val(0,255,0);
@@ -298,8 +297,6 @@
         
         }
 
-        y_buffer_max = 0;
-        y_buffer_min = MATRIX_HEIGHT-1;
 
       }
 
@@ -326,7 +323,7 @@
       //int orientation = ((b.y-a.y)/256)*((c.x-b.x)/256) - ((c.y-b.y)/256)*((b.x-a.x)/256);
       
       if ( orientation < 0 ) {
-        reset_y_buffer2();
+        y_buffer2->reset();
 
         static const VECTOR3 a_val(255,0,0);
         static const VECTOR3 b_val(0,255,0);
@@ -371,7 +368,7 @@
             
            
             
-            while (x <= _min((*y_buffer2)[y][1].position.x/256,MATRIX_WIDTH-1)) {
+            while (x <= _min(((*y_buffer2)[y][1].position.x+512)/256-2,MATRIX_WIDTH-1)) {
 
               VECTOR3 norm = ( (norm_a*ratio.x)/255 + (norm_b*ratio.y)/255 + (norm_c*ratio.z)/255 ).unit();
 
@@ -382,12 +379,12 @@
               //new_rgb.g = _max((ratio->y*norm.z)/255,0);
               //new_rgb.b = _max((ratio->z*norm.z)/255,0);
               uint8_t norm_bri = (_min(_max(norm.z,0),255)*3)/4 + 64; //minimum brightness 64
-                if (x == (*y_buffer2)[y][0].position.x/256) {
+                if (x == ((*y_buffer2)[y][0].position.x+512)/256-2) {
                     new_rgb.r = (norm_bri*rgb.r)/(255);
                     new_rgb.g = (norm_bri*rgb.g)/(255);
                     new_rgb.b = (norm_bri*rgb.b)/(255);
                     on_screen = drawXYZ2(led_screen, x, y, z, new_rgb,remainder_low,false) || on_screen; //gamma
-                } else if (x == (*y_buffer2)[y][1].position.x/256) {
+                } else if (x == ((*y_buffer2)[y][1].position.x+512)/256-2) {
                     new_rgb.r = (norm_bri*rgb.r)/(255);
                     new_rgb.g = (norm_bri*rgb.g)/(255);
                     new_rgb.b = (norm_bri*rgb.b)/(255);
@@ -427,8 +424,6 @@
         
         }
 
-        y_buffer_max = 0;
-        y_buffer_min = MATRIX_HEIGHT-1;
 
       }
       

@@ -7,21 +7,23 @@
 
 static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, const VECTOR3& b, const CRGB& rgb, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true, const bool& wide_fill = true, const bool& additive = false) {
   
-  int32_t z_depth = a.z;
-
   //add one pixel to compensate for rounding errors between -1 and 0
   int32_t x1 = a.x+256;
   int32_t y1 = a.y+256;
+  int32_t z1 = a.z+256;
   int32_t x2 = b.x+256;
   int32_t y2 = b.y+256;
-  
+  int32_t z2 = b.z+256;
+
   //avoid vertical and horizontal lines by fudging a bit
   if (x1 == x2 ) {
     x1++;
   }
-
   if (y1 == y2 ) {
     y2++;
+  }
+  if (z1 == z2 ) {
+    z2++;
   }
   bool flip = false;
   if ( abs(x1 - x2) > abs(y1 - y2) ) {
@@ -30,10 +32,13 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
     if (x1 > x2) {
       int tempx = x1;
       int tempy = y1;
+      int tempz = z1;
       x1 = x2;
       y1 = y2;
+      z1 = z2;
       x2 = tempx;
       y2 = tempy;
+      z2 = tempz;
       flip = true;
     }
   } else {
@@ -42,10 +47,13 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
     if (y1 > y2) {
       int tempx = x1;
       int tempy = y1;
+      int tempz = z1;
       x1 = x2;
       y1 = y2;
+      z1 = z2;
       x2 = tempx;
       y2 = tempy;
+      z2 = tempz;
       flip = true;
     }
   }
@@ -90,11 +98,18 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
 
   int32_t x_dist = x2 - x1;
   int32_t y_dist = y2 - y1;
+  int32_t z_dist = z2 - z1;
   float x_step = (x_dist*256.f)/y_dist;
   float y_step = (y_dist*256.f)/x_dist;
+  x1_led = _max(x1_led,0);
+  y1_led = _max(y1_led,0);
+  x2_led = _min(x2_led,MATRIX_WIDTH);
+  y2_led = _min(y2_led,MATRIX_HEIGHT);
   if (abs(x1 - x2) > abs(y1 - y2)) {
     //calculate horizontally
-    
+
+    float z_step= (z_dist*256.f)/x_dist;
+    float z_start = z1 + ((x1_led*256 - x1)*z_step)/256.f;
     float y_start = y1 + ((x1_led*256 - x1)*y_step)/256.f;
     for (int i = (x1_led); i <= (x2_led); i++) {
       //if ((i != x1_led && i != x2_led) || !trim) {
@@ -111,6 +126,7 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
           v2 = (val2-val)*pos;
         }
         int y = y_start;
+        int z = z_start;
         int Hy = (y+255)/256; //ceil
         int Ly = y/256;
         uint progress = abs(y - Hy*256);
@@ -138,8 +154,8 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
           color_add_gamma8(screen_object.screen_buffer[XY(i, Hy)], rgb0);
           color_add_gamma8(screen_object.screen_buffer[XY(i, Ly)], rgb1);
         } else {
-          drawXYZ2(screen_object, i, Hy, z_depth, rgb, ((b2*v1)>>8) + ((b2*v2)>>8), ignore_z );
-          drawXYZ2(screen_object, i, Ly, z_depth, rgb, ((b *v1)>>8) + ((b *v2)>>8), ignore_z );
+          drawXYZ2(screen_object, i, Hy, z, rgb, ((b2*v1)>>8) + ((b2*v2)>>8), ignore_z );
+          drawXYZ2(screen_object, i, Ly, z, rgb, ((b *v1)>>8) + ((b *v2)>>8), ignore_z );
         }
 
         //record stuff in our x and y buffers for other functions to use
@@ -194,6 +210,7 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
       }
       i++;
       y_start += y_step;
+      z_start += z_step;
     }
 
     
@@ -201,6 +218,8 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
     //calculate vertically
 
     float x_start = x1 + ((y1_led*256-y1)*x_step)/256.f;
+    float z_step  = (z_dist*256.f)/y_dist;
+    float z_start = z1 + ((y1_led*256-y1)*z_step)/256.f;
     for (int i = (y1_led); i <= (y2_led); i++) {
       uint8_t v1 = val;
       int pos = i - y1_led;
@@ -214,6 +233,7 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
         v2 = (val2-val)*pos;
       }
       int x = x_start;
+      int z = z_start;
       int Hx = (x+255)/256; //ceil
       int Lx = x/256;
       uint progress = abs(x - Hx*256);
@@ -242,8 +262,8 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
         color_add_gamma8(screen_object.screen_buffer[XY(Hx, i)], rgb0);
         color_add_gamma8(screen_object.screen_buffer[XY(Lx, i)], rgb1);
       } else {
-        drawXYZ2(screen_object, Hx, i, z_depth, rgb, ((b2*v1)>>8) + ((b2*v2)>>8), ignore_z );
-        drawXYZ2(screen_object, Lx, i, z_depth, rgb, ((b *v1)>>8) + ((b *v2)>>8), ignore_z );
+        drawXYZ2(screen_object, Hx, i, z, rgb, ((b2*v1)>>8) + ((b2*v2)>>8), ignore_z );
+        drawXYZ2(screen_object, Lx, i, z, rgb, ((b *v1)>>8) + ((b *v2)>>8), ignore_z );
       }
       if (!wide_fill) {
         int temp = Lx;
@@ -275,6 +295,7 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
       //add the pixel we subtracted to compensate for rounding errors between -1 and 0
       i++;
       x_start += x_step;
+      z_start += z_step;
     }
     
   }
@@ -297,7 +318,7 @@ static inline __attribute__ ((always_inline)) void draw_line_fine(PERSPECTIVE& s
 }
 
 static inline __attribute__ ((always_inline)) void draw_line_fine(PERSPECTIVE& screen_object, const VECTOR3& a, const VECTOR3& b, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true, const bool& wide_fill = true) {
-  draw_line_fine(screen_object, a.x, a.y, b.x, b.y, rgb, z_depth, val, val2, trim, ignore_z, wide_fill);
+  draw_line_fine_base(screen_object, a, b, rgb, val, val2, trim, ignore_z, wide_fill);
 }
 
 static void draw_line_ybuffer(const int32_t& x1i, const int32_t& y1i, const int32_t& x2i, const int32_t& y2i) {
@@ -324,7 +345,6 @@ static void draw_line_ybuffer(const int32_t& x1i, const int32_t& y1i, const int3
         y_buffer[y1][0] = _min(y_buffer[y1][0], x1);
         y_buffer[y1][1] = _max(y_buffer[y1][1], x1);
       }
-      //drawXY(led_screen,x1,y1,0,0,255);
       x1++;;
       err += ay_dist;
       if (err >= ax_dist) {
@@ -345,7 +365,6 @@ static void draw_line_ybuffer(const int32_t& x1i, const int32_t& y1i, const int3
         y_buffer[y1][0] = _min(y_buffer[y1][0], x1);
         y_buffer[y1][1] = _max(y_buffer[y1][1], x1);
       }
-      //drawXY(led_screen,x1,y1,0,0,255);
       y1++;
       err += ax_dist;
       if (err >= ay_dist) {
@@ -359,22 +378,11 @@ static void draw_line_ybuffer(const int32_t& x1i, const int32_t& y1i, const int3
 }
 
 
-static void draw_line_ybuffer_fine(VECTOR3 a, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 b_rgb) {
+static void draw_line_ybuffer_base(VECTOR3 a, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 b_rgb, bool fine=false) {
 
-  //a.y += 128;
-  //b.y += 128;
+  a.y += 128;
+  b.y += 128;
 
-/*
-
-  x_start, x_end
-
-  x_end - x_start = x_dist
-  
-  x_travel = x_now - x_start
-
-  y_start + (y_dist * x_travel) / x_dist
-
-*/
     if (!y_buffer2) return;
     if (a.y > b.y) {
         VECTOR3 temp = a;
@@ -403,16 +411,27 @@ static void draw_line_ybuffer_fine(VECTOR3 a, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 
           VECTOR3 c_rgb = a_rgb + (dist_rgb * y_travel) / dist.y;
           y_buffer_min = _min(c.y/256,y_buffer_min);
           y_buffer_max = _max(c.y/256,y_buffer_max);
-          if (c.x < (*y_buffer2)[c.y/256][0].position.x) {
-            (*y_buffer2)[c.y/256][0].position = c;
-            (*y_buffer2)[c.y/256][0].ratio = c_rgb;
-          }
-          if (c.x > (*y_buffer2)[c.y/256][1].position.x) {
-            (*y_buffer2)[c.y/256][1].position = c;
-            (*y_buffer2)[c.y/256][1].ratio = c_rgb;
+          if (fine) {
+            if (c.x < (*y_buffer2)[c.y/256][0].position.x) {
+              (*y_buffer2)[c.y/256][0].position = c;
+              (*y_buffer2)[c.y/256][0].ratio = c_rgb;
+            }
+            if (c.x > (*y_buffer2)[c.y/256][1].position.x) {
+              (*y_buffer2)[c.y/256][1].position = c;
+              (*y_buffer2)[c.y/256][1].ratio = c_rgb;
+            }
+          } else {
+            VECTOR3 c2 = c/256;
+            if (c2.x < (*y_buffer2)[c2.y][0].position.x) {
+              (*y_buffer2)[c2.y][0].position = c2;
+              (*y_buffer2)[c2.y][0].ratio = c_rgb;
+            }
+            if (c2.x > (*y_buffer2)[c2.y][1].position.x) {
+              (*y_buffer2)[c2.y][1].position = c2;
+              (*y_buffer2)[c2.y][1].ratio = c_rgb;
+            }
           }
         }
-        //drawXY(led_screen,a.x,a.y,0,0,255);
         c.y+=256;
         
 
@@ -423,99 +442,13 @@ static void draw_line_ybuffer_fine(VECTOR3 a, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 
 
 }
 
-static void draw_line_ybuffer(VECTOR3 a, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 b_rgb) {
-  if (!y_buffer2) return;
-  a += 128;
-  b += 128;
-  a /= 256;
-  b /= 256;
-  VECTOR3 dist = b-a;
-  VECTOR3 a_dist = abs(dist);
-
-  VECTOR3 dist_rgb = b_rgb-a_rgb;
-  VECTOR3 a_dist_rgb = abs(dist_rgb);
-
-  VECTOR3 err(0,0,0);
-  VECTOR3 step(0,0,0);
-
-  VECTOR3 err_rgb(0,0,0);
-  VECTOR3 step_rgb(0,0,0);
+static inline void draw_line_ybuffer(VECTOR3& a, const VECTOR3& a_rgb, VECTOR3& b, const VECTOR3& b_rgb) {
+  draw_line_ybuffer_base(a, a_rgb, b, b_rgb, false);
+}
 
 
-  if (a_dist.x > a_dist.y) {
-    //draw horizontally
-    if (a.x > b.x) {
-      swap_coords(a,a_rgb,b,b_rgb,dist);
-      dist_rgb.x = -dist_rgb.x;
-      dist_rgb.y = -dist_rgb.y;
-      dist_rgb.z = -dist_rgb.z;
-    }
-    step.y = sgn(dist.y);
-    step.z = sgn(dist.z);
-    step_rgb.x = sgn(dist_rgb.x);
-    step_rgb.y = sgn(dist_rgb.y);
-    step_rgb.z = sgn(dist_rgb.z);
-    while (a.x <= b.x) {
-      if (a.y >= 0 && a.y < MATRIX_HEIGHT) {
-        y_buffer_min = _min(a.y,y_buffer_min);
-        y_buffer_max = _max(a.y,y_buffer_max);
-        //TODO: take into account a.z when a.x is equal, if necessary
-        if (a.x < (*y_buffer2)[a.y][0].position.x) {
-          (*y_buffer2)[a.y][0].position = a;
-          (*y_buffer2)[a.y][0].ratio = a_rgb;
-        }
-        if (a.x > (*y_buffer2)[a.y][1].position.x) {
-          (*y_buffer2)[a.y][1].position = a;
-          (*y_buffer2)[a.y][1].ratio = a_rgb;
-        }
-      }
-      //drawXY(led_screen,a.x,a.y,0,0,255);
-      a.x++;
-      
-      iterate(a, step, a_dist, err, a_dist.x);
-      
-      iterate(a_rgb, step_rgb, a_dist_rgb, err_rgb, a_dist.x);
-
-    }
-  } else {
-    //draw vertically
-    if (a.y > b.y) {
-      swap_coords(a,a_rgb,b,b_rgb,dist);
-      dist_rgb.x = -dist_rgb.x;
-      dist_rgb.y = -dist_rgb.y;
-      dist_rgb.z = -dist_rgb.z;
-    }
-    step.x = sgn(dist.x);
-    step.z = sgn(dist.z);
-    step_rgb.x = sgn(dist_rgb.x);
-    step_rgb.y = sgn(dist_rgb.y);
-    step_rgb.z = sgn(dist_rgb.z);
-    while (a.y <= b.y) {
-      if (a.y >= 0 && a.y < MATRIX_HEIGHT) {
-        y_buffer_min = _min(a.y,y_buffer_min);
-        y_buffer_max = _max(a.y,y_buffer_max);
-        if (a.x < (*y_buffer2)[a.y][0].position.x) {
-          (*y_buffer2)[a.y][0].position = a;
-          (*y_buffer2)[a.y][0].ratio = a_rgb;
-        }
-        if (a.x > (*y_buffer2)[a.y][1].position.x) {
-          (*y_buffer2)[a.y][1].position = a;
-          (*y_buffer2)[a.y][1].ratio = a_rgb;
-        }
-      }
-      //drawXY(led_screen,a.x,a.y,0,0,255);
-
-      a.y++;
-
-      iterate(a, step, a_dist, err, a_dist.y);
-
-      iterate(a_rgb, step_rgb, a_dist_rgb, err_rgb, a_dist.y);
-
-
-    }
-  }
-
-
+static inline void draw_line_ybuffer_fine(VECTOR3& a, const VECTOR3& a_rgb, VECTOR3& b, const VECTOR3& b_rgb) {
+  draw_line_ybuffer_base(a, a_rgb, b, b_rgb, true);
 }
 
 
@@ -523,8 +456,140 @@ static inline __attribute__ ((always_inline)) void draw_line_ybuffer(VECTOR3& a,
   draw_line_ybuffer(a.x, a.y, b.x, b.y);
 }
 
+/*
+//different method of drawing... really buggy and didn't seem much faster/slower
+static void draw_line_ybuffer_alt(VECTOR3 a, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 b_rgb) {
+  if (!y_buffer2) return;
+  a += 128;
+  b += 128;
+
+  //if points a and b are equal in height then record and return
+  if (a.y/256 == b.y/256) {
+      a.y/=256;
+      b.y/=256;
+      if ( !(a.y >= 0 && a.y < MATRIX_HEIGHT) ) return;
+      y_buffer_min = _min(a.y,y_buffer_min);
+      y_buffer_max = _max(a.y,y_buffer_max);
+      if (a.x < (*y_buffer2)[a.y][0].position.x) {
+        (*y_buffer2)[a.y][0].position = a;
+        (*y_buffer2)[a.y][0].ratio = a_rgb;
+      }
+      if (a.x > (*y_buffer2)[a.y][1].position.x) {
+        (*y_buffer2)[a.y][1].position = a;
+        (*y_buffer2)[a.y][1].ratio = a_rgb;
+      }
+      if (b.x < (*y_buffer2)[a.y][0].position.x) {
+        (*y_buffer2)[a.y][0].position = b;
+        (*y_buffer2)[a.y][0].ratio = b_rgb;
+      }
+      if (b.x > (*y_buffer2)[a.y][1].position.x) {
+        (*y_buffer2)[a.y][1].position = b;
+        (*y_buffer2)[a.y][1].ratio = b_rgb;
+      }
+      return;
+  }
+  
+  VECTOR3 dist_fine = b-a;
+  VECTOR3 dist_rgb = b_rgb-a_rgb;
+
+  VECTOR3 dist_accum(0,0,0);
+  VECTOR3 dist_step(0,0,0);
+
+  VECTOR3 rgb_accum(0,0,0);
+  VECTOR3 rgb_step(0,0,0);
+
+  //draw vertically
+
+  //always draw in the positive direction
+  if (a.y > b.y) {
+    swap_coords(a,a_rgb,b,b_rgb,dist_fine);
+    dist_rgb.x = -dist_rgb.x;
+    dist_rgb.y = -dist_rgb.y;
+    dist_rgb.z = -dist_rgb.z;
+  }
+
+  //check that we're on screen
+  if (b.y < 0 || a.y > (MATRIX_HEIGHT-1)*256) {
+    return;
+  }
+
+  //trim our line to the bottom of the screen
+  //this is to avoid drawing off the screen (super long lines)
+  //and to avoid rounding errors with large coordinates
+  if (a.y < 0) {
+    uint y_axis_dist = 0 - a.y;
+    uint y_dist = b.y - a.y;
+    float d = (float)y_axis_dist/y_dist;
+    VECTOR3 a_offset = dist_fine;
+    VECTOR3 rgb_offset = dist_rgb;
+    a_offset.x*=d;
+    a_offset.y*=d;
+    a_offset.z*=d;
+    rgb_offset.x*=d;
+    rgb_offset.y*=d;
+    rgb_offset.z*=d;
+    a+=a_offset;
+    a_rgb+=rgb_offset;
+    dist_fine = b-a;
+    dist_rgb = b_rgb-a_rgb;
+  }
+
+  //trim our line to the top of the screen
+  if (b.y > (MATRIX_HEIGHT-1)*256) {
+    uint y_axis_dist = b.y - (MATRIX_HEIGHT-1)*256;
+    uint y_dist = b.y - a.y;
+    float d = (float)y_axis_dist/y_dist;
+    VECTOR3 b_offset = dist_fine;
+    VECTOR3 rgb_offset = dist_rgb;
+    b_offset.x*=d;
+    b_offset.y*=d;
+    b_offset.z*=d;
+    rgb_offset.x*=d;
+    rgb_offset.y*=d;
+    rgb_offset.z*=d;
+    b-=b_offset;
+    b_rgb-=rgb_offset;
+    dist_fine = b-a;
+    dist_rgb = b_rgb-a_rgb;
+  }
+
+  //set up some accumulator and step variables
+  dist_accum = a;
+  a/=256;
+  b/=256;
+  dist_step = dist_fine;
+  rgb_accum = a_rgb*256;
+  rgb_step = (dist_rgb*256);
+  if (dist_fine.y != 0) {
+    dist_step=(dist_step*256)/dist_fine.y;
+    rgb_step=(rgb_step*256)/dist_fine.y;
+  }
+  
+  //draw our line
+  while (a.y <= b.y && a.y < MATRIX_HEIGHT) { //stop drawing when we go off the top of the screen
+    if (a.y >= 0) {
+      y_buffer_min = _min(a.y,y_buffer_min);
+      y_buffer_max = _max(a.y,y_buffer_max);
+      if (a.x < (*y_buffer2)[a.y][0].position.x) {
+        (*y_buffer2)[a.y][0].position = a;
+        (*y_buffer2)[a.y][0].ratio = a_rgb;
+      }
+      if (a.x > (*y_buffer2)[a.y][1].position.x) {
+        (*y_buffer2)[a.y][1].position = a;
+        (*y_buffer2)[a.y][1].ratio = a_rgb;
+      }
+    }
+    if (a.y == b.y) break;
+    //iterate our accumulators
+    dist_accum+=dist_step;
+    a = dist_accum/256;
+    rgb_accum+=rgb_step;
+    a_rgb=rgb_accum/256;
+  }
+  
 
 
-
+}
+*/
 
 #endif

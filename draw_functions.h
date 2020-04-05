@@ -57,9 +57,9 @@ static inline __attribute__ ((always_inline)) bool drawXY_blend_gamma( PERSPECTI
   if (led >= 0 && led < NUM_LEDS-1) {
     on_screen = true;
     int z_depth = z/16;
-    if (z_buffer == nullptr || z_depth >= (*z_buffer)[x][y]) {
+    if (true || z_buffer == nullptr || z_depth >= (*z_buffer)[x][y]) {
 
-      if (z_buffer != nullptr && z_depth > (*z_buffer)[x][y]) {
+      if (!true && z_buffer != nullptr && z_depth > (*z_buffer)[x][y]) {
         (*z_buffer)[x][y] = z_depth; 
       }
       
