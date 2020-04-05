@@ -260,7 +260,7 @@ int main(int argc, char **argv){
 	}
 
    https_server.start();
-   wss_server.start();
+   wss_server.start(); 
 
 	//clock stuff to set frames-per-second
 	using clock = std::chrono::steady_clock;
@@ -319,18 +319,20 @@ int main(int argc, char **argv){
 				next_frame = next_frame + frames{1};
 				
 				light_sketches.loop();
-				if (button_forward) led_screen.camera_move(VECTOR3(0,0,-512*button_mult));
-				if (button_reverse) led_screen.camera_move(VECTOR3(0,0,512*button_mult));
-				if (button_up) led_screen.camera_move(VECTOR3(0,-512*button_mult,0));
-				if (button_down) led_screen.camera_move(VECTOR3(0,512*button_mult,0));
-				if (button_left) led_screen.camera_move(VECTOR3(512*button_mult,0,0));
-				if (button_right) led_screen.camera_move(VECTOR3(-512*button_mult,0,0));
-				if (button_ra0) led_screen.rotation_alpha+=button_mult;
-				if (button_ra1) led_screen.rotation_alpha-=button_mult;
-				if (button_rb0) led_screen.rotation_beta+=button_mult;
-				if (button_rb1) led_screen.rotation_beta-=button_mult;
-				if (button_rg0) led_screen.rotation_gamma+=button_mult;
-				if (button_rg1) led_screen.rotation_gamma-=button_mult;
+				bool button_pushed = false;
+				if (button_forward) {led_screen.camera_move(VECTOR3(0,0,-512*button_mult));button_pushed=true;}
+				if (button_reverse) {led_screen.camera_move(VECTOR3(0,0,512*button_mult));button_pushed=true;}
+				if (button_up) {led_screen.camera_move(VECTOR3(0,-512*button_mult,0));button_pushed=true;}
+				if (button_down) {led_screen.camera_move(VECTOR3(0,512*button_mult,0));button_pushed=true;}
+				if (button_left) {led_screen.camera_move(VECTOR3(512*button_mult,0,0));button_pushed=true;}
+				if (button_right) {led_screen.camera_move(VECTOR3(-512*button_mult,0,0));button_pushed=true;}
+				if (button_ra0) {led_screen.rotation_alpha+=button_mult;button_pushed=true;}
+				if (button_ra1) {led_screen.rotation_alpha-=button_mult;button_pushed=true;}
+				if (button_rb0) {led_screen.rotation_beta+=button_mult;button_pushed=true;}
+				if (button_rb1) {led_screen.rotation_beta-=button_mult;button_pushed=true;}
+				if (button_rg0) {led_screen.rotation_gamma+=button_mult;button_pushed=true;}
+				if (button_rg1) {led_screen.rotation_gamma-=button_mult;button_pushed=true;}
+				if (button_pushed) log_camera_coordinates();
 				handle_text();
 
 				if (spacebar) {
