@@ -34,6 +34,10 @@ struct VECTOR3_CLASS {
     p.z = z - p_in.z; 
     return p; 
   } 
+  
+  inline VECTOR3_CLASS<T> operator- () const { 
+    return VECTOR3_CLASS<T>(-x,-y,-z); 
+  } 
 
   inline VECTOR3_CLASS<T> operator * (int const &num) { 
     VECTOR3_CLASS<T> p; 

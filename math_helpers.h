@@ -125,6 +125,19 @@ static inline __attribute__ ((always_inline)) uint8_t ease8Out (uint8_t stp) {
   return 255 - stp;
 }
 
+static inline __attribute__ ((always_inline)) int16_t easeSwing(uint16_t i) {
+    i%=1024;
+    if (i < 256) {
+        return ease8InOutQuad(i);
+    } else if (i < 256*2) {
+        return ease8InOutQuad(255-(i-256));
+    } else if (i < 256*3) {
+        return -ease8InOutQuad(i-256*2);
+    } else {
+        return -ease8InOutQuad(255-(i-256*3));
+    }
+};
+
 
 //CIE 1931 luminescence scale (or some shit)
 static inline __attribute__ ((always_inline)) uint8_t cie (const uint8_t& a) {

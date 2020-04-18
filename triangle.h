@@ -320,7 +320,6 @@
       bool on_screen = false;
 
       int orientation = ((b.y-a.y))*((c.x-b.x)) - ((c.y-b.y))*((b.x-a.x));
-      //int orientation = ((b.y-a.y)/256)*((c.x-b.x)/256) - ((c.y-b.y)/256)*((b.x-a.x)/256);
       
       if ( orientation < 0 ) {
         y_buffer2->reset();

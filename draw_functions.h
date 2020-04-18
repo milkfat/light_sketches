@@ -49,7 +49,7 @@ static inline __attribute__ ((always_inline)) void drawXY_blend_gamma(PERSPECTIV
 
 }
 
-static inline __attribute__ ((always_inline)) bool drawXY_blend_gamma( PERSPECTIVE& screen_object, const int& x, const int& y, const int& z, CRGB rgb, const uint8_t& brightness = 255, const bool& ignore_z = true) {
+static inline __attribute__ ((always_inline)) bool drawXY_blend_gamma( PERSPECTIVE& screen_object, const int& x, const int& y, const int& z, CRGB rgb, const uint8_t& alpha = 255, const bool& ignore_z = true) {
   bool on_screen = false;
   //treat RGB values as gamma 2.2
   //must be decoded, added, then re-encoded
@@ -57,10 +57,14 @@ static inline __attribute__ ((always_inline)) bool drawXY_blend_gamma( PERSPECTI
   if (led >= 0 && led < NUM_LEDS-1) {
     on_screen = true;
     int z_depth = z/16;
-    if (true || z_buffer == nullptr || z_depth >= (*z_buffer)[x][y]) {
+    if (ignore_z || z_buffer == nullptr || z_depth >= (*z_buffer)[x][y]) {
 
-      if (!true && z_buffer != nullptr && z_depth > (*z_buffer)[x][y]) {
-        (*z_buffer)[x][y] = z_depth; 
+      if (!ignore_z && z_buffer != nullptr) {
+        if (z_depth >= (*z_buffer)[x][y]) {
+          (*z_buffer)[x][y] = z_depth; 
+        } else {
+          return on_screen;
+        }
       }
       
       //uint8_t bri = _clamp8(100 - z/768);
@@ -72,7 +76,7 @@ static inline __attribute__ ((always_inline)) bool drawXY_blend_gamma( PERSPECTI
       
       color_scale(rgb, bri);
       
-      drawXY_blend_gamma(screen_object, led, rgb, brightness);
+      drawXY_blend_gamma(screen_object, led, rgb, alpha);
 
       //screen_object.screen_buffer[screen_object.XY(x,y)] = rgb;
     }
@@ -86,10 +90,12 @@ static inline __attribute__ ((always_inline)) bool drawXYZ(PERSPECTIVE& screen_o
   bool on_screen = false;
   if (y >= 0 && y < screen_object.screen_height && x >= 0 && x < screen_object.screen_width) {
     on_screen = true;
-    if (z_buffer == nullptr || z/16 > (*z_buffer)[x][y]) {
+    if (z_buffer == nullptr || z/16 >= (*z_buffer)[x][y]) {
 
-      if (z_buffer != nullptr) {
+      if (z_buffer != nullptr && z/16 >= (*z_buffer)[x][y]) {
         (*z_buffer)[x][y] = z/16; 
+      } else {
+        return on_screen;
       }
 
 
@@ -117,9 +123,9 @@ static inline __attribute__ ((always_inline)) bool drawXYZ(PERSPECTIVE& screen_o
   return on_screen;
 }
 
-static inline __attribute__ ((always_inline)) bool drawXYZ2(PERSPECTIVE& screen_object, const int32_t& x, const int32_t& y, const int32_t& z, const CRGB& rgb, const uint8_t& brightness = 255, const bool& ignore_z = true) {
+static inline __attribute__ ((always_inline)) bool drawXYZ2(PERSPECTIVE& screen_object, const int32_t& x, const int32_t& y, const int32_t& z, const CRGB& rgb, const uint8_t& alpha = 255, const bool& ignore_z = true) {
   
-  return drawXY_blend_gamma(screen_object, x, y, z, rgb, brightness, ignore_z);
+  return drawXY_blend_gamma(screen_object, x, y, z, rgb, alpha, ignore_z);
 
 }
 
@@ -374,7 +380,20 @@ void y_buffer_fill(PERSPECTIVE& screen_object, const CRGB& rgb, const int32_t& z
 }
 
 
-
+void fill_shape(const int& z = 0, const CRGB& rgb = CRGB(255,0,0)) {
+  //fill in the circle
+  int low_x = _max(x_buffer_min,0);
+  int low_y = _max(y_buffer_min,0);
+  int high_x = _min(x_buffer_max,MATRIX_WIDTH-1);
+  int high_y = _min(y_buffer_max,MATRIX_HEIGHT-1);
+  for (int x = low_x; x <= high_x; x++) {
+      for (int y = low_y; y <= high_y; y++) {
+          if (x >= y_buffer[y][0] && x <= y_buffer[y][1] && y >= x_buffer[x][0] && y <= x_buffer[x][1]) {
+              drawXYZ(led_screen, x, y, z, rgb);
+          }
+      }
+  }
+}
 
 
 

@@ -36,6 +36,11 @@ bool button1_click = false;
 bool button2_down = false;
 bool button3_down = false;
 
+bool button_up_pressed = false;
+bool button_down_pressed = false;
+bool button_left_pressed = false;
+bool button_right_pressed = false;
+
 bool text_mask = 0;
 bool invert_mask = 0;
 uint8_t update_since_text = 1;
@@ -58,6 +63,8 @@ int32_t * y_buffer[MATRIX_HEIGHT]; //stores the min/max X values per Y so that w
 int32_t y_buffer_max = 0;
 int32_t y_buffer_min = MATRIX_HEIGHT-1;
 int32_t x_buffer[MATRIX_WIDTH][2]; //stores the min/max Y values per X so that we can fill between them
+int32_t x_buffer_max = 0;
+int32_t x_buffer_min = MATRIX_WIDTH-1;
 
 //int z_buffer[MATRIX_WIDTH][MATRIX_HEIGHT];
 //int16_t * z_buffer[MATRIX_WIDTH];

@@ -8,6 +8,7 @@ class PARTICLES: public LIGHT_SKETCH {
     PARTICLES () {setup();}
     ~PARTICLES () {}
   private:
+    Z_BUF _z_buffer;
     #define NUM_PARTICLE_EFFECTS 3
     int current_effect = 2;
     struct PARTICLE {
@@ -29,6 +30,7 @@ class PARTICLES: public LIGHT_SKETCH {
     }
 
     void setup() {
+        z_buffer = &_z_buffer;
         led_screen.light_falloff = 10;
         for (int i = 0; i < NUM_PARTICLES; i++) {
             particles[i].active = false;
@@ -156,7 +158,7 @@ class PARTICLES: public LIGHT_SKETCH {
             leds[i].g = (leds[i].g*200)/256;
             leds[i].b = (leds[i].b*200)/256;
         }
-        if (random(10)==0) {
+        if (random(25)==0) {
             int cnt = 1;
             while (cnt--) {
                 uint16_t angle = random(UINT16_MAX);
@@ -223,7 +225,8 @@ class PARTICLES: public LIGHT_SKETCH {
                         blendXY(led_screen, p, particles[i].rgb); 
                     }
                     particles[i].old_pos = p;
-                    if (p.x < -64*256 || p.x > MATRIX_WIDTH*256*2 || p.y < -64*256 || p.y > MATRIX_HEIGHT*256*2 || length < 8) {
+                    //if (p.x < -64*256 || p.x > MATRIX_WIDTH*256*2 || p.y < -64*256 || p.y > MATRIX_HEIGHT*256*2 || length < 8) {
+                    if (length < 4) {
         
                         particles[i].active = false;
                         break;
@@ -232,17 +235,28 @@ class PARTICLES: public LIGHT_SKETCH {
             }
         }
 
-        static VECTOR3 planet = VECTOR3(0, 0, 0);
-        static VECTOR3 p;
+        VECTOR3 planet = VECTOR3(0, 0, 0);
+        static uint32_t cnt = random(UINT32_MAX);
+        cnt++;
+        uint8_t r0 = inoise8(0,0,cnt*17);
+        uint8_t r1 = inoise8(0,cnt*11,0);
+        uint8_t r2 = inoise8(cnt*37,0,0);
+        r0 = (r0*r0)/255;
+        r1 = (r1*r1)/255;
+        r2 = (r2*r2)/255;
+        VECTOR3 planet_r = VECTOR3(384+r0+r1+r2, 0, 0);
         //rotate with our global matrix
-        led_screen.matrix.rotate(planet, p);
-        //translate vectors to coordinates
-        scale_z(p);
+        led_screen.matrix.rotate(planet);
         //correct 3d perspective
-        led_screen.perspective(p);
+        led_screen.perspective(planet);
+        led_screen.perspective_zero(planet_r.x,planet_r.y,planet_r.z);
 
-        draw_circle_fine(p.x, p.y, 768);
-        
+        reset_y_buffer();
+        reset_x_buffer();
+
+        draw_circle_fine(planet.x, planet.y, planet_r.x,32,128,255,-1,16,planet.z);
+        CRGB rgb = CHSV(32,128,255);
+        fill_shape(planet.z+256, rgb);
 
     }
 

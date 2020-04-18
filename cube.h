@@ -1,7 +1,7 @@
 #ifndef LIGHTS_CUBE_H
 #define LIGHTS_CUBE_H
 
-#define NUMBER_OF_CUBES 300
+#define NUMBER_OF_CUBES 500
 
 #include "rotate.h"
 #include "scale.h"
@@ -34,39 +34,34 @@ static void draw_quad(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& d, const VECT
     color_scale(rgb, bri);
     reset_y_buffer();
     reset_x_buffer();
+    a.z = z_depth-16;
+    b.z = z_depth-16;
+    c.z = z_depth-16;
+    d.z = z_depth-16;
     draw_line_fine(led_screen, a, b, rgb, z_depth-16, 255, 255, true, false, true);
     draw_line_fine(led_screen, b, c, rgb, z_depth-16, 255, 255, true, false, true);
     draw_line_fine(led_screen, c, d, rgb, z_depth-16, 255, 255, true, false, true);
     draw_line_fine(led_screen, d, a, rgb, z_depth-16, 255, 255, true, false, true);
     
-
-    for (int x = 0; x < MATRIX_WIDTH; x++) {
+    //what's this for?
+    // for (int x = 0; x < MATRIX_WIDTH; x++) {
         
-        if (z_buffer != nullptr) {
-          if (x_buffer[x][0]-1 >= 0 && x_buffer[x][0]-1 < MATRIX_HEIGHT) {
-              (*z_buffer)[x][x_buffer[x][0]-1] += 1;
-          }
+    //     if (z_buffer != nullptr) {
+    //       if (x_buffer[x][0]-1 >= 0 && x_buffer[x][0]-1 < MATRIX_HEIGHT) {
+    //           (*z_buffer)[x][x_buffer[x][0]-1] += 1;
+    //       }
 
-          if (x_buffer[x][1]+1 >= 0 && x_buffer[x][1]+1 < MATRIX_HEIGHT) {
-              (*z_buffer)[x][x_buffer[x][1]+1] += 1;
-          }
-        }
+    //       if (x_buffer[x][1]+1 >= 0 && x_buffer[x][1]+1 < MATRIX_HEIGHT) {
+    //           (*z_buffer)[x][x_buffer[x][1]+1] += 1;
+    //       }
+    //     }
 
-    }
-    //fill between the pixels of our lines
-    for (int y = _max(y_buffer_min, 0); y <= _min(y_buffer_max,MATRIX_HEIGHT-1); y++) {
-        if (y_buffer[y][0] <= y_buffer[y][1]) {
-
-        for (int x = y_buffer[y][0]; x <= y_buffer[y][1]; x++) {
-          drawXYZ(led_screen, x, y, z_depth, rgb);
-        }
-
-      }
-      //reset the y_buffer
-      //y_buffer[y][0] = MATRIX_WIDTH + 1;
-      //y_buffer[y][1] = -1;
+    // }
     
-    }
+    //fill between the pixels of our lines
+    
+    fill_shape(z_depth+256, rgb);
+    
 
     //y_buffer_max = 0;
     //y_buffer_min = MATRIX_HEIGHT-1;
@@ -77,7 +72,8 @@ static void draw_quad(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& d, const VECT
 struct CUBE {
     VECTOR3 p = VECTOR3(0,0,0); //position X,Y,Z
     VECTOR3 d = VECTOR3(0,0,0); //dimensions X,Y,Z
-    VECTOR3_8 r = VECTOR3(0,0,0); //rotation X,Y,Z
+    VECTOR3 r = VECTOR3(0,0,0); //rotation X,Y,Z
+    bool r_fine = false;
     int32_t z = 0;
     CRGB rgb = CRGB(0,0,0);
     int16_t prev = -1;
@@ -106,7 +102,7 @@ int16_t get_current_cube() {
 
 
 //find cube's z depth and sort it into our buffer (ascending Z order, back-to-front)
-static void draw_cube(const VECTOR3& p, const VECTOR3& d = VECTOR3(256,256,256), const VECTOR3_8& r = VECTOR3_8(0,0,0), const CHSV& hsv = CHSV(0,0,255), const bool& persist=false) {
+static void draw_cube(const VECTOR3& p, const VECTOR3& d = VECTOR3(256,256,256), const VECTOR3& r = VECTOR3(0,0,0), const CHSV& hsv = CHSV(0,0,255), const bool& persist=false, const bool& r_fine = false) {
   
   int16_t current_cube = get_current_cube();
   int16_t most_recent_cube = recent_cube;
@@ -123,6 +119,7 @@ static void draw_cube(const VECTOR3& p, const VECTOR3& d = VECTOR3(256,256,256),
     c->p = p;
     c->d = d;
     c->r = r;
+    c->r_fine = r_fine;
     hsv2rgb_rainbow(hsv, c->rgb);
 
     if (first_cube == -1) {
@@ -177,7 +174,7 @@ static void draw_cube(const VECTOR3& p, const VECTOR3& d = VECTOR3(256,256,256),
 
 } //draw_cube()
 
-static void draw_cached_cube(const int16_t& cp, int16_t bri) {
+static void draw_cached_cube(const int16_t& cp) {
 
   CUBE* c = &cubes[cp];
 
@@ -191,7 +188,7 @@ static void draw_cached_cube(const int16_t& cp, int16_t bri) {
   };
 
   for (int i = 0; i < 6; i++) {
-    rotate_y(normals[i],c->r.y);
+    (c->r_fine) ? rotate16(normals[i],c->r) : rotate(normals[i],c->r);
     led_screen.matrix.rotate(normals[i]);
   }
 
@@ -210,15 +207,15 @@ static void draw_cached_cube(const int16_t& cp, int16_t bri) {
   };
 
   for (int i = 0; i < 8; i++) {
-    rotate_y(points[i],c->r.y);
+    (c->r_fine) ? rotate16(points[i],c->r) : rotate(points[i],c->r);
     points[i]+=c->p;
     led_screen.matrix.rotate(points[i]);
-    
-    //translate vectors to coordinates
-    scale_z(points[i]);
 
     //correct 3d perspective
     led_screen.perspective(points[i]);
+
+    //don't draw cube if any part is behind the camera
+    if (points[i].z > led_screen.camera_position.z-8*256) return;
 
   }
 
@@ -287,31 +284,11 @@ static void draw_cubes() {
     int16_t cube = first_cube;
     int16_t new_first_cube = -1;
     int16_t new_last_cube = -1;
-    int16_t cnt = 0;
     while (cube != -1) {
         int16_t next_cube = cubes[cube].next;
-        draw_cached_cube(cube,cnt);
-        cnt++;
+        draw_cached_cube(cube);
         //make cubes fall away
         if (false && cubes[cube].persist) {
-            cubes[cube].d.x = (cubes[cube].d.x*(50+(fmix32(cube)%32))) / 100;
-            cubes[cube].d.y = (cubes[cube].d.y*(50+(fmix32(cube)%32))) / 100;
-            cubes[cube].d.z = (cubes[cube].d.z*(50+(fmix32(cube)%32))) / 100;
-            cubes[cube].p.z -= 5000;
-            if (cubes[cube].d.x == 0 || cubes[cube].d.y == 0 || cubes[cube].d.z == 0 || cubes[cube].p.z < -20000) {
-                cubes[cube].persist = false;
-            }
-            if (new_first_cube == -1) {
-                new_first_cube = cube;
-                new_last_cube = cube;
-                cubes[cube].prev = -1;
-                cubes[cube].next = -1;
-            } else {
-                cubes[new_last_cube].next = cube;
-                cubes[cube].prev = new_last_cube;
-                cubes[cube].next = -1;
-                new_last_cube = cube;
-            }
         } else {
             cubes[cube].prev = -1;
             cubes[cube].next = -1;

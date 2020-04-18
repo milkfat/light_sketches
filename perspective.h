@@ -89,6 +89,26 @@ class PERSPECTIVE {
         return false;
     }
 
+    inline __attribute__ ((always_inline)) bool perspective_zero(int32_t& x, int32_t& y, int32_t& z) {
+        z+=z_offset;
+        z/=MATRIX_PRECISION;
+        if (z < Cz) {
+            x-=camera_position.x;
+            y-=camera_position.y;
+            x+=x_offset;
+            y+=y_offset;
+            x/=MATRIX_PRECISION;//half precision to double each axis of our available coordinate space
+            y/=MATRIX_PRECISION;
+            x = ( x * ((Sz - Cz)) ) / (z-Cz);
+            y = ( y * ((Sz - Cz)) ) / (z-Cz);
+            x*=MATRIX_PRECISION;
+            y*=MATRIX_PRECISION;
+            z*=MATRIX_PRECISION;
+            return true;
+        }
+        return false;
+    }
+
     inline __attribute__ ((always_inline)) bool perspective(int32_t p[3]) {
         return perspective(p[0], p[1], p[2]);
     }

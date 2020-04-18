@@ -11,7 +11,7 @@ class UNTITLED: public LIGHT_SKETCH {
 
     #define NUMBER_OF_THINGS (NUMBER_OF_CELLS)
 
-    int16_t height_map[HEIGHTMAP_HEIGHT][HEIGHTMAP_WIDTH];
+    //int16_t height_map[HEIGHTMAP_HEIGHT][HEIGHTMAP_WIDTH];
 
     struct thing {
         VECTOR2 pos; //the absolute position on the screen, calculated from virtual position
@@ -93,7 +93,7 @@ class UNTITLED: public LIGHT_SKETCH {
         setup();
     }
     void setup() {
-        height_map_ptr = &height_map;
+        //height_map_ptr = &height_map;
         for (int y = 0; y < MATRIX_HEIGHT; y++) {  
             for (int x = 0; x < MATRIX_WIDTH; x++) {
                 grid[y][x].t = -1;
@@ -676,15 +676,15 @@ class UNTITLED: public LIGHT_SKETCH {
 
         }
 
-        for (uint8_t y = 0; y < MATRIX_HEIGHT; y++) {
-            for (uint8_t x = 0; x < MATRIX_WIDTH; x++) {
-                height_map[y][x] = grid[y][x].dist*3;
-            }
-        }
+        // for (uint8_t y = 0; y < MATRIX_HEIGHT; y++) {
+        //     for (uint8_t x = 0; x < MATRIX_WIDTH; x++) {
+        //         height_map[y][x] = grid[y][x].dist*3;
+        //     }
+        // }
 
-        LED_black();
+        //LED_black();
         //move heightmap to LEDs
-        height_map_to_LED(-128*256, 100, 100, -30, -20);
+        //height_map_to_LED(-128*256, 100, 100, -30, -20);
 
         //handle particles
         for (uint8_t i = 0; i < NUM_SPARKS; i++) {

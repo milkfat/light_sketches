@@ -70,5 +70,11 @@ static inline __attribute__ ((always_inline)) void rotate_z(VECTOR3& p, const ui
     rotate_z(p.x, p.y, p.z, s, c);
 }
 
+static inline __attribute__ ((always_inline)) void rotate(VECTOR3& p, VECTOR3& r) {
+    rotate_x(p, r.x);
+    rotate_y(p, r.y);
+    rotate_z(p, r.z);
+}
+
 
 #endif

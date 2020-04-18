@@ -103,6 +103,8 @@ static inline __attribute__ ((always_inline)) void reset_x_buffer() {
   for (int i = 0; i < MATRIX_WIDTH; i++) {
   x_buffer[i][0] = MATRIX_HEIGHT + 1;
   x_buffer[i][1] = -1;
+  x_buffer_max = 0;
+  x_buffer_min = MATRIX_WIDTH-1;
   }
 }
 

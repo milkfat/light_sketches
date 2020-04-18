@@ -99,18 +99,39 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
   int32_t x_dist = x2 - x1;
   int32_t y_dist = y2 - y1;
   int32_t z_dist = z2 - z1;
-  float x_step = (x_dist*256.f)/y_dist;
-  float y_step = (y_dist*256.f)/x_dist;
+  //save the coordinate extremes
+  int32_t x_low = x1_led;
+  int32_t y_low = y1_led;
+  int32_t x_high = x2_led;
+  int32_t y_high = y2_led;
+  //clip coordinates to screen
   x1_led = _max(x1_led,0);
   y1_led = _max(y1_led,0);
   x2_led = _min(x2_led,MATRIX_WIDTH);
   y2_led = _min(y2_led,MATRIX_HEIGHT);
+
   if (abs(x1 - x2) > abs(y1 - y2)) {
     //calculate horizontally
 
+
+    //calculate starting coordinates;
+    float y_step = (y_dist*256.f)/x_dist;
+    float y_start = y1 + ((x1_led*256 - x1)*y_step)/256.f;
     float z_step= (z_dist*256.f)/x_dist;
     float z_start = z1 + ((x1_led*256 - x1)*z_step)/256.f;
-    float y_start = y1 + ((x1_led*256 - x1)*y_step)/256.f;
+
+
+    //record the off-screen portion to the y_buffer
+    if (x1_led != x_low) {
+      int y_start_led = (y_start-y_step)/256;
+      for (int y = _max(_min(y_low,y_start_led),0); y <= _min(_max(y_low,y_start_led),MATRIX_HEIGHT-1); y++) {
+        y_buffer_min = _min(y_buffer_min, y);
+        y_buffer_max = _max(y_buffer_max, y);
+        y_buffer[y][0] = 0;
+      }
+    }
+
+    //draw the line
     for (int i = (x1_led); i <= (x2_led); i++) {
       //if ((i != x1_led && i != x2_led) || !trim) {
       if (true) {
@@ -158,68 +179,71 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
           drawXYZ2(screen_object, i, Ly, z, rgb, ((b *v1)>>8) + ((b *v2)>>8), ignore_z );
         }
 
+        if (!wide_fill) {
+          int temp = Ly;
+          Ly = Hy;
+          Hy = temp;
+        }
+
         //record stuff in our x and y buffers for other functions to use
         if (i >= 0 && i < MATRIX_WIDTH) {
-
-          if (!wide_fill) {
-            int temp = Ly;
-            Ly = Hy;
-            Hy = temp;
-          }
-
-          if (Hy <= x_buffer[i][0]) {
-            x_buffer[i][0] = _min(x_buffer[i][0], Hy);
-
-            y_buffer_min = _min(y_buffer_min,Hy);
-
-            if (Hy >= 0 && Hy < MATRIX_HEIGHT) {
-              y_buffer[Hy][0] = _min(y_buffer[Hy][0], i);
-              y_buffer[Hy][1] = _max(y_buffer[Hy][1], i);
-            }
-
-          }
-
-          if (Ly >= x_buffer[i][1]) {
-            x_buffer[i][1] = _max(x_buffer[i][1], Ly);
-
-            y_buffer_max = _max(y_buffer_max,Ly);
-
-            if (Ly >= 0 && Ly < MATRIX_HEIGHT) {
-              y_buffer[Ly][0] = _min(y_buffer[Ly][0], i);
-              y_buffer[Ly][1] = _max(y_buffer[Ly][1], i);
-
-            }
-
-          }
-
-        } else {
-
-          if (Ly >= 0 && Ly < MATRIX_HEIGHT) {
-            y_buffer[Ly][0] = _min(y_buffer[Ly][0], i);
-            y_buffer[Ly][1] = _max(y_buffer[Ly][1], i);
-
-          } 
-          if (Hy >= 0 && Hy < MATRIX_HEIGHT) {
-            y_buffer[Hy][0] = _min(y_buffer[Hy][0], i);
-            y_buffer[Hy][1] = _max(y_buffer[Hy][1], i);
-          }
-         
+          x_buffer_min = _min(i,x_buffer_min);
+          x_buffer_max = _max(i,x_buffer_max);
+          x_buffer[i][0] = _min(x_buffer[i][0], Hy);
+          x_buffer[i][1] = _max(x_buffer[i][1], Ly);
         }
-        //drawXYZ(screen_object,i, Hy, z_depth, hue, sat, (b2*v1)/256 + (b2*v2)/256 );
-        //drawXYZ(screen_object,i, Ly, z_depth, hue, sat, (b *v1)/256 + (b *v2)/256 );
+
+        if (Hy >= 0 && Hy < MATRIX_HEIGHT) {
+          y_buffer_min = _min(y_buffer_min, Hy);
+          y_buffer_max = _max(y_buffer_max, Hy);
+          y_buffer[Hy][0] = _min(y_buffer[Hy][0], i+1);
+          y_buffer[Hy][1] = _max(y_buffer[Hy][1], i-1);
+        }
+
+        if (Ly >= 0 && Ly < MATRIX_HEIGHT) {
+          y_buffer_min = _min(y_buffer_min, Ly);
+          y_buffer_max = _max(y_buffer_max, Ly);
+          y_buffer[Ly][0] = _min(y_buffer[Ly][0], i+1);
+          y_buffer[Ly][1] = _max(y_buffer[Ly][1], i-1);
+        }
+        
       }
       i++;
       y_start += y_step;
       z_start += z_step;
     }
 
+
+    //record the off-screen portion to the y_buffer
+    if (x2_led != x_high) {
+      int y_start_led = (y_start-y_step)/256;
+      for (int y = _max(_min(y_high,y_start_led),0); y <= _min(_max(y_high,y_start_led),MATRIX_HEIGHT-1); y++) {
+        y_buffer_min = _min(y_buffer_min, y);
+        y_buffer_max = _max(y_buffer_max, y);
+        y_buffer[y][1] = MATRIX_WIDTH-1;
+      }
+    }
     
   } else {
     //calculate vertically
 
+    float x_step = (x_dist*256.f)/y_dist;
     float x_start = x1 + ((y1_led*256-y1)*x_step)/256.f;
     float z_step  = (z_dist*256.f)/y_dist;
     float z_start = z1 + ((y1_led*256-y1)*z_step)/256.f;
+
+
+    //record the off-screen portion to the y_buffer
+    if (y1_led != y_low) {
+      int x_start_led = (x_start-x_step)/256;
+      for (int x = _max(_min(x_low,x_start_led),0); x <= _min(_max(x_low,x_start_led),MATRIX_WIDTH-1); x++) {
+        x_buffer_min = _min(x_buffer_min, x);
+        x_buffer_max = _max(x_buffer_max, x);
+        x_buffer[x][0] = 0;
+      }
+    }
+
+
     for (int i = (y1_led); i <= (y2_led); i++) {
       uint8_t v1 = val;
       int pos = i - y1_led;
@@ -265,12 +289,14 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
         drawXYZ2(screen_object, Hx, i, z, rgb, ((b2*v1)>>8) + ((b2*v2)>>8), ignore_z );
         drawXYZ2(screen_object, Lx, i, z, rgb, ((b *v1)>>8) + ((b *v2)>>8), ignore_z );
       }
+      
+      
       if (!wide_fill) {
         int temp = Lx;
         Lx = Hx;
         Hx = temp;
       }
-      
+
       //record stuff in our x and y buffers for other functions to use
       if (i >= 0 && i < MATRIX_HEIGHT) {
         y_buffer_min = _min(i,y_buffer_min);
@@ -279,13 +305,18 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
         y_buffer[i][1] = _max(y_buffer[i][1], Lx);
       }
 
-      if (Lx >= 0 && Lx < MATRIX_WIDTH) {
-          x_buffer[Lx][0] = _min(x_buffer[Lx][0], i);
-          x_buffer[Lx][1] = _max(x_buffer[Lx][1], i);
-      }
       if (Hx >= 0 && Hx < MATRIX_WIDTH) {
-          x_buffer[Hx][0] = _min(x_buffer[Hx][0], i);
-          x_buffer[Hx][1] = _max(x_buffer[Hx][1], i);
+        x_buffer_min = _min(x_buffer_min, Hx);
+        x_buffer_max = _max(x_buffer_max, Hx);
+        x_buffer[Hx][0] = _min(x_buffer[Hx][0], i+1);
+        x_buffer[Hx][1] = _max(x_buffer[Hx][1], i-1);
+      }
+
+      if (Lx >= 0 && Lx < MATRIX_WIDTH) {
+        x_buffer_min = _min(x_buffer_min, Lx);
+        x_buffer_max = _max(x_buffer_max, Lx);
+        x_buffer[Lx][0] = _min(x_buffer[Lx][0], i+1);
+        x_buffer[Lx][1] = _max(x_buffer[Lx][1], i-1);
       }
       
       //drawXYZ(screen_object,  ceil(x_start/256L), i, z_depth, h, s, (b2*v1)/256 + (b2*v2)/256 );
@@ -296,6 +327,16 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
       i++;
       x_start += x_step;
       z_start += z_step;
+    }
+
+    //record the off-screen portion to the y_buffer
+    if (y2_led != y_high) {
+      int x_start_led = (x_start-x_step)/256;
+      for (int x = _max(_min(x_high,x_start_led),0); x <= _min(_max(x_high,x_start_led),MATRIX_WIDTH-1); x++) {
+        x_buffer_min = _min(x_buffer_min, x);
+        x_buffer_max = _max(x_buffer_max, x);
+        x_buffer[x][1] = MATRIX_HEIGHT-1;
+      }
     }
     
   }
@@ -314,7 +355,7 @@ static inline __attribute__ ((always_inline)) void draw_line_fine(PERSPECTIVE& s
 
 static inline __attribute__ ((always_inline)) void draw_line_fine(PERSPECTIVE& screen_object, const int32_t& x1, const int32_t& y1, const int32_t& x2, const int32_t& y2, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const int& z_depth = -10000, const uint8_t& val2 = 255, const bool& trim = false) {
   CRGB rgb = CHSV(hue,sat,255);
-  draw_line_fine(screen_object, x1, y1, x2, y2, rgb, z_depth, val, val2, trim);
+  draw_line_fine(screen_object, x1, y1, x2, y2, rgb, z_depth, val, val2, trim,false);
 }
 
 static inline __attribute__ ((always_inline)) void draw_line_fine(PERSPECTIVE& screen_object, const VECTOR3& a, const VECTOR3& b, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true, const bool& wide_fill = true) {
