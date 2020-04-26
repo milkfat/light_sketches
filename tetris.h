@@ -171,7 +171,6 @@ class TETRIS: public LIGHT_SKETCH {
 
     void setup() {
         score = 0;
-        std::cout << TETRIS_SIZE << "\n";
 
         //straight
         shapes[0][0] = VECTOR3(0,-1,0);
@@ -226,7 +225,6 @@ class TETRIS: public LIGHT_SKETCH {
 
         for (int x = 0; x < TETRIS_WIDTH; x++) {
             int x_coord = border_width*256+TETRIS_SIZE/2+(TETRIS_SIZE)*x;
-            std::cout << x_coord << "\n";
             for (int y = 0; y < TETRIS_HEIGHT; y++) {
                 int y_coord = border_width*256+TETRIS_SIZE/2+(TETRIS_SIZE)*y;
                 grid[x][y].coord.x = x_coord-MATRIX_WIDTH*256/2-128;
