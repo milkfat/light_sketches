@@ -3,9 +3,12 @@
 #ifndef LIGHTS_WEB_SERVER_H
 #define LIGHTS_WEB_SERVER_H
 
+#include "web_pages.h"
+
 class HTTPS_SERVER {
     
     SimpleWeb::Server<SimpleWeb::HTTPS> server = {"server.crt", "server.key"};
+    //SimpleWeb::Server<SimpleWeb::HTTP> server;
     std::thread thread;
 
   public:
@@ -22,6 +25,28 @@ class HTTPS_SERVER {
     
       server.config.port = 8080;
 
+      server.resource["/lights.html"]["GET"] = [](shared_ptr<HttpsServer::Response> res, shared_ptr<HttpsServer::Request> request) {
+        
+        std::string asdf = "";
+        asdf.append(light_html_head());
+                  
+        char buff[2048];
+        char * p = buff;
+        *p = '\0';
+
+        //generate sketch selection dropdown
+        generate_sketch_dropdown(p);
+
+        //generate sketch controls  
+        generate_html_controls(p);
+
+        asdf.append(buff);
+
+        //the rest of the page
+        asdf.append(light_html_tail());
+        res->write(asdf);
+      };
+
       server.resource["^/([^/]+)$"]["GET"] = [](shared_ptr<HttpsServer::Response> response, shared_ptr<HttpsServer::Request> request) {
         fstream infile; 
         infile.open(request->path_match[1].str());
@@ -31,6 +56,7 @@ class HTTPS_SERVER {
 
       server.default_resource["GET"] = [](shared_ptr<HttpsServer::Response> response, shared_ptr<HttpsServer::Request> request) {
         response->write("hello");
+        response->write("<br>hello");
       };
 
       server.on_error = [](shared_ptr<HttpsServer::Request> /*request*/, const SimpleWeb::error_code & /*ec*/) {
@@ -59,6 +85,7 @@ HTTPS_SERVER https_server;
 class WSS_SERVER {
     
     SimpleWeb::SocketServer<SimpleWeb::WSS> server = {"server.crt", "server.key"};
+    //SimpleWeb::SocketServer<SimpleWeb::WS> server;
     std::thread thread;
 
   public:
@@ -87,10 +114,22 @@ class WSS_SERVER {
         a_connection->send(out_message);
     }
 
+    void wssHTMLControls () {
+      char buff[2048];
+      char * p = buff; 
+      *p = '\0';                               
+      generate_html_controls(p);
+
+      for(auto &a_connection : server.get_connections())
+        a_connection->send(buff);
+
+    }
+
     void start() {
     
       using namespace std;
       using WssServer = SimpleWeb::SocketServer<SimpleWeb::WSS>;
+      //using WssServer = SimpleWeb::SocketServer<SimpleWeb::WS>;
 
       server.config.port = 8081;
 
@@ -100,155 +139,32 @@ class WSS_SERVER {
 
       echo.on_message = [](shared_ptr<WssServer::Connection> connection, shared_ptr<WssServer::InMessage> in_message) {
 
-        if (in_message->peek() != '{') {
+        streambuf * inbuf = in_message->rdbuf();
+
+        if (inbuf->sgetc() != '{') {
+          char out_message[1000];
           
-          //treat our message as binary
-          char c;
-          while (in_message->get(c)) {        
-            switch (c) {
-              
-              case 'l':
-                {
-                  //read cursor location
-                  uint8_t offset = 0;
-                  int16_t x;
-                  int16_t y;
-                  int16_t x1;
-                  int16_t y1;
-                  int16_t p;
-                  int16_t id;
+          if (parse_binary(inbuf, out_message)) {
 
-                  in_message->read((char*)&x, 2);
-                  in_message->read((char*)&y, 2);
-                  in_message->read((char*)&x1, 2);
-                  in_message->read((char*)&y1, 2);
-                  in_message->read((char*)&p, 2);
-                  in_message->read((char*)&id, 2);
-                  button2_down = true;
-
-                  if (drawing_enabled && temp_canvas != nullptr) {
-                      CRGB * old_screen_buffer = led_screen.screen_buffer;
-                      led_screen.screen_buffer = temp_canvas;    
-                      draw_line_fine(led_screen, (x+offset)*256, y*256, (x1+offset)*256, y1*256, 255, 255, p);
-                      led_screen.screen_buffer = old_screen_buffer;    
-                  }
-              
-                  update_pointer(x+offset,y,x1+offset,y1,p,id);
-                }
-                break;
-              
-              case 'e':
-                //read cursor lifts (end)
-                _remove_pointer( (int)in_message->get() );
-                button2_down = false;
-                break;
-
-              case 'a':
-                //read orientation data from device (angles)
-                in_message->read((char*)&led_screen.rotation_alpha, 4);
-                in_message->read((char*)&led_screen.rotation_beta, 4);
-                in_message->read((char*)&led_screen.rotation_gamma, 4);
-                break;
-
-              case 'd':
-                drawing_enabled = (int)in_message->get();
-                break;
-
-              case 'n':
-					      spacebar=(int)in_message->get();
-                break;
-
-              case 'v':
-					      next_sketch=(int)in_message->get();
-                break;
-
-              case 'z':
-					      in_message->getline(next_sketch_name,20,'\0');
-                break;
-
-              case 'c': //send configuration
-                {
-                  char out_message[1000] = "{\"light_sketches\":[";
-                  uint16_t offset = 19;
-                  for (int i = 0; i < MAX_NUMBER_OF_LIGHT_SKETCHES; i++) {
-                    out_message[offset] = '"';
-                    offset++;
-                    if (light_sketches.names(i) != nullptr) {
-                      for (int j = 0; j < 20; j++) {
-                        if (light_sketches.names(i)[j]) {
-                          out_message[offset] = light_sketches.names(i)[j];
-                          offset++;
-                        }
-                      }
-                    }
-                    out_message[offset] = '"';
-                    offset++;
-                    out_message[offset] = ',';
-                    offset++;
-                  }
-                  offset--;
-                  out_message[offset] = ']';
-                  offset++;
-                  out_message[offset] = '}';
-                  connection->send(out_message, [](const SimpleWeb::error_code &ec) {
-                    if(ec) {
-                      cout << "Server: Error sending message. " <<
-                          // See http://www.boost.org/doc/libs/1_55_0/doc/html/boost_asio/reference.html, Error Codes for error code meanings
-                          "Error: " << ec << ", error message: " << ec.message() << endl;
-                    }
-                  });
-                }
-                break;
-
-            }
+            connection->send(out_message, [](const SimpleWeb::error_code &ec) {
+              if(ec) {
+                cout << "Server: Error sending message. " <<
+                    // See http://www.boost.org/doc/libs/1_55_0/doc/html/boost_asio/reference.html, Error Codes for error code meanings
+                    "Error: " << ec << ", error message: " << ec.message() << endl;
+              }
+            });
           }
-
           //process binary
         }
         else {
-          try {
-            ptree pt;
-            read_json(*in_message, pt);
-            std::ostringstream buf; 
-            write_json (buf, pt, false);
-            std::cout << buf.str();
-            int cnt = 0;
-            
-
-
-            
-
-            try {
-                next_sketch = pt.get<int>("skalt");
-            } catch (const exception &e) {
-            }
-            
-            try {
-                spacebar = pt.get<int>("sknext");
-            } catch (const exception &e) {
-            }
-
-            
-            //clear canvas
-            try {
-                if (pt.get<int>("cc") && temp_canvas!=nullptr) {
-                for (int i = 0; i < NUM_LEDS; i++) {
-                    temp_canvas[i] = CRGB::Black;
-                }
-                }
-            } catch (const exception &e) {
-            }
-
-            
-            
-            } catch (const exception &e) {
-            }
+          parse_javascript(inbuf);
         }
       };
 
       echo.on_open = [this](shared_ptr<WssServer::Connection> connection) {
         cout << "Server: Opened connection " << connection.get() << endl;
         this->wssCurrentSketch();
+        this->wssHTMLControls();
       };
 
       // See RFC 6455 7.4.1. for status codes
@@ -274,9 +190,14 @@ class WSS_SERVER {
 
     }
 
+
 };
 
 WSS_SERVER wss_server;
+
+void wss_send() {
+	wss_server.wssHTMLControls();
+}
 
 #endif
 

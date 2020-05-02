@@ -1,9 +1,42 @@
+/*
+
+TO DO:
+	Fix draw_fine_line() flickering with z-depth -- done maybe
+	Fix fill_shape() to remove distortion in the upper right/z-depth -- done I think
+
+	Refactor fonts
+	3d fonts
+	vector fonts
+	
+	3d travel through grid (flight.h) -- got a nice start
+	3d travel through perlin noise?
+	3d falling coins
+
+
+	phone competitive game where you control the camera to follow a dot
+	  dot starts slow and slowly accelerates
+	  you lose once the dot leaves the screen
+
+	different phone control games?
+
+	tetris -- got a working game
+
+	new clock styles/effects
+
+	realtime information
+	  trending tweets
+	  display images
+	  weather
+	  other fun things
+*/
+
+
 // #define WINDOW_WIDTH 1840
 // #define WINDOW_HEIGHT 1360
 // #define MATRIX_WIDTH 360
 // #define MATRIX_HEIGHT 250
 
-#define WINDOW_WIDTH 200
+#define WINDOW_WIDTH 325
 #define WINDOW_HEIGHT 650
 #define MATRIX_WIDTH 32
 #define MATRIX_HEIGHT 128
@@ -209,10 +242,10 @@ void update_matrix() {
 					case SDLK_t: typing_mode=true; SDL_StartTextInput(); break;
 					case SDLK_UP:  button_forward = true; break;
 					case SDLK_DOWN: button_reverse = true; break;
-					case SDLK_MINUS:  button_up = true; break;
-					case SDLK_LEFTBRACKET:  button_down = true; break;
 					case SDLK_LEFT:  button_left = true; break;
 					case SDLK_RIGHT: button_right = true; break;
+					case SDLK_MINUS:  button_up = true; break;
+					case SDLK_LEFTBRACKET:  button_down = true; break;
 					case SDLK_p:    led_screen.screen_distance-=256; std::cout << "screen: " << (int32_t)led_screen.screen_distance << "\n"; break;
 					case SDLK_RIGHTBRACKET:  led_screen.screen_distance+=256; std::cout << "screen: " << (int32_t)led_screen.screen_distance << "\n"; break; 
 				}
@@ -247,6 +280,7 @@ void update_matrix() {
 	
 }
 
+
 int main(int argc, char **argv){
 
 	pc_screen.screen_buffer = screen_buffer;
@@ -261,6 +295,9 @@ int main(int argc, char **argv){
 
    https_server.start();
    wss_server.start(); 
+
+
+   light_sketches.send_sketch_controls_reg(wss_send);
 
 	//clock stuff to set frames-per-second
 	using clock = std::chrono::steady_clock;
@@ -320,12 +357,16 @@ int main(int argc, char **argv){
 				
 				light_sketches.loop();
 				bool button_pushed = false;
-				if (button_forward) {led_screen.camera_move(VECTOR3(0,0,-512*button_mult));button_pushed=true;}
-				if (button_reverse) {led_screen.camera_move(VECTOR3(0,0,512*button_mult));button_pushed=true;}
 				if (button_up) {led_screen.camera_move(VECTOR3(0,-512*button_mult,0));button_pushed=true;}
 				if (button_down) {led_screen.camera_move(VECTOR3(0,512*button_mult,0));button_pushed=true;}
-				if (button_left) {led_screen.camera_move(VECTOR3(512*button_mult,0,0));button_pushed=true;}
-				if (button_right) {led_screen.camera_move(VECTOR3(-512*button_mult,0,0));button_pushed=true;}
+				//if (button_forward) {led_screen.camera_move(VECTOR3(0,0,-512*button_mult));button_pushed=true;}
+				//if (button_reverse) {led_screen.camera_move(VECTOR3(0,0,512*button_mult));button_pushed=true;}
+				//if (button_left) {led_screen.camera_move(VECTOR3(512*button_mult,0,0));button_pushed=true;}
+				//if (button_right) {led_screen.camera_move(VECTOR3(-512*button_mult,0,0));button_pushed=true;}
+				button_up_pressed = button_forward;
+				button_down_pressed = button_reverse;
+				button_left_pressed = button_left;
+				button_right_pressed = button_right;
 				if (button_ra0) {led_screen.rotation_alpha+=button_mult;button_pushed=true;}
 				if (button_ra1) {led_screen.rotation_alpha-=button_mult;button_pushed=true;}
 				if (button_rb0) {led_screen.rotation_beta+=button_mult;button_pushed=true;}

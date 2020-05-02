@@ -257,9 +257,12 @@ typedef struct CRGB
         FairyLight =0xFFE42D, FairyLightNCC =0xFF9D2A 
     };
 
-    clampedByte r; //red
-    clampedByte g; //green
-    clampedByte b; //blue
+    // clampedByte r; //red
+    // clampedByte g; //green
+    // clampedByte b; //blue
+    uint8_t r; //red
+    uint8_t g; //green
+    uint8_t b; //blue
 
     //overload for adding two CRGB objects together
     //CRGB& operator+= (CRGB& rhs) { <--- would this be more efficient? doesn't work with the current CHSV to CRGB conversion
