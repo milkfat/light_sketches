@@ -9,9 +9,10 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
     #define ROPE_SEGMENT_LENGTH (3*256)
     #define NUM_ROPE_EFFECTS 1
     #define NUM_ROPES 7
-    #define NUM_BALLS 21
-    #define BALLS_PER_ROW 3
-    #define MAX_BALL_RADIUS (7*256)
+    #define BALLS_PER_COLUMN (MATRIX_HEIGHT/10)
+    #define BALLS_PER_ROW (MATRIX_WIDTH/10)
+    #define NUM_BALLS (BALLS_PER_COLUMN * BALLS_PER_ROW)
+    #define MAX_BALL_RADIUS (4*256)
 
   public:
     ROPE_PHYSICS () {setup();}
@@ -20,6 +21,7 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
     int current_effect = 0;
     CRGB rgb = CRGB(255,255,255);
     Z_BUF _z_buffer;
+    uint8_t gravity = 10;
 
     struct JOINT {
         bool s = false; //static
@@ -43,6 +45,7 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
         VECTOR3 p; //position
         VECTOR3 v; //velocity
         uint16_t r; //radius
+        CRGB rgb;
     };
 
     BALL balls[NUM_BALLS];
@@ -90,6 +93,7 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
     }
 
     void setup() {
+        control_variables.add(gravity,"Gravity",1,50);
         z_buffer = &_z_buffer;
         for (int i = 0; i < NUM_BALLS; i++) {
             reset_ball(i);
@@ -137,12 +141,13 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
         
         //move balls
         for (int i = 0; i < NUM_BALLS; i++) {
+            balls[i].rgb = CHSV(0,255,16);
             balls[i].sp.x += balls[i].v.x;
             if (balls[i].sp.x < -(MAX_BALL_RADIUS+512) || balls[i].sp.x > MATRIX_WIDTH*256+MAX_BALL_RADIUS+512) {
                 reset_ball(i);
             }
             balls[i].offset += balls[i].ov;
-            balls[i].ov -= balls[i].offset/50;
+            balls[i].ov -= balls[i].offset/60;
             balls[i].ov *= 85;
             balls[i].ov /= 100;
             balls[i].p = balls[i].sp+balls[i].offset;
@@ -155,7 +160,7 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
             bool off_screen = true;
             for (int i = 0; i < NUM_JOINTS; i++) {
                 if (!rope[i].s) {
-                    rope[i].v.y -= 10;
+                    rope[i].v.y -= gravity;
                     rope[i].np = rope[i].p + rope[i].v;
                 }
                 if (rope[i].p.y >= 0) {
@@ -166,7 +171,6 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
                 reset_rope(j);
             }
         }
-
         //solve physics
         int cnt = 4;
         while (cnt--) {
@@ -176,19 +180,27 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
                 for (int i = 1; i < NUM_JOINTS; i++) {
                     if (rope[i].s && rope[i-1].s) break;
                     for (int j = 0; j < NUM_BALLS; j++) {
+                        if ( rope[i].np.y > balls[j].p.y+(MAX_BALL_RADIUS+128) ) {
+                            j+=BALLS_PER_ROW-1;
+                            continue;
+                        }
+                        if ( rope[i].np.y < balls[j].p.y-(MAX_BALL_RADIUS+128) ) {
+                            break;
+                        }
                         if (
-                            rope[i].p.x > balls[j].p.x-(balls[j].r+128)
-                            && rope[i].p.x < balls[j].p.x+(balls[j].r+128)
-                            && rope[i].p.y > balls[j].p.y-(balls[j].r+128)
-                            && rope[i].p.y < balls[j].p.y+(balls[j].r+128)
+                            rope[i].np.x > balls[j].p.x-(balls[j].r+128)
+                            && rope[i].np.x < balls[j].p.x+(balls[j].r+128)
+                            && rope[i].np.y > balls[j].p.y-(balls[j].r+128)
+                            && rope[i].np.y < balls[j].p.y+(balls[j].r+128)
                             ) {
-                            VECTOR3 c = rope[i].np - balls[j].p;
+
+                            VECTOR3 c = rope[i].np - balls[j].p; //relative vector between joint and ball
                             uint32_t l = sqrt(c.x*c.x+c.y*c.y+c.z*c.z); //distance between joint and ball
                             if (l < (balls[j].r+128)) {
                                 if (l == 0) break;
                                 VECTOR3 c0 = c;
                                 c0 *= (balls[j].r+128);
-                                c0 /= l; //target relative coordinate
+                                c0 /= l; //relative coordinates of target
                                 VECTOR3 adjust = c0 - c; //amount we need to adjust to hit target
                                 VECTOR3 adjust2;
                                 adjust2.x = sgn(adjust.x)*sqrt16(_max(abs(adjust.x),1));
@@ -228,14 +240,9 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
             for (int i = 0; i < NUM_JOINTS; i++) {
                 rope[i].v = rope[i].np - rope[i].p;
                 rope[i].p = rope[i].np;
-            }
-        }
-
-
-        for (int j = 0; j < NUM_ROPES; j++) {
-            JOINT * rope = ropes[j].joints;
-            for (int i = 0; i < NUM_JOINTS-1; i++) {
-                draw_line_fine(led_screen, rope[i].p, rope[i+1].p, ropes[j].rgb, -10000, 255, 255, true);
+                if (i < NUM_JOINTS-1) {
+                    draw_line_fine(led_screen, rope[i].p, rope[i+1].p, ropes[j].rgb, -10000, 255, 255, true);
+                }
             }
         }
 
@@ -243,7 +250,7 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
             reset_x_buffer();
             reset_y_buffer();
             draw_circle_fine(balls[i].p.x, balls[i].p.y, balls[i].r, 0, 255, 16);
-            CRGB fart = CHSV(0, 255, 16);
+            CRGB fart = balls[i].rgb;
             fart = gamma8_encode(gamma8_encode(fart));
             //fart = gamma8_encode(fart);
             fill_shape(256, fart);
