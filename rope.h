@@ -9,10 +9,10 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
     #define ROPE_SEGMENT_LENGTH (3*256)
     #define NUM_ROPE_EFFECTS 1
     #define NUM_ROPES 7
-    #define BALLS_PER_COLUMN (MATRIX_HEIGHT/10)
+    #define BALLS_PER_COLUMN (MATRIX_HEIGHT/12)
     #define BALLS_PER_ROW (MATRIX_WIDTH/10)
     #define NUM_BALLS (BALLS_PER_COLUMN * BALLS_PER_ROW)
-    #define MAX_BALL_RADIUS (4*256)
+    #define MAX_BALL_RADIUS (5*256)
 
   public:
     ROPE_PHYSICS () {setup();}
@@ -28,6 +28,7 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
         VECTOR3 p; //position
         VECTOR3 np; //next position
         VECTOR3 v; //velocity
+        uint8_t friction_cnt = 0;
     };
 
     struct ROPE {
@@ -141,14 +142,14 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
         
         //move balls
         for (int i = 0; i < NUM_BALLS; i++) {
-            balls[i].rgb = CHSV(0,255,16);
+            balls[i].rgb = gamma8_encode(CHSV(0,255,128));
             balls[i].sp.x += balls[i].v.x;
             if (balls[i].sp.x < -(MAX_BALL_RADIUS+512) || balls[i].sp.x > MATRIX_WIDTH*256+MAX_BALL_RADIUS+512) {
                 reset_ball(i);
             }
             balls[i].offset += balls[i].ov;
-            balls[i].ov -= balls[i].offset/60;
-            balls[i].ov *= 85;
+            balls[i].ov -= balls[i].offset/240;
+            balls[i].ov *= 90;
             balls[i].ov /= 100;
             balls[i].p = balls[i].sp+balls[i].offset;
         }
@@ -206,7 +207,9 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
                                 adjust2.x = sgn(adjust.x)*sqrt16(_max(abs(adjust.x),1));
                                 adjust2.y = sgn(adjust.y)*sqrt16(_max(abs(adjust.y),1));
                                 adjust2.z = sgn(adjust.z)*sqrt16(_max(abs(adjust.z),1));
+                                adjust2 /= 2;
                                 rope[i].np += adjust-adjust2;
+                                rope[i].friction_cnt+=1;
                                 balls[j].offset -= adjust2;
                                 //blendXY(led_screen, balls[j].p.x, balls[j].p.y);
 
@@ -240,6 +243,8 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
             for (int i = 0; i < NUM_JOINTS; i++) {
                 rope[i].v = rope[i].np - rope[i].p;
                 rope[i].p = rope[i].np;
+                rope[i].v -= (rope[i].v*rope[i].friction_cnt)/50;
+                rope[i].friction_cnt = 0;
                 if (i < NUM_JOINTS-1) {
                     draw_line_fine(led_screen, rope[i].p, rope[i+1].p, ropes[j].rgb, -10000, 255, 255, true);
                 }
@@ -249,9 +254,9 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
         for (int i = 0; i < NUM_BALLS; i++) {
             reset_x_buffer();
             reset_y_buffer();
-            draw_circle_fine(balls[i].p.x, balls[i].p.y, balls[i].r, 0, 255, 16);
             CRGB fart = balls[i].rgb;
-            fart = gamma8_encode(gamma8_encode(fart));
+            draw_circle_fine(balls[i].p.x, balls[i].p.y, balls[i].r, fart);
+            //fart = gamma8_encode(gamma8_encode(fart));
             //fart = gamma8_encode(fart);
             fill_shape(256, fart);
         }
