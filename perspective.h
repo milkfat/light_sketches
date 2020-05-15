@@ -29,9 +29,6 @@ class PERSPECTIVE {
         float rotation_alpha = 0;
         float rotation_beta = 90;
         float rotation_gamma = 0;
-        int32_t x_offset = 0;
-        int32_t y_offset = 0;
-        int32_t z_offset = 0;
         uint8_t light_falloff = 8; //(bitshift value, 1 = near, 16 = far)
 
         MATRIX matrix = MATRIX(&rotation_alpha, &rotation_beta, &rotation_gamma, &camera_position);
@@ -59,10 +56,7 @@ class PERSPECTIVE {
 
     void reset_camera () {
         camera_position = VECTOR3(0,0,232*256);
-        screen_distance = camera_position.z - 100*256;
-        x_offset = 0;
-        y_offset = 0;
-        z_offset = 0;
+        screen_distance = 100*256;
         rotation_alpha = 0;
         rotation_beta = 90;
         rotation_gamma = 0;
@@ -70,13 +64,10 @@ class PERSPECTIVE {
     }
 
     inline __attribute__ ((always_inline)) bool perspective(int32_t& x, int32_t& y, int32_t& z) {
-        z+=z_offset;
         z/=MATRIX_PRECISION;
         if (z < Cz) {
             x-=camera_position.x;
             y-=camera_position.y;
-            x+=x_offset;
-            y+=y_offset;
             x/=MATRIX_PRECISION;//half precision to double each axis of our available coordinate space
             y/=MATRIX_PRECISION;
             x = ( x * ((Sz - Cz)) ) / (z-Cz) + ((screen_width * 128)/MATRIX_PRECISION);
@@ -90,13 +81,10 @@ class PERSPECTIVE {
     }
 
     inline __attribute__ ((always_inline)) bool perspective_zero(int32_t& x, int32_t& y, int32_t& z) {
-        z+=z_offset;
         z/=MATRIX_PRECISION;
         if (z < Cz) {
             x-=camera_position.x;
             y-=camera_position.y;
-            x+=x_offset;
-            y+=y_offset;
             x/=MATRIX_PRECISION;//half precision to double each axis of our available coordinate space
             y/=MATRIX_PRECISION;
             x = ( x * ((Sz - Cz)) ) / (z-Cz);
@@ -136,11 +124,8 @@ class PERSPECTIVE {
         x*=MATRIX_PRECISION;
         y*=MATRIX_PRECISION;
         z*=MATRIX_PRECISION;
-        x-=camera_position.x;
-        y-=camera_position.y;
-        x-=x_offset;
-        y-=y_offset;
-        z-=z_offset;
+        x+=camera_position.x;
+        y+=camera_position.y;
         return true;
     }
 
