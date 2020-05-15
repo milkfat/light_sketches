@@ -12,7 +12,7 @@
 static inline __attribute__ ((always_inline)) void drawXY_fine(PERSPECTIVE& screen_object, const int32_t& xpos, const int32_t& ypos, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255) {
   
   CRGB rgb = CHSV(hue,sat,255);
-  color_add_scaled_linear(screen_object.screen_buffer[screen_object.XY(xpos/256,ypos/256)], rgb, val);
+  color_add_scaled_linear(screen_object.screen_buffer[XY(xpos/256,ypos/256)], rgb, val);
 
 }
 
@@ -20,19 +20,19 @@ static inline __attribute__ ((always_inline)) void drawXY_fine(PERSPECTIVE& scre
 static inline __attribute__ ((always_inline)) void drawXY(PERSPECTIVE& screen_object, const int& x, const int& y, const uint8_t& hue, const uint8_t& sat, const uint8_t& val) {
   
   CRGB rgb = CHSV(hue,sat,255);
-  color_add_scaled_linear(screen_object.screen_buffer[screen_object.XY(x,y)], rgb, val);
+  color_add_scaled_linear(screen_object.screen_buffer[XY(x,y)], rgb, val);
   
 }
 
 static inline __attribute__ ((always_inline)) void drawXY_fineRGB(PERSPECTIVE& screen_object, const int32_t& xpos, const int32_t& ypos, const uint8_t& r, const uint8_t& g, const uint8_t& b) {
 
-  color_add_linear8(screen_object.screen_buffer[screen_object.XY(xpos / 256,ypos / 256)], CRGB(r,g,b));
+  color_add_linear8(screen_object.screen_buffer[XY(xpos / 256,ypos / 256)], CRGB(r,g,b));
 
 }
 
 static inline __attribute__ ((always_inline)) void drawXY_RGB(PERSPECTIVE& screen_object, const int& x, const int& y, const uint8_t& r, const uint8_t& g, const uint8_t& b) {
   
-  color_add_linear8(screen_object.screen_buffer[screen_object.XY(x,y)], CRGB(r,g,b));
+  color_add_linear8(screen_object.screen_buffer[XY(x,y)], CRGB(r,g,b));
   
 }
 
@@ -111,11 +111,11 @@ static inline __attribute__ ((always_inline)) bool drawXYZ(PERSPECTIVE& screen_o
       
 
       if (gamma) {
-        screen_object.screen_buffer[screen_object.XY(x,y)] = gamma8_decode(rgb);
+        screen_object.screen_buffer[XY(x,y)] = gamma8_decode(rgb);
         return on_screen;
       }
 
-      screen_object.screen_buffer[screen_object.XY(x,y)] = rgb;
+      screen_object.screen_buffer[XY(x,y)] = rgb;
 
     }
 
@@ -129,8 +129,7 @@ static inline __attribute__ ((always_inline)) bool drawXYZ2(PERSPECTIVE& screen_
 
 }
 
-
-static inline __attribute__ ((always_inline)) bool blendXY(PERSPECTIVE& screen_object, const int32_t& xpos, const int32_t& ypos, CRGB& rgb, const bool& subtractive = false) {
+static inline __attribute__ ((always_inline)) bool blendXY(PERSPECTIVE& screen_object, const int32_t& xpos, const int32_t& ypos, const CRGB& rgb, const bool& subtractive = false, uint8_t sharpen = 1) {
   bool on_screen = false;
   //find the base x and y positions
   //add 2 pixels before division to avoid rounding errors at 0 (between -1 and 0)
@@ -143,12 +142,16 @@ static inline __attribute__ ((always_inline)) bool blendXY(PERSPECTIVE& screen_o
 
   int xval = (xpos + 512) % 256; //amount of light right
   int yval = (ypos + 512) % 256; //amount of light bottom
-  xval = ease8InOutApprox(xval);
-  yval = ease8InOutApprox(yval);
+
+  while (sharpen--) {
+    xval = ease8InOutApprox(xval);
+    yval = ease8InOutApprox(yval);
+  }
+
   int x2val = 255 - xval; //amount of light left
   int y2val = 255 - yval; //amount of light top
   
-  uint32_t led = screen_object.XY(x,y);
+  uint32_t led = XY(x,y);
 
   if (led < NUM_LEDS-1) {
     on_screen = true;
@@ -156,29 +159,29 @@ static inline __attribute__ ((always_inline)) bool blendXY(PERSPECTIVE& screen_o
         color_add_scaled_linear(screen_object.screen_buffer[led], rgb, (x2val*y2val*1L)/(255L)); //top left
 
         if (x < screen_object.screen_width-1) {
-          color_add_scaled_linear(screen_object.screen_buffer[screen_object.XY(x+1,y)], rgb, (xval*y2val*1L)/(255L)); //top right
+          color_add_scaled_linear(screen_object.screen_buffer[XY(x+1,y)], rgb, (xval*y2val*1L)/(255L)); //top right
         }
         
         if (x < screen_object.screen_width-1 && y < screen_object.screen_height-1) {
-          color_add_scaled_linear(screen_object.screen_buffer[screen_object.XY(x+1,y+1)], rgb, (xval*yval*1L)/(255L)); //bottom right
+          color_add_scaled_linear(screen_object.screen_buffer[XY(x+1,y+1)], rgb, (xval*yval*1L)/(255L)); //bottom right
         }
 
         if (y < screen_object.screen_height-1) {
-          color_add_scaled_linear(screen_object.screen_buffer[screen_object.XY(x,y+1)], rgb, (x2val*yval*1L)/(255L)); //bottom left
+          color_add_scaled_linear(screen_object.screen_buffer[XY(x,y+1)], rgb, (x2val*yval*1L)/(255L)); //bottom left
         }
       } else {
         color_sub_scaled_linear(screen_object.screen_buffer[led], rgb, (x2val*y2val*1L)/(255L)); //top left
 
         if (x < screen_object.screen_width-1) {
-          color_sub_scaled_linear(screen_object.screen_buffer[screen_object.XY(x+1,y)], rgb, (xval*y2val*1L)/(255L)); //top right
+          color_sub_scaled_linear(screen_object.screen_buffer[XY(x+1,y)], rgb, (xval*y2val*1L)/(255L)); //top right
         }
         
         if (x < screen_object.screen_width-1 && y < screen_object.screen_height-1) {
-          color_sub_scaled_linear(screen_object.screen_buffer[screen_object.XY(x+1,y+1)], rgb, (xval*yval*1L)/(255L)); //bottom right
+          color_sub_scaled_linear(screen_object.screen_buffer[XY(x+1,y+1)], rgb, (xval*yval*1L)/(255L)); //bottom right
         }
 
         if (y < screen_object.screen_height-1) {
-          color_sub_scaled_linear(screen_object.screen_buffer[screen_object.XY(x,y+1)], rgb, (x2val*yval*1L)/(255L)); //bottom left
+          color_sub_scaled_linear(screen_object.screen_buffer[XY(x,y+1)], rgb, (x2val*yval*1L)/(255L)); //bottom left
         }
       }
   }
