@@ -3,13 +3,13 @@
 
 //SPINNY
 
+#define NUM_SPINNY_EFFECTS 2
 class SPINNY: public LIGHT_SKETCH {
   public:
     SPINNY () {setup();}
    ~SPINNY () {}
   private:
    Z_BUF _z_buffer;
-   #define NUM_EFFECTS 2;
    int current_effect = 0;
    struct SQUARE {
        VECTOR3 pos;
@@ -73,7 +73,7 @@ class SPINNY: public LIGHT_SKETCH {
 
     void next_effect() {
         current_effect++;
-        current_effect%=NUM_EFFECTS;
+        current_effect%=NUM_SPINNY_EFFECTS;
     }
 
     void loop() {
