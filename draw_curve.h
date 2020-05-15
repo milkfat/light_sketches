@@ -223,10 +223,10 @@ static inline __attribute__ ((always_inline)) void matt_curve(int32_t coordinate
       if (stp > 0) {
         //draw line between points
         if (flipXY) {
-          draw_line_fine(led_screen, last_y, last_x, y, x, hue, sat, val, -10000, val, true);
+          draw_line_fine_hsv(led_screen, last_y, last_x, y, x, hue, sat, val, -10000, val, true);
         } else {
 
-          draw_line_fine(led_screen, last_x, last_y, x, y, hue, sat, val, -10000, val, true);
+          draw_line_fine_hsv(led_screen, last_x, last_y, x, y, hue, sat, val, -10000, val, true);
         }
       }
       //record x,y for the next iteration
@@ -265,9 +265,9 @@ static inline __attribute__ ((always_inline)) void matt_curve(int32_t coordinate
         if (stp > 0) {
           //draw line between points
           if (flipXY) {
-            draw_line_fine(led_screen, last_yb, last_xb, yb, xb, hue, sat, val, -10000, val, true);
+            draw_line_fine_hsv(led_screen, last_yb, last_xb, yb, xb, hue, sat, val, -10000, val, true);
           } else {
-            draw_line_fine(led_screen, last_xb, last_yb, xb, yb, hue, sat, val, -10000, val, true);
+            draw_line_fine_hsv(led_screen, last_xb, last_yb, xb, yb, hue, sat, val, -10000, val, true);
           }
         }
 

@@ -12,10 +12,10 @@ static inline __attribute__ ((always_inline)) void reset_circle_angles() {
   }
 }
 
-static inline __attribute__ ((always_inline)) void draw_circle_fine(const int32_t& x, const int32_t& y, const int32_t& r, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const int& ballnum = -1, const uint8_t& step_size = 16, const int32_t& z_depth = 0) {
+static inline __attribute__ ((always_inline)) void draw_circle_fine(const int32_t& x, const int32_t& y, const int32_t& r, const CRGB& rgb = CRGB(255,0,0), const int& ballnum = -1, const uint8_t& step_size = 16, const int32_t& z_depth = 0) {
   
   if(step_size == 255) {
-    blendXY(led_screen, x, y, hue, sat, val);
+    blendXY(led_screen, x, y, rgb);
     return;
   }
 
@@ -35,7 +35,7 @@ static inline __attribute__ ((always_inline)) void draw_circle_fine(const int32_
     xl += x;
     yl += y;
     if (t0 > 0) {
-      draw_line_fine(led_screen, xl, yl, xl2, yl2, hue, sat, val, z_depth, val, true);
+      draw_line_fine(led_screen, xl, yl, xl2, yl2, rgb, z_depth, 255, 255, true);
       //coords[coord_pos][0] = xl2;
       //coords[coord_pos][1] = yl2;
     }
@@ -48,6 +48,11 @@ static inline __attribute__ ((always_inline)) void draw_circle_fine(const int32_
 
   //blendXY(led_screen, x, y, hue, sat, val);
 }
+
+static inline __attribute__ ((always_inline)) void draw_circle_fine_hsv(const int32_t& x, const int32_t& y, const int32_t& r, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const int& ballnum = -1, const uint8_t& step_size = 16, const int32_t& z_depth = 0) {
+  CRGB rgb = CHSV(hue,sat,val); 
+  draw_circle_fine(x, y, r, rgb, ballnum, step_size, z_depth);
+}  
 
 
 
