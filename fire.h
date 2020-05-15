@@ -672,7 +672,7 @@ class FIRE2: public LIGHT_SKETCH {
 
             uint8_t y_start = (ease8Out(flame->y_from)*100)/255;
             uint8_t y_end = (ease8Out(flame->y_to)*100)/255;
-
+            y_end = _min(y_end,MATRIX_HEIGHT);
 
             //add fuel to the grid
             for (int i = y_start; i < y_end; i++) {
