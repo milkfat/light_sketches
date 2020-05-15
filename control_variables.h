@@ -1,6 +1,6 @@
 #ifndef LIGHTS_CONTROL_VARIABLES_H
 #define LIGHTS_CONTROL_VARIABLES_H
-
+#include "helper_functions.h"
 #define MAX_NUMBER_OF_CONTROL_VARIABLES 20
 class CONTROL_VARIABLES {
 
@@ -9,19 +9,21 @@ class CONTROL_VARIABLES {
     struct CONTROL_VARIABLE {
 
         union {
-            uint8_t* ui8_t;
-            uint16_t* ui16_t;
-            uint32_t* ui32_t;
-            int8_t* i8_t;
-            int16_t* i16_t;
-            int32_t* i32_t;
-            CRGB* rgb;
-            bool* boo;
+            uint8_t* ui8_t;   //1
+            uint16_t* ui16_t; //2
+            uint32_t* ui32_t; //3
+            int8_t* i8_t;     //4
+            int16_t* i16_t;   //5
+            int32_t* i32_t;   //6
+            CRGB* rgb;        //7
+            bool* boo;        //8 = switch; 9 = momentary
+            char* string;     //10
         };
 
         int32_t range_min=0;
         int32_t range_max=0;
         const char * name;
+        char key = '\0';
 
         uint8_t type = 0;
     };
@@ -109,6 +111,22 @@ class CONTROL_VARIABLES {
         return 1;
     }
 
+    int read(int& pos, char *& c, const char * & chr) {
+        if (!(pos >= 0 && pos < number_of_variables)) {
+            return 0;
+        }
+
+        switch (cv[pos].type) {
+            case 10:
+                c = cv[pos].string;
+                break;
+            default:
+                return 0;
+        }
+        chr = cv[pos].name;
+        return 1;
+    }
+
     int get(int pos) {
         if (!(pos >= 0 && pos < number_of_variables)) {
             return pos;
@@ -175,6 +193,22 @@ class CONTROL_VARIABLES {
         return -2;
     }
 
+    int get(int pos, char *& c) {
+        if (!(pos >= 0 && pos < number_of_variables)) {
+            return pos;
+            return -1;
+        }
+
+        switch (cv[pos].type) {
+            case 10:
+                c = cv[pos].string;
+                break;
+            default:
+                return 1;
+        }
+        return -2;
+    }
+
     int add(CRGB& rgb, const char * name) {
         if(number_of_variables > MAX_NUMBER_OF_CONTROL_VARIABLES-1) {
             return 0;
@@ -186,12 +220,44 @@ class CONTROL_VARIABLES {
         return 1;
     };
 
-    int add(bool& b, const char * name, bool momentary = 0) {
+    int add(bool& b, const char * name, bool momentary = 0, char key = '\0') {
         if(number_of_variables > MAX_NUMBER_OF_CONTROL_VARIABLES-1) {
             return 0;
         }
         cv[number_of_variables].boo = &b;
         cv[number_of_variables].type = (momentary) ? 9: 8;
+        cv[number_of_variables].name = name;
+        cv[number_of_variables].key = (momentary) ? key: '\0';
+        number_of_variables++;
+        return 1;
+    };
+
+    int key_down(char key) {
+        for (int i = 0; i < number_of_variables; i++) {
+            if (cv[i].type == 9 && cv[i].key == key) {
+                *cv[i].boo = true;
+                return 1;
+            }
+        }
+        return 0;
+    }
+
+    int key_up(char key) {
+        for (int i = 0; i < number_of_variables; i++) {
+            if (cv[i].type == 9 && cv[i].key == key) {
+                *cv[i].boo = false;
+                return 1;
+            }
+        }
+        return 0;
+    }
+
+    int add(char * c, const char * name) {
+        if(number_of_variables > MAX_NUMBER_OF_CONTROL_VARIABLES-1) {
+            return 0;
+        }
+        cv[number_of_variables].string = c;
+        cv[number_of_variables].type = 10;
         cv[number_of_variables].name = name;
         number_of_variables++;
         return 1;
@@ -209,6 +275,7 @@ class CONTROL_VARIABLES {
         number_of_variables++;
         return 1;
     };
+
     int add(uint16_t& var, const char * name, int32_t r_min, int32_t r_max) {
         if(number_of_variables > MAX_NUMBER_OF_CONTROL_VARIABLES-1) {
             return 0;
@@ -221,6 +288,7 @@ class CONTROL_VARIABLES {
         number_of_variables++;
         return 1;
     };
+
     int add(uint32_t& var, const char * name, int32_t r_min, int32_t r_max) {
         if(number_of_variables > MAX_NUMBER_OF_CONTROL_VARIABLES-1) {
             return 0;
@@ -233,6 +301,7 @@ class CONTROL_VARIABLES {
         number_of_variables++;
         return 1;
     };
+
     int add(int8_t& var, const char * name, int32_t r_min, int32_t r_max) {
         if(number_of_variables > MAX_NUMBER_OF_CONTROL_VARIABLES-1) {
             return 0;
@@ -245,6 +314,7 @@ class CONTROL_VARIABLES {
         number_of_variables++;
         return 1;
     };
+
     int add(int16_t& var, const char * name, int32_t r_min, int32_t r_max) {
         if(number_of_variables > MAX_NUMBER_OF_CONTROL_VARIABLES-1) {
             return 0;
@@ -257,6 +327,7 @@ class CONTROL_VARIABLES {
         number_of_variables++;
         return 1;
     };
+
     int add(int32_t& var, const char * name, int32_t r_min, int32_t r_max) {
         if(number_of_variables > MAX_NUMBER_OF_CONTROL_VARIABLES-1) {
             return 0;
@@ -269,9 +340,14 @@ class CONTROL_VARIABLES {
         number_of_variables++;
         return 1;
     };
+
     void clear() {
         number_of_variables = 0;
+        for (int i = 0; i < MAX_NUMBER_OF_CONTROL_VARIABLES; i++) {
+            cv[i].key = '\0';
+        }
     }
+
     int set(int& pos, int& val) {
         if(!(pos >= 0 && pos < number_of_variables)) {
             return 0;
@@ -300,6 +376,7 @@ class CONTROL_VARIABLES {
         }
         return 1;
     }
+
     int set(int& pos, CRGB& rgb) {
         if(!(pos >= 0 && pos < number_of_variables)) {
             return 0;
@@ -324,6 +401,23 @@ class CONTROL_VARIABLES {
                 break;
             case 9:
                 *cv[pos].boo = b;
+                break;
+            default:
+                return 0;
+        }
+        return 1;
+    }
+
+
+    int set(int& pos, char* c) {
+        if(!(pos >= 0 && pos < number_of_variables)) {
+            return 0;
+        }
+        char * p = cv[pos].string;
+        switch (cv[pos].type) {
+            case 10:
+                *p = '\0';
+                mystrcat(p, c);
                 break;
             default:
                 return 0;
