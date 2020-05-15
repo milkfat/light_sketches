@@ -31,16 +31,13 @@ class HTTPS_SERVER {
         asdf.append(light_html_head());
                   
         char buff[2048];
-        char * p = buff;
-        *p = '\0';
 
         //generate sketch selection dropdown
-        generate_sketch_dropdown(p);
+        asdf.append(generate_sketch_dropdown(buff));
 
         //generate sketch controls  
-        generate_html_controls(p);
+        asdf.append(generate_html_controls(buff));
 
-        asdf.append(buff);
 
         //the rest of the page
         asdf.append(light_html_tail());
@@ -115,10 +112,8 @@ class WSS_SERVER {
     }
 
     void wssHTMLControls () {
-      char buff[2048];
-      char * p = buff; 
-      *p = '\0';                               
-      generate_html_controls(p);
+      char buff[2048];                          
+      generate_html_controls(buff);
 
       for(auto &a_connection : server.get_connections())
         a_connection->send(buff);
@@ -157,7 +152,7 @@ class WSS_SERVER {
           //process binary
         }
         else {
-          parse_javascript(inbuf);
+          parse_json(inbuf);
         }
       };
 
