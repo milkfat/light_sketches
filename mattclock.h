@@ -1,7 +1,9 @@
 #ifndef LIGHTS_MATTCLOCK_H
 #define LIGHTS_MATTCLOCK_H
 
-//#define CLOCK_HORIZONTAL
+#if MATRIX_WIDTH >= MATRIX_HEIGHT
+#define CLOCK_HORIZONTAL
+#endif
 #define SEGMENT_LENGTH 20
 #define SEGMENT_SPACING 4
 
@@ -16,13 +18,18 @@ class MATTCLOCK: public LIGHT_SKETCH {
     bool clock_digital = false;
     bool digit_rotate = true;
     bool clock_3d = true;
-    int x_shift = -10;
-    int y_shift = 10;
+    // int x_shift = -10;
+    // int y_shift = 10;
+    int x_offset = 0;
+    int y_offset = 0;
+    int z_offset = -500*256;
     int update_count = 0; //keep track of how many digits were updated in a cycle
     int erase_delay = 0;
     int draw_delay = 0;
     CRGB rgb_clock = CRGB(255,0,0);
     Z_BUF _z_buffer;
+    VECTOR3 bound_max = VECTOR3(0,0,0);
+    VECTOR3 bound_min = VECTOR3(MATRIX_WIDTH*256,MATRIX_HEIGHT*256,0);
 
     
     //uint8_t SEGMENT_LENGTH = 5;
@@ -190,6 +197,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
     //current cursor position  
     int cposx = 0;
     int cposy = 0;
+    int cposz = 0;
     
     //current character position
     int dpos = 0;
@@ -307,6 +315,9 @@ class MATTCLOCK: public LIGHT_SKETCH {
       int32_t p0[3];
       
       led_screen.matrix.rotate(p,p0);
+      p0[0] += x_offset;
+      p0[1] += y_offset;
+      p0[2] += z_offset;
 
       p[0] = x1;
       p[1] = y1;
@@ -315,11 +326,10 @@ class MATTCLOCK: public LIGHT_SKETCH {
       int32_t p1[3];
 
       led_screen.matrix.rotate(p,p1);
+      p1[0] += x_offset;
+      p1[1] += y_offset;
+      p1[2] += z_offset;
 
-      //translate vectors to coordinates
-      p0[2] += -180 * 256 + (200 * 256) / 256;
-
-      p1[2] += -180 * 256 + (200 * 256) / 256;
 
       led_screen.perspective(p0);
       led_screen.perspective(p1);
@@ -335,9 +345,9 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
       uint8_t bump = sin8(d-64);
       
-      int x = cposx*256;
-      int y = (MATRIX_HEIGHT-1-cposy)*256;
-      int z = bump*5;
+      int x = cposx;
+      int y = (MATRIX_HEIGHT-1)*256-cposy;
+      int z = cposz+bump*5;
 
       int x0 = segments[i][0][0]*256;
       int y0 = segments[i][0][1]*256;
@@ -379,6 +389,10 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
           led_screen.matrix.rotate(p, p0);
 
+          p0[0] += x_offset;
+          p0[1] += y_offset;
+          p0[2] += z_offset;
+
           p[0] = x+x1b;
           p[1] = y-y1;
           p[2] = z+z1b;
@@ -387,9 +401,10 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
           led_screen.matrix.rotate(p, p1);
 
-          //translate vectors to coordinates
-          p0[2] += -180 * 256 + (200 * 256) / 256;
-          p1[2] += -180 * 256 + (200 * 256) / 256;
+          p1[0] += x_offset;
+          p1[1] += y_offset;
+          p1[2] += z_offset;
+
         
           led_screen.perspective(p0);
           led_screen.perspective(p1);
@@ -431,9 +446,9 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
       uint8_t bump = sin8(d-64);
 
-      int x = cposx*256;
-      int y = (MATRIX_HEIGHT-1-cposy)*256;
-      int z = bump*5;
+      int x = cposx;
+      int y = (MATRIX_HEIGHT-1)*256 - cposy;
+      int z = cposz+bump*5;
       
       int x0d = segments[b][0][0] - segments[a][0][0];
       int x0 = segments[a][0][0]*256 + x0d*d;
@@ -478,9 +493,9 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
       dpos++;
       //cposy += 14*cy;
-      cposy += (SEGMENT_LENGTH*2+SEGMENT_SPACING*4)*cy;
+      cposy += (SEGMENT_LENGTH*2+SEGMENT_SPACING*4)*cy*256;
       //cposx += 8*cx;
-      cposx += (SEGMENT_LENGTH+SEGMENT_SPACING*3)*cx;
+      cposx += (SEGMENT_LENGTH+SEGMENT_SPACING*3)*cx*256;
     }
 
     void animate_digit(digit &d, const int& td) {
@@ -536,9 +551,9 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
         dpos++;
         //cposy += 14*cy;
-        cposy += (SEGMENT_LENGTH*2+SEGMENT_SPACING*4)*cy;
+        cposy += (SEGMENT_LENGTH*2+SEGMENT_SPACING*4)*cy*256;
         //cposx += 8*cx;
-        cposx += (SEGMENT_LENGTH+SEGMENT_SPACING*3)*cx;
+        cposx += (SEGMENT_LENGTH+SEGMENT_SPACING*3)*cx*256;
       } else {
         draw_digit(d.number_to + '0');
       }
@@ -556,9 +571,11 @@ class MATTCLOCK: public LIGHT_SKETCH {
           if (dpos == 0) {
             dpos++;
             //cposy += 14*cy;
-            cposy += (SEGMENT_LENGTH*2+SEGMENT_SPACING*4)*cy;
+            cposy += (SEGMENT_LENGTH*2+SEGMENT_SPACING*4)*cy*256;
             //cposx += 8*cx;
-            cposx += (SEGMENT_LENGTH+SEGMENT_SPACING*3)*cx;
+            cposx += (SEGMENT_LENGTH+SEGMENT_SPACING*3)*cx*256;
+            reset_bounds();
+            add_bound();
           } else {
             draw_ss(numbers[0]);
           }
@@ -597,44 +614,48 @@ class MATTCLOCK: public LIGHT_SKETCH {
           if (!clock_3d) {
             //draw a stupid colon on the stupid screen in the stupidest way possible
             if (SEGMENT_LENGTH > 4) {
-              leds[XY(cposx + 0 + (SEGMENT_LENGTH-2)*cy, MATRIX_HEIGHT - 1 - cposy - 0 - (SEGMENT_LENGTH-1)*cx)] = 0x202020;
+              leds[XY(cposx/256 + 0 + (SEGMENT_LENGTH-2)*cy, MATRIX_HEIGHT - 1 - cposy/256 - 0 - (SEGMENT_LENGTH-1)*cx)] = 0x202020;
             }
             //leds[XY(cposx + 0 + 3*cy, MATRIX_HEIGHT - 1 - cposy - 1 - 4*cx)].r = 255;
-            leds[XY(cposx + 0 + (SEGMENT_LENGTH-2)*cy, MATRIX_HEIGHT - 1 - cposy - 1 - (SEGMENT_LENGTH-1)*cx)] = 0x202020;
+            leds[XY(cposx/256 + 0 + (SEGMENT_LENGTH-2)*cy, MATRIX_HEIGHT - 1 - cposy/256 - 1 - (SEGMENT_LENGTH-1)*cx)] = 0x202020;
             if (SEGMENT_LENGTH > 4) {
-              leds[XY(cposx + 1 + (SEGMENT_LENGTH-2)*cy, MATRIX_HEIGHT - 1 - cposy - 0 - (SEGMENT_LENGTH-1)*cx)] = 0x202020;
-              leds[XY(cposx + 1 + (SEGMENT_LENGTH-2)*cy, MATRIX_HEIGHT - 1 - cposy - 1 - (SEGMENT_LENGTH-1)*cx)] = 0x202020;
+              leds[XY(cposx/256 + 1 + (SEGMENT_LENGTH-2)*cy, MATRIX_HEIGHT - 1 - cposy/256 - 0 - (SEGMENT_LENGTH-1)*cx)] = 0x202020;
+              leds[XY(cposx/256 + 1 + (SEGMENT_LENGTH-2)*cy, MATRIX_HEIGHT - 1 - cposy/256 - 1 - (SEGMENT_LENGTH-1)*cx)] = 0x202020;
             }
             //leds[XY(cposx + 0 + 3*cy, MATRIX_HEIGHT - 1 - cposy - 3 - 4*cx)].r = 255;
-            leds[XY(cposx + 0 + (SEGMENT_LENGTH-2)*cy, MATRIX_HEIGHT - 1 - cposy - 3 - (SEGMENT_LENGTH-1)*cx)] = 0x202020;
+            leds[XY(cposx/256 + 0 + (SEGMENT_LENGTH-2)*cy, MATRIX_HEIGHT - 1 - cposy/256 - 3 - (SEGMENT_LENGTH-1)*cx)] = 0x202020;
             if (SEGMENT_LENGTH > 4) {
-              leds[XY(cposx + 0 + (SEGMENT_LENGTH-2)*cy, MATRIX_HEIGHT - 1 - cposy - 4 - (SEGMENT_LENGTH-1)*cx)] = 0x202020;
-              leds[XY(cposx + 1 + (SEGMENT_LENGTH-2)*cy, MATRIX_HEIGHT - 1 - cposy - 3 - (SEGMENT_LENGTH-1)*cx)] = 0x202020;
-              leds[XY(cposx + 1 + (SEGMENT_LENGTH-2)*cy, MATRIX_HEIGHT - 1 - cposy - 4 - (SEGMENT_LENGTH-1)*cx)] = 0x202020;
+              leds[XY(cposx/256 + 0 + (SEGMENT_LENGTH-2)*cy, MATRIX_HEIGHT - 1 - cposy/256 - 4 - (SEGMENT_LENGTH-1)*cx)] = 0x202020;
+              leds[XY(cposx/256 + 1 + (SEGMENT_LENGTH-2)*cy, MATRIX_HEIGHT - 1 - cposy/256 - 3 - (SEGMENT_LENGTH-1)*cx)] = 0x202020;
+              leds[XY(cposx/256 + 1 + (SEGMENT_LENGTH-2)*cy, MATRIX_HEIGHT - 1 - cposy/256 - 4 - (SEGMENT_LENGTH-1)*cx)] = 0x202020;
             }
             //cposy += 6*cy;
-            cposy += ((SEGMENT_LENGTH*2+SEGMENT_SPACING*2)/2)*cy;
+            cposy += ((SEGMENT_LENGTH*2+SEGMENT_SPACING*2)/2)*cy*256;
             //cposx += 4*cx;
-            cposx += (SEGMENT_LENGTH-SEGMENT_SPACING)*cx;
+            cposx += (SEGMENT_LENGTH-SEGMENT_SPACING)*cx*256;
           } else {
             //draw a 3d colon
             //int32_t p[3];
       
-            int x = (cposx+SEGMENT_SPACING+2)*256;
-            int y = (MATRIX_HEIGHT-1-cposy)*256;
+            int x = cposx+(SEGMENT_SPACING+2)*256;
+            int y = (MATRIX_HEIGHT-1)*256-cposy;
+            int z = cposz;
 
             CRGB rgb2;
             rgb2.r = (rgb_clock.r*val)/255;
             rgb2.g = (rgb_clock.g*val)/255;
             rgb2.b = (rgb_clock.b*val)/255;
-            draw_3d(x, y-(SEGMENT_SPACING*2)*256, 0, x+2*256, y-(SEGMENT_SPACING*2)*256, 0, rgb2);
-
-            draw_3d(x+(SEGMENT_LENGTH-10)*256, y-(SEGMENT_SPACING*2)*256, 0, x+(SEGMENT_LENGTH-8)*256, y-(SEGMENT_SPACING*2)*256, 0, rgb2);
-            
+            #ifndef CLOCK_HORIZONTAL
+            draw_3d(x, y-(SEGMENT_SPACING*2)*256, z, x+2*256, y-(SEGMENT_SPACING*2)*256, z, rgb2);
+            draw_3d(x+(SEGMENT_LENGTH-10)*256, y-(SEGMENT_SPACING*2)*256, z, x+(SEGMENT_LENGTH-8)*256, y-(SEGMENT_SPACING*2)*256, z, rgb2);
+            #else
+            draw_3d(x, y-(SEGMENT_LENGTH*256)/2, z, x, y-(SEGMENT_LENGTH*256)/2-2*256, z, rgb2);
+            draw_3d(x, y-(SEGMENT_LENGTH*256)/2-(SEGMENT_LENGTH*256), z, x, y-(SEGMENT_LENGTH*256)/2-(SEGMENT_LENGTH*256)-2*256, z, rgb2);
+            #endif
             //cposy += 6*cy;
-            cposy += (SEGMENT_LENGTH+SEGMENT_SPACING)*cy;
+            cposy += (SEGMENT_LENGTH+SEGMENT_SPACING)*cy*256;
             //cposx += 4*cx;
-            cposx += (SEGMENT_LENGTH-SEGMENT_SPACING)*cx;
+            cposx += SEGMENT_LENGTH*cx*256;
 
           }
           break;
@@ -654,91 +675,45 @@ class MATTCLOCK: public LIGHT_SKETCH {
       
     }
 
-    void check_boundaries(bool rst = false) {
-        static int x_step = 0;
-        static int y_step = 0;
-        static int y_initial = 0;
-        static int c_step = 0;
-        static int c_initial = 0;
-        if (rst) {
-          x_step = 0;
-          y_step = 0;
-          y_initial = 0;
-          c_step = 0;
-          c_initial = 0;
-          return;
-        }
-        if (led_screen.out_of_bounds()) {
-          
-          int y_upper = led_screen.y_boundary_status_upper();
-          int y_lower = led_screen.y_boundary_status_lower();
-          int c_offset = y_upper + y_lower;
-          int y_offset = y_upper - y_lower;
+    void add_bound() {
 
-          if (y_offset > 0) {
-            if (y_step >= 0) {
-              y_initial = y_offset;
-              y_step = -5;
-            }
-            if (y_offset <= y_initial/2) {
-              y_step += 1;
-            } else {
-              y_step -= 1;
-            }
-            led_screen.y_offset += y_step;
-          }
+      VECTOR3 l = VECTOR3(cposx,(MATRIX_HEIGHT-1)*256-cposy,cposz);
+      VECTOR3 h = VECTOR3(cposx+(SEGMENT_LENGTH+SEGMENT_SPACING*3)*cy*256,(MATRIX_HEIGHT-1)*256-cposy-(SEGMENT_LENGTH*2+SEGMENT_SPACING*4)*256*cx,cposz);
 
-          if (y_offset < 0) {
-            if (y_step <= 0) {
-              y_initial = y_offset;
-              y_step = 5;
-            }
-            if (y_offset <= y_initial/2) {
-              y_step += 1;
-            } else {
-              y_step -= 1;
-            }
-            led_screen.y_offset += y_step;
-          }
+      led_screen.matrix.rotate(l);
+      led_screen.matrix.rotate(h);
+      l.x += x_offset;
+      l.y += y_offset;
+      l.z += z_offset;
+      h.x += x_offset;
+      h.y += y_offset;
+      h.z += z_offset;
 
-          //std::cout << "y_offset:" << y_offset << "y_step:" << y_step << "y_initial:" << y_initial << " y_upper:" << y_upper << " y_lower:" << y_lower << "\n";
-          
-          if (c_offset > 0) {
-            if (c_step == 0) {
-              c_initial = c_offset;
-              c_step = 5;
-            }
-            if (c_offset > c_initial/2) {
-              c_step+=1;
-            } else {
-              c_step-=1;
-            }
-            c_step = _max(c_step, 0);
-            led_screen.screen_distance-=c_step;
-          } else {
-            if (c_step != 0) {
-              //std::cout << "STOP\n";
-            }
-            c_step = 0;
-          }
-          
-        } else {
-          y_initial = 0;
-          c_initial = 0;
-          x_step = 0;
-          y_step = 0;
-          c_step = 0;
-        }
 
-    }
+      led_screen.perspective(l);
+      led_screen.perspective(h);
+      // blendXY(led_screen, l, CRGB(0,255,0));
+      // blendXY(led_screen, h, CRGB(0,0,255));
+      bound_max.x = _max(bound_max.x,l.x);
+      bound_max.y = _max(bound_max.y,l.y);
 
-    void reset_boundaries() {
-      led_screen.reset_boundaries();
+      bound_max.x = _max(bound_max.x,h.x);
+      bound_max.y = _max(bound_max.y,h.y);
+
+      bound_min.x = _min(bound_min.x,l.x);
+      bound_min.y = _min(bound_min.y,l.y);
+
+      bound_min.x = _min(bound_min.x,h.x);
+      bound_min.y = _min(bound_min.y,h.y);
+
     }
 
     void draw_digital_clock() {
 
         update_count = 0;
+
+        add_bound();
+
         for (int i = 0; i < sizeof(timebuffer); i++) {
           if (timebuffer[i] == '\0') {
             break;
@@ -751,6 +726,8 @@ class MATTCLOCK: public LIGHT_SKETCH {
           }
         }
 
+        add_bound();
+
     }
 
   
@@ -760,10 +737,8 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
     void next_effect() {
 
-      check_boundaries(true);
-
-      led_screen.camera_position.z = 200*256;
-      led_screen.screen_distance = 300*256-111*256;
+      led_screen.camera_position.z = 0*256;
+      led_screen.screen_distance = 67*256;
       
       if (current_effect == TEXT_CLOCK) {
         display_text = "";
@@ -793,7 +768,6 @@ class MATTCLOCK: public LIGHT_SKETCH {
       control_variables.add(rgb_clock, "Color");
       control_variables.add(led_screen.camera_position.z, "Camera Z", 0, 256*256);
       control_variables.add(led_screen.screen_distance, "Screen Z", 0, 256*256);
-      control_variables.add(led_screen.y_offset, "Y offset", -256*256*4, 256*256*4);
 
       for (int i = 0; i < 6; i++) {
         digits[i].number_from = 0;
@@ -820,11 +794,10 @@ class MATTCLOCK: public LIGHT_SKETCH {
         bd += 32;
         gd += 42;
         ad += 52;
-
         
-
-        cposx = x_shift;
-        cposy = y_shift;
+        cposx = 0;
+        cposy = 0;
+        cposz = 0;
         dpos = 0;
         
         LED_show();
@@ -847,20 +820,16 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
         switch (current_effect) {
           case DIGITAL_CLOCK:
-            reset_boundaries();
             draw_digital_clock();
-            check_boundaries();   //adjust the screen so that the clock fits (move/zoom out)
+            check_bounds();   //adjust the screen so that the clock fits (move/zoom out)
             break;
 
           case HAND_DRAWN_CLOCK:
-            reset_boundaries();
             draw_digital_clock();
-            check_boundaries();
+            check_bounds();
             break;
 
           case TEXT_CLOCK:
-            check_boundaries();
-            reset_boundaries();
             old_display_text = display_text;
             display_text = timebuffer;
             break;
@@ -869,16 +838,51 @@ class MATTCLOCK: public LIGHT_SKETCH {
             draw_analog_clock();
             break;
         }
+        
 
 
     }//loop
 
   private:
+    void check_bounds() {
+
+        int x_size = bound_max.x - bound_min.x - (MATRIX_WIDTH-4)*256;
+        int y_size = bound_max.y - bound_min.y - (MATRIX_HEIGHT-4)*256;
+
+        if (x_size > 0 || y_size > 0 || (x_size < 0 && y_size < 0)) {
+          z_offset-=_max(x_size,y_size)/5;
+          //std::cout << "z: " << _max(x_size,y_size)/5;
+        }
+
+        int x_center = bound_max.x + bound_min.x - (MATRIX_WIDTH)*256;
+        int y_center = bound_max.y + bound_min.y - (MATRIX_HEIGHT)*256;
+
+        if (x_center > 0 || x_center < 0) {
+          x_offset-=x_center/5;
+          //std::cout << " x: " << x_center/5;
+        }
+        if (y_center > 0 || y_center < 0) {
+          y_offset-=y_center/5;
+          //std::cout << " y: " << y_center/5;
+        }
+        //std::cout << "\n";
+        
+        reset_bounds();
+        //std::cout << bound_min.x << "," << bound_min.y << "; " << bound_max.x << "," << bound_max.y << "\n";
+
+    }
+
+    void reset_bounds() {
+        bound_max = VECTOR3(0,0,0);
+        bound_min = VECTOR3(MATRIX_WIDTH*256,MATRIX_HEIGHT*256,0);
+    }
+
     void draw_analog_clock() {
 
         //the absolute position of the clock on the screen
+
         int clock_x = (MATRIX_WIDTH*256) / 2;
-        int clock_y = MATRIX_HEIGHT*256 - 16*256;
+        int clock_y = (MATRIX_HEIGHT*256) / 2;
 
 
         //draw the hour markers around the outer edge
@@ -898,7 +902,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
           int y2 = (l2*cos16(a))/32768;
 
 
-          draw_line_fine(led_screen, clock_x+x, clock_y+y, clock_x+x2, clock_y+y2,0,0,12,-10000,12);
+          draw_line_fine_hsv(led_screen, clock_x+x, clock_y+y, clock_x+x2, clock_y+y2,0,0,32,-10000,128);
         }
 
 
@@ -928,9 +932,9 @@ class MATTCLOCK: public LIGHT_SKETCH {
         int hour_y = ( hour_length*(cos16(hour_angle)) ) /32768;
 
 
-        draw_line_fine(led_screen, clock_x, clock_y, clock_x+second_x, clock_y+second_y,0,0,32,-10000,32);
-        draw_line_fine(led_screen, clock_x, clock_y, clock_x+minute_x, clock_y+minute_y,160,0,64,-10000,64);
-        draw_line_fine(led_screen, clock_x, clock_y, clock_x+hour_x, clock_y+hour_y,90,0,64,-10000,64);
+        draw_line_fine_hsv(led_screen, clock_x, clock_y, clock_x+second_x, clock_y+second_y,0,0,32,-10000,64);
+        draw_line_fine_hsv(led_screen, clock_x, clock_y, clock_x+minute_x, clock_y+minute_y,160,0,64,-10000,255);
+        draw_line_fine_hsv(led_screen, clock_x, clock_y, clock_x+hour_x, clock_y+hour_y,90,0,64,-10000,255);
 
     } //draw analog clock
 
@@ -990,19 +994,20 @@ class MATTCLOCK: public LIGHT_SKETCH {
             p[1] += (((255-wire_character[old_digit][i][1])*Y_SCALE)*(SCRIBBLE_SPEED-td))/SCRIBBLE_SPEED;
           }
 */        
-          int x = cposx*256;
-          int y = (MATRIX_HEIGHT-1-cposy)*256;
+          int x = cposx;
+          int y = (MATRIX_HEIGHT-1)*256-cposy;
+          int z = cposz;
 
           p[0] = x+p[0];
           p[1] = y-p[1];
-          p[2] = 0;
+          p[2] = z;
 
           int32_t p0[3];
 
           led_screen.matrix.rotate(p, p0);
-
-          //translate vectors to coordinates
-          p0[2] += -180 * 256 + (200 * 256) / 256;
+          p0[0] += x_offset;
+          p0[1] += y_offset;
+          p0[2] += z_offset;
 
           //correct 3d perspective
           led_screen.perspective(p0);
