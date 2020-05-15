@@ -344,14 +344,14 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
         }
         //blendXY(led_screen, draw_x, draw_y, hue, sat, 255);
         if (draw_filled) {
-          draw_circle_fine(draw_x, draw_y, balls[i].vr, hue, sat, 255, i, 16, i*32);
-          draw_circle_fine(draw_x, draw_y, balls[i].vr, 0, 0, 0, i, 16, i*32);
+          draw_circle_fine_hsv(draw_x, draw_y, balls[i].vr, hue, sat, 255, i, 16, i*32);
+          draw_circle_fine_hsv(draw_x, draw_y, balls[i].vr, 0, 0, 0, i, 16, i*32);
           CRGB rgb = CHSV(hue,sat,255);
           y_buffer_fill(led_screen, rgb, i*32+16);
           reset_y_buffer();
           reset_x_buffer();
         } else {
-          draw_circle_fine(draw_x, draw_y, balls[i].vr, hue, sat, 255, i, 16, i*32);
+          draw_circle_fine_hsv(draw_x, draw_y, balls[i].vr, hue, sat, 255, i, 16, i*32);
         }
         
         //dma_display.drawPixelRGB36(draw_x/256, draw_y/256, 255, 0, 0);
