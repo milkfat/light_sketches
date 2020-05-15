@@ -1,6 +1,8 @@
 /*
 
 TO DO:
+	Make window size dynamic on PC
+
 	Fix draw_fine_line() flickering with z-depth -- done maybe
 	Fix fill_shape() to remove distortion in the upper right/z-depth -- done I think
 
@@ -36,12 +38,12 @@ TO DO:
 // #define MATRIX_WIDTH 360
 // #define MATRIX_HEIGHT 250
 
-#define WINDOW_WIDTH 325
-#define WINDOW_HEIGHT 650
 #define MATRIX_WIDTH 32
 #define MATRIX_HEIGHT 128
 #define SCREEN_WIDTH 32
 #define SCREEN_HEIGHT 128
+#define WINDOW_WIDTH ((MATRIX_WIDTH+2)*5)
+#define WINDOW_HEIGHT ((MATRIX_HEIGHT+2)*5)
      
 //misc libraries
 #include <iostream>
@@ -55,7 +57,7 @@ int32_t iteration_calls = 1;
 //https://www.libsdl.org/index.php
 //SDL2-2.0.9
 #include <SDL2/SDL.h>
-
+#include <openssl/conf.h>
 //clock stuff
 #include <chrono>
 #include <thread>
@@ -285,6 +287,7 @@ int main(int argc, char **argv){
 
 	pc_screen.screen_buffer = screen_buffer;
 
+
 	for (int i = 0; i < NUM_LEDS; i++) {
 	    tree_coords[i] = VECTOR3(0, -150*256, 30*256);
 	    rotate_y(tree_coords[i], i*17);
@@ -329,7 +332,14 @@ int main(int argc, char **argv){
     // but instead of creating a renderer, we can draw directly to the screen
     screen = SDL_GetWindowSurface(window);
 
+
         if (window) {
+	
+			for (int x = 0;x < WINDOW_WIDTH; x++) {
+				for (int y = 0;y < WINDOW_HEIGHT; y++) {
+					put_pixel(screen, x, y, 0x00202020);
+				}
+			}
             
 			while (millis() < 1000) {};
 			light_sketches.loop();	
