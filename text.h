@@ -13,6 +13,13 @@ bool text_rotate = 0;
 uint32_t text_shake_time = 0;
 uint8_t current_font = 0;
 int ystp = 0;
+int xstp = 0;
+
+#if MATRIX_WIDTH >= MATRIX_HEIGHT
+int horizontal_text=1;
+#else
+int horizontal_text=0;
+#endif
 
 int text_color = -1;
 uint8_t text_saturation = 255;
@@ -20,6 +27,9 @@ uint8_t text_brightness = 96;
 uint8_t font_scaler = 48;
 bool scrolling_text_enabled = 0;
 int drawing_enabled = 0;
+
+uint8_t font_sizes[8] = {0,15,16,17,7,7,5,7};
+uint8_t font_y_adjust[8] = {0,3,2,2,1,1,1,0};
 
 void add_character(char c) {
     display_text.push_back(c);
@@ -130,6 +140,7 @@ void handle_text() {
   
     //RENDER THE TEXT
     int current_height = 0; //keep track of the vertical position of our current character
+    int current_width = 0; //keep track of the horizontal position of our current character
 
     //RESET THE MASK
     if (text_mask == 1) {
@@ -171,7 +182,7 @@ void handle_text() {
         for (int y = 0; y < letter_height; y++) {
           //int ypos = 0-round(y*font_scaler)+ystp-current_height;
           int ypos = 0-(y*(font_scaler+16))/64;
-          if (ypos+ystp-current_height < -10 || ypos+ystp-current_height > MATRIX_HEIGHT+letter_height) {
+          if (!horizontal_text && (ypos+ystp-current_height < -10 || ypos+ystp-current_height > MATRIX_HEIGHT+letter_height)) {
             break; //stop drawing if we go off the bottom of the screen
           }
           scroll_reset = 0;
@@ -188,7 +199,8 @@ void handle_text() {
                   u = x*256L;
                   v = ypos*256L;
                 }
-                v += (ystp-current_height)*256L;
+                u += xstp*256L+current_width*256L*horizontal_text;
+                v += ystp*256L-current_height*256L*!horizontal_text;
                 if (text_mask == 0) {
                   if (text_filter == 1) {
                     blendXY(led_screen, u+offsets[offset_pos]*256, v+offsets[offset_pos+1]*256, hue, text_saturation, text_brightness );
@@ -208,6 +220,7 @@ void handle_text() {
         }
         //advance the cursor for the next letter
         current_height += (letter_height*(font_scaler+16))/64+1;
+        current_width += (letter_width*(font_scaler+16))/64+1;
       }
   
   
@@ -468,15 +481,18 @@ void handle_text() {
     
     //SCROLL TEXT
     static unsigned int ystp_time = 0;
-    if (millis() - 48 > ystp_time) {
+    if (millis() > ystp_time) {
       if (scrolling_text_enabled == 1) {
-        ystp_time = millis();
+        ystp_time = millis()+48;
         ystp++;
+        xstp++;
         if (scroll_reset == 1) {
           ystp = 0;
+          xstp = 0;
         }
       } else {
         ystp = MATRIX_HEIGHT-1;
+        xstp = 0;
       }
     }
    
@@ -488,7 +504,7 @@ void handle_text() {
 } //handle_text()
 
 
-uint8_t draw_character(uint8_t font, uint8_t chr, int32_t chr_x, int32_t chr_y, CRGB rgb = CRGB(255,0,0), uint16_t scale = 255, const bool& subtractive = 0) {
+uint8_t draw_character(uint8_t font, uint8_t chr, int32_t chr_x, int32_t chr_y, CRGB rgb = CRGB(255,0,0), uint16_t scale = 256, const bool& subtractive = 0, uint8_t sharpen = 1) {
   //ADAFRUIT FONTS
     
         uint16_t letter = chr; //letter position, minus 20 for non-used characters
@@ -504,11 +520,14 @@ uint8_t draw_character(uint8_t font, uint8_t chr, int32_t chr_x, int32_t chr_y, 
             for (int x = 0;x < letter_width; x++) {
               uint8_t pixel_bit = bitRead(font_bitmaps[font-1][letter_location+(y*letter_width+x)/8],7-(y*letter_width+x)%8);
               if (pixel_bit) {
-                long u = x*(scale+1);
-                long v = (letter_height-y)*(scale+1);
+                long u = (letter_xOffset+x)*(scale); //fixed width
+                //long u = (x)*(scale);
+                long v = (-letter_yOffset-y)*(scale);
                 u += chr_x;
                 v += chr_y;
-                blendXY(led_screen, u, v, rgb, subtractive );
+                //u = ((u+128)/256)*256;
+                //v = ((v+128)/256)*256;
+                blendXY(led_screen, u, v, rgb, subtractive, sharpen);
                 //drawXY_fine(led_screen, u, v, 0, 0, 255 );
                 
                 
@@ -516,23 +535,57 @@ uint8_t draw_character(uint8_t font, uint8_t chr, int32_t chr_x, int32_t chr_y, 
             }
         }
         return letter_xAdvance;
+        //return letter_width+1;
 }
 
-void draw_characters(uint8_t font, const char * chr, int32_t chr_x, int32_t chr_y, const CRGB& rgb = CRGB(255,0,0)) {
+//find the highest and lowest pixels for a line of characters
+void hl_char_in_line(const char * chr, uint8_t font, int& highest, int& lowest) {
+  highest = 0;
+  lowest = 0;
+  while (true) {
+    char c = *chr++;
+    if (c == '\0' || c == '\n') {
+      break;
+    }
+    int letter_height = font_glyphs[font-1][c-32][2];   ///< Bitmap dimensions in pixels
+    int letter_yOffset = font_glyphs[font-1][c-32][5];  ///< Y dist from cursor pos to UL corner  
+    highest = _max(-letter_yOffset, highest);
+    lowest = _min(-letter_yOffset-letter_height, lowest);
+  }
+}
+
+void draw_characters(uint8_t font, const char * chr, int32_t chr_x, int32_t chr_y, const CRGB& rgb = CRGB(255,0,0), uint16_t scale = 256, bool subtractive = 0, uint8_t sharpen = 1) {
   int x_offset = 0;
+  int y_offset = 0;
+  int highest = 0;
+  int lowest = 0;
+
+  hl_char_in_line(&chr[0], font, highest, lowest);
+
+  y_offset -= highest*scale;
+
   int pos = 0;
   while (true) {
     if (chr[pos] == '\0') {
       break;
     }
-    x_offset += draw_character(font, chr[pos], chr_x+x_offset, chr_y, rgb);
+    if (chr[pos] == '\n') {
+      x_offset = 0;
+      y_offset += lowest*scale;
+      pos++;
+      hl_char_in_line(&chr[pos], font, highest, lowest);
+      y_offset -= highest*scale;
+      y_offset -= 1*256;
+      continue;
+    }
+    x_offset += draw_character(font, chr[pos], chr_x+x_offset, chr_y+y_offset, rgb, scale, subtractive, sharpen)*scale;
     pos++;
   }
 }
 
 
-void draw_characters(uint8_t font, std::string chr, int32_t chr_x, int32_t chr_y, const CRGB& rgb = CRGB(255,0,0)) {
-    draw_characters(font, chr.c_str(), chr_x, chr_y, rgb);
+void draw_characters(uint8_t font, std::string chr, int32_t chr_x, int32_t chr_y, const CRGB& rgb = CRGB(255,0,0), uint16_t scale = 256, bool subtractive = false, uint8_t sharpen = 1) {
+    draw_characters(font, chr.c_str(), chr_x, chr_y, rgb, scale, subtractive, sharpen);
 }
 
 #endif
