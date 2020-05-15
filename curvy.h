@@ -812,7 +812,7 @@ void draw_jelly(JELLY& jelly) {
       }
 
       for(int i = 0; i < NUM_BUBBLES; i++) {
-        draw_circle_fine(bubbles[i].x, bubbles[i].y, bubbles[i].r/2+128, 0, 0, 40-(256-bubbles[i].r)/32, -1, 64);
+        draw_circle_fine_hsv(bubbles[i].x, bubbles[i].y, bubbles[i].r/2+128, 0, 0, 40-(256-bubbles[i].r)/32, -1, 64);
       }
     }//handle_bubbles()
 
