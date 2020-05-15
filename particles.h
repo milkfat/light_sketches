@@ -30,6 +30,8 @@ class PARTICLES: public LIGHT_SKETCH {
     }
 
     void setup() {
+        control_variables.add(led_screen.camera_position.z, "Camera Z:", 0, 256*256);
+        control_variables.add(led_screen.screen_distance, "Screen Z:", 0, 256*256);
         z_buffer = &_z_buffer;
         led_screen.light_falloff = 10;
         for (int i = 0; i < NUM_PARTICLES; i++) {
@@ -165,7 +167,8 @@ class PARTICLES: public LIGHT_SKETCH {
                 uint8_t vel = random(20,256);
                 particles[current_particle].active = 1;
                 particles[current_particle].pos.x = 0;
-                particles[current_particle].pos.y = MATRIX_HEIGHT*140;
+                //particles[current_particle].pos.y = MATRIX_HEIGHT*140;
+                particles[current_particle].pos.y = 128*140;
                 particles[current_particle].pos.z = 0;
                 VECTOR3 p;
                 led_screen.matrix.rotate(particles[current_particle].pos,p);
@@ -254,7 +257,7 @@ class PARTICLES: public LIGHT_SKETCH {
         reset_y_buffer();
         reset_x_buffer();
 
-        draw_circle_fine(planet.x, planet.y, planet_r.x,32,128,255,-1,16,planet.z);
+        draw_circle_fine_hsv(planet.x, planet.y, planet_r.x,32,128,255,-1,16,planet.z);
         CRGB rgb = CHSV(32,128,255);
         fill_shape(planet.z+256, rgb);
 
