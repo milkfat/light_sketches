@@ -9,10 +9,10 @@ class TETRIS: public LIGHT_SKETCH {
   public:
     TETRIS () {
         setup();
-        control_variables.add(button_rotate_status,"Rotate", 1);
-        control_variables.add(button_left_status,"Left", 1);
-        control_variables.add(button_right_status,"Right", 1);
-        control_variables.add(button_down_status,"Down", 1);
+        control_variables.add(button_rotate_status,"Rotate", 1, 38);
+        control_variables.add(button_left_status,"Left", 1, 37);
+        control_variables.add(button_right_status,"Right", 1, 39);
+        control_variables.add(button_down_status,"Down", 1, 40);
     }
     ~TETRIS () {}
   private:
@@ -417,14 +417,14 @@ class TETRIS: public LIGHT_SKETCH {
 
             //move the active piece one position to the right
             static uint32_t button_right_timer = 0;
-            if (button_right_status && millis() > button_right_status) {
+            if (button_right_status && millis() > button_right_timer) {
                 button_right_timer = millis() + 120;
                 piece.move_right();
                 if (piece.collision_wall_right() || piece.collision_grid(grid)) {
                     piece.move_left();   
                 }
 
-            } else if (!button_right_pressed) {
+            } else if (!button_right_status) {
                 button_right_timer = 0;
             }
 
