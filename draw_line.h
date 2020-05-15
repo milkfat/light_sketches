@@ -107,8 +107,8 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
   //clip coordinates to screen
   x1_led = _max(x1_led,0);
   y1_led = _max(y1_led,0);
-  x2_led = _min(x2_led,MATRIX_WIDTH);
-  y2_led = _min(y2_led,MATRIX_HEIGHT);
+  x2_led = _min(x2_led,MATRIX_WIDTH+1);
+  y2_led = _min(y2_led,MATRIX_HEIGHT+1);
 
   if (abs(x1 - x2) > abs(y1 - y2)) {
     //calculate horizontally
@@ -346,14 +346,14 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
 
 
 
-static inline __attribute__ ((always_inline)) void draw_line_fine(PERSPECTIVE& screen_object, const int32_t& x1, const int32_t& y1, const int32_t& x2, const int32_t& y2, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true, const bool wide_fill = true, const bool additive = false) {
+static inline __attribute__ ((always_inline)) void draw_line_fine(PERSPECTIVE& screen_object, const int32_t& x1, const int32_t& y1, const int32_t& x2, const int32_t& y2, const CRGB& rgb = CRGB(0,0,255), const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true, const bool wide_fill = true, const bool additive = false) {
   VECTOR3 a(x1,y1,z_depth);
   VECTOR3 b(x2,y2,z_depth);
   draw_line_fine_base(screen_object, a, b, rgb, val, val2, trim, ignore_z, wide_fill, additive);
 }
 
 
-static inline __attribute__ ((always_inline)) void draw_line_fine(PERSPECTIVE& screen_object, const int32_t& x1, const int32_t& y1, const int32_t& x2, const int32_t& y2, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const int& z_depth = -10000, const uint8_t& val2 = 255, const bool& trim = false) {
+static inline __attribute__ ((always_inline)) void draw_line_fine_hsv(PERSPECTIVE& screen_object, const int32_t& x1, const int32_t& y1, const int32_t& x2, const int32_t& y2, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const int& z_depth = -10000, const uint8_t& val2 = 255, const bool& trim = false) {
   CRGB rgb = CHSV(hue,sat,255);
   draw_line_fine(screen_object, x1, y1, x2, y2, rgb, z_depth, val, val2, trim,false);
 }
