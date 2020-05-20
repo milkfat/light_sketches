@@ -12,6 +12,10 @@
 #define GRID_HEIGHT MATRIX_HEIGHT
 #endif
 
+
+#define NUM_FISH 30
+#define NUM_JELLIES 1
+
 class CURVY: public LIGHT_SKETCH {
   public:
     CURVY () {setup();}
@@ -29,7 +33,7 @@ class CURVY: public LIGHT_SKETCH {
     uint8_t current_effect = 0;
 
 
-    CRGB temp_led[NUM_LEDS+1];
+    uint8_t temp_led[NUM_LEDS+1];
 
     #define NUM_BUBBLES 20
     struct BUBBLE {
@@ -77,20 +81,28 @@ class CURVY: public LIGHT_SKETCH {
       uint8_t sat = 0;
 
       void new_target() {
-          target_x = random(70*256) - 35*256;
-          //target_x = 0;
-          target_y = random(200*256) - 100*256;
           target_z = random(-100*256, 300*256);
+          int low_x = 0;
+          int low_y = 0;
+          int high_x = MATRIX_WIDTH*256;
+          int high_y = MATRIX_HEIGHT*256;
+          //std::cout << low_y << " " << high_y << " " << target_z << " = ";
+          led_screen.reverse_perspective(low_x,low_y,target_z);
+          led_screen.reverse_perspective(high_x,high_y,target_z);
+
+          //std::cout << low_y << " " << high_y << " " << target_z << " result: ";
+          target_x = random(high_x-low_x) + low_x;
+          //target_x = 0;
+          target_y = random(high_y-low_y) + low_y;
+          //std::cout << target_y << "\n";
           //target_z = 0;
           add_speed = random(20000)+10000;
       }
     };
-    #define NUM_FISH 15
     FISH fishies[NUM_FISH];
 
     //some jellyfish tentacles
 
-    #define NUM_JELLIES 1
     #define NUM_JELLY_SEGMENTS 10
     #define NUM_TENTACLES NUM_JELLY_SEGMENTS
     #define NUM_TENTACLE_SEGMENTS 20
@@ -114,6 +126,7 @@ class CURVY: public LIGHT_SKETCH {
     void setup() {
       z_buffer = &_z_buffer;
       y_buffer2 = &_y_buffer2;
+      led_screen.light_falloff = 9;
       led_screen.rotation_alpha = 0;
       led_screen.rotation_beta = 90;
       led_screen.rotation_gamma = 0;
@@ -166,58 +179,6 @@ class CURVY: public LIGHT_SKETCH {
 
 
       if (millis()-16 > loop_time) {
-
-    
-        // static uint8_t rott = 0;
-        // static uint8_t rott2 = 0;
-        // //rott+=2;
-        // rott2++;
-
-
-        // VECTOR3 a(25*256,150*256,0);
-        // VECTOR3 b(-25*256,150*256,0);
-        // VECTOR3 c(0,-25*256,0);
-        // rotate_z(a,rott);
-        // rotate_z(b,rott);
-        // rotate_z(c,rott);
-        // rotate_x(a,rott2);
-        // rotate_x(b,rott2);
-        // rotate_x(c,rott2);
-        // matrix.rotate(a);
-        // matrix.rotate(b);
-        // matrix.rotate(c);
-        // scale_z(a);
-        // scale_z(b);
-        // scale_z(c);
-        // led_screen.perspective(a);
-        // led_screen.perspective(b);
-        // led_screen.perspective(c);
-
-
-        // VECTOR3 norm_a(0,250,250);
-        // VECTOR3 norm_b(0, 250,250);
-        // VECTOR3 norm_c(0,-250,250);
-        // //VECTOR3 norm_a(0,0,255);
-        // //VECTOR3 norm_b(0,0,255);
-        // //VECTOR3 norm_c(0,0,255);
-        // rotate_z(norm_a,rott);
-        // rotate_z(norm_b,rott);
-        // rotate_z(norm_c,rott);
-        // rotate_x(norm_a,rott2);
-        // rotate_x(norm_b,rott2);
-        // rotate_x(norm_c,rott2);
-        // matrix.rotate(norm_a);
-        // matrix.rotate(norm_b);
-        // matrix.rotate(norm_c);
-        // //rotate_x(norm_a,24);
-        // //rotate_x(norm_b,24);
-        // //rotate_x(norm_c,24);
-        
-
-        // draw_triangle(a, b, c, norm_a, norm_b, norm_c);
-     
-
-        
 
         loop_time = millis();
 
@@ -1122,14 +1083,21 @@ void draw_jelly(JELLY& jelly) {
             //uint8_t caustics = inoise8(((x-MATRIX_WIDTH/2)*((y+16)))/6,(y*(y+8))/6,z*2);
 
             //CRGB rgb = CHSV(142, 255, 255);
-            temp_led[XY(x,y)].b = bri;
+            temp_led[XY(x,y)] = bri;
           }
         }
       }
-
+//static uint32_t ttt[NUM_LEDS+1][6];
       for (uint16_t i = 0; i < NUM_LEDS; i++) {
           //nblend(leds[i], temp_led[i], 127);
-          color_blend_linear16(leds[i], 0, gamma16_decode(210), 65535, gamma16_decode(temp_led[i].b)>>5);
+          color_blend_linear16(leds[i], 0, gamma16_decode(210), 65535, gamma16_decode(temp_led[i])>>5);
+          //color_blend_linear16(leds[i], 0, (gamma16_decode(temp_led[i])*8)/10, gamma16_decode(temp_led[i]), 2048);
+          // ttt[i][0] = temp_led[i];
+          // ttt[i][1] = (gamma16_decode(temp_led[i])*2048 + gamma16_decode(0)*(65535-2048) ) >> 16;
+          // ttt[i][2] = leds[i].g;
+          // ttt[i][3] = leds[i].b;
+          // ttt[i][4] = (gamma16_decode(temp_led[i])*2048 + gamma16_decode(0)*(65535-2048) );
+          // ttt[i][5] = gamma16_decode(temp_led[i]);
           //leds[i] += temp_led[i];
       }
 

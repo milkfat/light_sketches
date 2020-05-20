@@ -1,6 +1,6 @@
 #ifndef LIGHTS_TEXT_DISPLAY_NOISE_H
 #define LIGHTS_TEXT_DISPLAY_NOISE_H
-
+#include "text.h"
 //PARTICLES
 
 class TEXT_DISPLAY: public LIGHT_SKETCH {

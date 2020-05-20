@@ -29,6 +29,8 @@ class METABALLS: public LIGHT_SKETCH {
     int launch_speed = 0;
     int16_t height_map[HEIGHTMAP_HEIGHT][HEIGHTMAP_WIDTH];
     uint8_t scale = 255;
+    int x_spread = 100;
+    int x_bias = 0;
 
     
     uint8_t num_balls = NUM_METABALLS;
@@ -89,9 +91,18 @@ class METABALLS: public LIGHT_SKETCH {
     void setup() {
       control_variables.add(num_balls, "number of metaballs", 0, NUM_METABALLS);
       control_variables.add(scale, "scale", 0, 255);
+      control_variables.add(launch_speed, "launch_speed", 0, 2048);
+      control_variables.add(x_spread, "X spread", 0, 500);
+      control_variables.add(x_bias, "X bias", -200, 200);
       height_map_ptr = &height_map;
       lava_lamp_setup();
       
+      reset();
+      
+    }
+
+    void reset() {
+      //calculate initial spray velocity
       long td = 0;
       long tv = 0;
       while (td < METABALL_MATRIX_HEIGHT*256L) {
@@ -99,10 +110,6 @@ class METABALLS: public LIGHT_SKETCH {
         tv += 16;
       }
       launch_speed = tv;
-      
-    }
-
-    void reset() {
 
     }
 
@@ -230,7 +237,8 @@ class METABALLS: public LIGHT_SKETCH {
               balls[i].y = -2*255;
               balls[i].x = METABALL_MATRIX_WIDTH*128;
               balls[i].vy = random(launch_speed/2, launch_speed);
-              balls[i].vx = random(200) - 100;
+              balls[i].vx = random(x_spread*2) - x_spread;
+              balls[i].vx += x_bias;
               balls[i].r = random((7*255*scale)/255,(18*255*scale)/255);
               balls[i].r2 = balls[i].r*balls[i].r;
             }
@@ -247,14 +255,14 @@ class METABALLS: public LIGHT_SKETCH {
           //find the distance of all LEDs within the bounding square of each ball
 
           uint32_t y_min = _max((balls[i].y - balls[i].r)/256,0);
-          uint32_t y_max = _min((balls[i].y + balls[i].r)/256+1,METABALL_MATRIX_HEIGHT+1);
+          uint32_t y_max = _max(_min((balls[i].y + balls[i].r)/256+1,METABALL_MATRIX_HEIGHT+1),0);
           uint32_t x_min = _max((balls[i].x - balls[i].r)/256,0);
-          uint32_t x_max = _min((balls[i].x + balls[i].r)/256+1,METABALL_MATRIX_WIDTH+1);
+          uint32_t x_max = _max(_min((balls[i].x + balls[i].r)/256+1,METABALL_MATRIX_WIDTH+1),0);
 
           for (uint32_t y = y_min; y < y_max; y++) {
             for (uint32_t x = x_min; x < x_max; x++) {
               if (x >= 0 && x < METABALL_HEIGHTMAP_WIDTH && y >= 0 && y < METABALL_HEIGHTMAP_HEIGHT) {
-
+                if (balls[i].r == 0) continue;
                 //bring d into range of uint16_t so that we can use FastLED's sqrt16() function
                 int16_t x_temp = ((x*8) - balls[i].x/32);
                 int16_t y_temp = ((y*8) - balls[i].y/32);

@@ -284,8 +284,8 @@ class UNTITLED: public LIGHT_SKETCH {
         //edges/anti-aliasing
         //step through each pixel and find edges (does the adjacent pixel contain a different thing)
         bool do_debug = 1;
-        for (uint8_t y = 0; y < MATRIX_HEIGHT; y++) {
-            for (uint8_t x = 0; x < MATRIX_WIDTH; x++) {
+        for (uint16_t y = 0; y < MATRIX_HEIGHT; y++) {
+            for (uint16_t x = 0; x < MATRIX_WIDTH; x++) {
 
                 //shading
                 CRGB rgb = gamma8_encode(get_shade(x,y));
@@ -581,8 +581,8 @@ class UNTITLED: public LIGHT_SKETCH {
         if (lightning_continue) {
             lightning_continue--;
             //calculate lightning in the forward direction
-            for (uint8_t y = 0; y < MATRIX_HEIGHT; y++) {
-                for (uint8_t x = 0; x < MATRIX_WIDTH; x++) {
+            for (uint16_t y = 0; y < MATRIX_HEIGHT; y++) {
+                for (uint16_t x = 0; x < MATRIX_WIDTH; x++) {
 
                     //lightning
                     if(grid[y][x].age) {
@@ -736,8 +736,8 @@ class UNTITLED: public LIGHT_SKETCH {
         }
 
         //reset the grid
-        for (uint8_t y = 0; y < MATRIX_HEIGHT; y++) {
-            for (uint8_t x = 0; x < MATRIX_WIDTH; x++) {
+        for (uint16_t y = 0; y < MATRIX_HEIGHT; y++) {
+            for (uint16_t x = 0; x < MATRIX_WIDTH; x++) {
                 grid[y][x].set_dist(UINT32_MAX);
                 grid[y][x].t = -1;
                 grid[y][x].corner = false;

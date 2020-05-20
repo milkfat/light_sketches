@@ -637,7 +637,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
             //draw a 3d colon
             //int32_t p[3];
       
-            int x = cposx+(SEGMENT_SPACING+2)*256;
+            int x = cposx+(SEGMENT_SPACING)*256;
             int y = (MATRIX_HEIGHT-1)*256-cposy;
             int z = cposz;
 
@@ -655,7 +655,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
             //cposy += 6*cy;
             cposy += (SEGMENT_LENGTH+SEGMENT_SPACING)*cy*256;
             //cposx += 4*cx;
-            cposx += SEGMENT_LENGTH*cx*256;
+            cposx += SEGMENT_SPACING*4*cx*256;
 
           }
           break;

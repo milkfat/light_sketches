@@ -30,7 +30,7 @@ class HTTPS_SERVER {
         std::string asdf = "";
         asdf.append(light_html_head());
                   
-        char buff[2048];
+        char buff[3072];
 
         //generate sketch selection dropdown
         asdf.append(generate_sketch_dropdown(buff));
@@ -46,7 +46,9 @@ class HTTPS_SERVER {
 
       server.resource["^/([^/]+)$"]["GET"] = [](shared_ptr<HttpsServer::Response> response, shared_ptr<HttpsServer::Request> request) {
         fstream infile; 
-        infile.open(request->path_match[1].str());
+        std::string file_location = "data/";
+        file_location.append(request->path_match[1].str());
+        infile.open(file_location);
         response->write(infile);
         infile.close();
       };
@@ -112,7 +114,7 @@ class WSS_SERVER {
     }
 
     void wssHTMLControls () {
-      char buff[2048];                          
+      char buff[3072];                          
       generate_html_controls(buff);
 
       for(auto &a_connection : server.get_connections())
