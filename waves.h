@@ -11,6 +11,12 @@ class WAVES: public LIGHT_SKETCH {
   
   private:
 
+  int threshold = -128*256;
+  int light_x = 100;
+  int light_y = 100;
+  int spec_x = 15;
+  int spec_y = 15;
+
   int16_t height_map[HEIGHTMAP_HEIGHT][HEIGHTMAP_WIDTH];
 
   uint8_t current_variation = 0;
@@ -32,6 +38,11 @@ class WAVES: public LIGHT_SKETCH {
 
     void setup() {
       height_map_ptr = &height_map;
+      control_variables.add(threshold,"Threshold",-256*256,256*256);
+      control_variables.add(light_x,"Light X",-255,255);
+      control_variables.add(light_y,"Light Y",-255,255);
+      control_variables.add(spec_x,"Specular X",-255,255);
+      control_variables.add(spec_y,"Specular Y",-255,255);
     }
 
     void reset() {
@@ -172,7 +183,8 @@ class WAVES: public LIGHT_SKETCH {
           }
         }
 
-        height_map_to_LED();
+        //height_map_to_LED();
+        height_map_to_LED(threshold, light_x, light_y, spec_x, spec_y);
         
         for (int i = 0; i < NUM_LEDS; i++) {
           //led_mask2[i]=255;
