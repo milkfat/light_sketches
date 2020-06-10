@@ -16,6 +16,10 @@ class WAVES: public LIGHT_SKETCH {
   int light_y = 100;
   int spec_x = 15;
   int spec_y = 15;
+  CRGB rgb = CRGB(255,0,0);
+  CRGB rgb2 = CRGB(255,255,255);
+  uint8_t base_focus = 24;
+  uint8_t spec_focus = 1;
 
   int16_t height_map[HEIGHTMAP_HEIGHT][HEIGHTMAP_WIDTH];
 
@@ -43,6 +47,10 @@ class WAVES: public LIGHT_SKETCH {
       control_variables.add(light_y,"Light Y",-255,255);
       control_variables.add(spec_x,"Specular X",-255,255);
       control_variables.add(spec_y,"Specular Y",-255,255);
+      control_variables.add(rgb, "Base Color");
+      control_variables.add(base_focus, "Base Focus", 1, 255);
+      control_variables.add(rgb2, "Specular Color");
+      control_variables.add(spec_focus, "Spec Focus", 1, 255);
     }
 
     void reset() {
@@ -184,7 +192,7 @@ class WAVES: public LIGHT_SKETCH {
         }
 
         //height_map_to_LED();
-        height_map_to_LED(threshold, light_x, light_y, spec_x, spec_y);
+        height_map_to_LED(threshold, light_x, light_y, spec_x, spec_y, rgb, rgb2, base_focus, spec_focus);
         
         for (int i = 0; i < NUM_LEDS; i++) {
           //led_mask2[i]=255;
