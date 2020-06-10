@@ -10,7 +10,7 @@
 //int height_map[HEIGHTMAP_WIDTH][HEIGHTMAP_HEIGHT];
 int16_t (*height_map_ptr)[HEIGHTMAP_HEIGHT][HEIGHTMAP_WIDTH];
 
-static void height_map_to_LED(const int& threshold = -128*256, const int& light_x = 100, const int& light_y = 100, const int& spec_x = 15, const int& spec_y = 15) {
+static void height_map_to_LED(const int& threshold = -128*256, const int& light_x = 100, const int& light_y = 100, const int& spec_x = 15, const int& spec_y = 15, const CRGB& rgb = CRGB(255,0,0), const CRGB& rgb2 = CRGB(255,255,255), const uint8_t& base_focus = 24, const uint8_t& spec_focus = 1) {
   //write our computed values to the screen
   
   for (uint16_t y = 0; y < MATRIX_HEIGHT; y++) {
@@ -33,12 +33,12 @@ static void height_map_to_LED(const int& threshold = -128*256, const int& light_
         
         //find the brightness based on a specific difference (angle)
         //0-255; 0 = full bright; 255 = off;
-        uint16_t u_norm = abs(-light_x*32 - u)/24;
-        uint16_t v_norm = abs(-light_y*32 - v)/24;
+        uint16_t u_norm = abs(-light_x*32 - u)/base_focus;
+        uint16_t v_norm = abs(-light_y*32 - v)/base_focus;
 
         if (1==1) {
           //change angle of light to be more extreme at top
-          v_norm = abs(-(light_y-(y >> 4))*32 - v)/24;
+          v_norm = abs(-(light_y-(y >> 4))*32 - v)/base_focus;
         }
         
         //0 = off; 255 = full bright
@@ -50,14 +50,16 @@ static void height_map_to_LED(const int& threshold = -128*256, const int& light_
   
         //light fades by distance
         uint16_t val = (norm*(MATRIX_HEIGHT*2-y))/(MATRIX_HEIGHT*2);
-        
-        leds[led].r = gamma16_encode(_max(val,2));
+        uint8_t val2 = gamma16_encode(val);
+        leds[led].r = (val2*rgb.r)/255;
+        leds[led].g = (val2*rgb.g)/255;
+        leds[led].b = (val2*rgb.b)/255;
 
 
 
         //specular highlights
-        uint16_t su_norm = abs(-spec_x*32 - u);
-        uint16_t sv_norm = abs(-spec_y*32 - v);
+        uint16_t su_norm = abs(-spec_x*32 - u)/spec_focus;
+        uint16_t sv_norm = abs(-spec_y*32 - v)/spec_focus;
 
         su_norm = 255 - _min(su_norm, 255);
         sv_norm = 255 - _min(sv_norm, 255);
@@ -65,9 +67,9 @@ static void height_map_to_LED(const int& threshold = -128*256, const int& light_
         uint16_t snorm = (su_norm*sv_norm) >> 2;
         
 
-        color_add_linear16(leds[led].r, snorm);
-        color_add_linear16(leds[led].g, snorm);
-        color_add_linear16(leds[led].b, snorm);
+        color_add_linear16(leds[led].r, (snorm*rgb2.r)/255);
+        color_add_linear16(leds[led].g, (snorm*rgb2.g)/255);
+        color_add_linear16(leds[led].b, (snorm*rgb2.b)/255);
         
 
         
