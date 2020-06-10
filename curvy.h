@@ -187,7 +187,7 @@ class CURVY: public LIGHT_SKETCH {
         //LED_black();
         z_buffer->reset();
 
-        for (uint16_t i = 0; i < NUM_LEDS; i++) {
+        for (uint32_t i = 0; i < NUM_LEDS; i++) {
           leds[i].r = 0;
           leds[i].g = 4;
           leds[i].b = 5;
@@ -1024,7 +1024,7 @@ void draw_jelly(JELLY& jelly) {
 
     void draw_grass() {
       int y = -loop_time/4;
-      int max_y;
+      int max_y=0;
       
       for (int i = 0; i < NUM_THINGS; i++) {
         int offset = fmix32(i)%((MATRIX_WIDTH+3)*256);
@@ -1088,7 +1088,7 @@ void draw_jelly(JELLY& jelly) {
         }
       }
 //static uint32_t ttt[NUM_LEDS+1][6];
-      for (uint16_t i = 0; i < NUM_LEDS; i++) {
+      for (uint32_t i = 0; i < NUM_LEDS; i++) {
           //nblend(leds[i], temp_led[i], 127);
           color_blend_linear16(leds[i], 0, gamma16_decode(210), 65535, gamma16_decode(temp_led[i])>>5);
           //color_blend_linear16(leds[i], 0, (gamma16_decode(temp_led[i])*8)/10, gamma16_decode(temp_led[i]), 2048);

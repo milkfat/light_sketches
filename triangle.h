@@ -38,13 +38,13 @@
       draw_line_ybuffer(b, c);
       draw_line_ybuffer(c, a);
 
-      int32_t z_depth = orig.z+norm.z;
+      //int32_t z_depth = orig.z+norm.z;
 
 
       //rotate_x(norm,32);
       //rotate_y(norm,32);
 
-      int bri = _min(_max(((255-norm.z)*3)/4, 0) + bri/4,220);
+      int bri = _min(_max(((255-norm.z)*3)/4, 0) + val/4,220);
 
       CRGB rgb = CHSV(hue,sat,val);
       color_scale(rgb, bri);

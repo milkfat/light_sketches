@@ -36,7 +36,7 @@ class THE_MATRIX: public LIGHT_SKETCH {
     #define NUM_GRASS 5
     VECTOR3 grass[NUM_GRASS];
 
-    uint8_t font_sizes[7] = {12,14,14,6,6,4,6};
+    uint8_t font_sizes[7] = {11,14,14,6,6,4,6};
 
   public:
     void reset() {

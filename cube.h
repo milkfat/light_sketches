@@ -1,7 +1,7 @@
 #ifndef LIGHTS_CUBE_H
 #define LIGHTS_CUBE_H
 
-#define NUMBER_OF_CUBES 500
+#define NUMBER_OF_CUBES 200
 
 #include "rotate.h"
 #include "scale.h"

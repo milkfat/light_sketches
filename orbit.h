@@ -81,9 +81,9 @@ class ORBIT: public LIGHT_SKETCH {
 
             if (cnt%(2+(1000*count)/65535)==0) {
                 for (int i = 0; i < NUM_LEDS; i++) {
-                    leds[i].r -= 4;
-                    leds[i].g -= 4;
-                    leds[i].b -= 4;
+                    leds[i].r = (leds[i].r*95)/100;
+                    leds[i].g = leds[i].r;
+                    leds[i].b = leds[i].r;
                 }
             }
         }

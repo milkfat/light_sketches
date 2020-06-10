@@ -12,9 +12,10 @@ int16_t (*height_map_ptr)[HEIGHTMAP_HEIGHT][HEIGHTMAP_WIDTH];
 
 static void height_map_to_LED(const int& threshold = -128*256, const int& light_x = 100, const int& light_y = 100, const int& spec_x = 15, const int& spec_y = 15) {
   //write our computed values to the screen
-  uint16_t led = 0;
+  
   for (uint16_t y = 0; y < MATRIX_HEIGHT; y++) {
     for (uint16_t x = 0; x < MATRIX_WIDTH; x++) {
+      uint32_t led = XY(x,y);
       //height map coordinates
       //our height map is 1 pixel wider in each dimension than the screen
       int x2 = x+1;
@@ -48,7 +49,7 @@ static void height_map_to_LED(const int& threshold = -128*256, const int& light_
         uint16_t norm = (u_norm*v_norm);
   
         //light fades by distance
-        uint16_t val = (norm*(255-y))/255;
+        uint16_t val = (norm*(MATRIX_HEIGHT*2-y))/(MATRIX_HEIGHT*2);
         
         leds[led].r = gamma16_encode(_max(val,2));
 
@@ -71,7 +72,6 @@ static void height_map_to_LED(const int& threshold = -128*256, const int& light_
 
         
       }
-      led++;
     }
   }
 }

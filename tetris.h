@@ -13,6 +13,9 @@ class TETRIS: public LIGHT_SKETCH {
         control_variables.add(button_left_status,"Left", 1, 37);
         control_variables.add(button_right_status,"Right", 1, 39);
         control_variables.add(button_down_status,"Down", 1, 40);
+        control_variables.add(led_screen.camera_position.z, "Camera Z:", 0, 1024*256);
+        control_variables.add(led_screen.screen_distance, "Screen Z:", 0, 1024*256);
+        control_variables.add(tetris_spacing, "Spacing:", 0, 1024);
     }
     ~TETRIS () {}
   private:
@@ -29,6 +32,7 @@ class TETRIS: public LIGHT_SKETCH {
     bool button_right_old = false;
     bool button_down_status = false;
     bool button_down_old = false;
+    uint16_t tetris_spacing = 256;
 
     enum grid_states {
         GRID_EMPTY,
@@ -102,7 +106,6 @@ class TETRIS: public LIGHT_SKETCH {
         bool collision_wall_left() {
             for (int i = 0; i < 4; i++) {
                 int x = shp[i].x+pos.x;
-                int y = shp[i].y+pos.y;
                 if(x < 0) {
                     return true;
                 }     
@@ -113,7 +116,6 @@ class TETRIS: public LIGHT_SKETCH {
         bool collision_wall_right() {
             for (int i = 0; i < 4; i++) {
                 int x = shp[i].x+pos.x;
-                int y = shp[i].y+pos.y;
                 if(x > TETRIS_WIDTH-1) {
                     return true;
                 }     
@@ -125,7 +127,6 @@ class TETRIS: public LIGHT_SKETCH {
 
         bool collision_floor() {
             for (int i = 0; i < 4; i++) {
-                int x = shp[i].x+pos.x;
                 int y = shp[i].y+pos.y;
                 if(y < 0) {
                     return true;
@@ -170,6 +171,8 @@ class TETRIS: public LIGHT_SKETCH {
     }
 
     void setup() {
+        led_screen.camera_position.z=700*256;
+        led_screen.screen_distance=566*256;
         score = 0;
 
         //straight
@@ -309,7 +312,7 @@ class TETRIS: public LIGHT_SKETCH {
                 //if done, then mark for next effect
                 for (int x = 0; x < TETRIS_WIDTH; x++) {
                     if (grid[x][y].state == GRID_BRIGHTENING){
-                        VECTOR3 size = VECTOR3(TETRIS_SIZE/2-128,TETRIS_SIZE/2-128,TETRIS_SIZE/2-128);
+                        VECTOR3 size = VECTOR3(TETRIS_SIZE/2-tetris_spacing,TETRIS_SIZE/2-tetris_spacing,TETRIS_SIZE/2-tetris_spacing);
                         grid[x][y].sat = _min(grid[x][y].param, 255);
                         draw_cube(grid[x][y].coord, size, VECTOR3(0,0,0), CHSV(grid[x][y].hue,grid[x][y].sat,grid[x][y].bri));
                         grid[x][y].param -= 100;
@@ -324,7 +327,7 @@ class TETRIS: public LIGHT_SKETCH {
                 //if done, mark the cell as dead
                 for (int x = 0; x < TETRIS_WIDTH; x++) {
                     if (grid[x][y].state == GRID_SHRINKING){
-                        VECTOR3 size = VECTOR3(TETRIS_SIZE/2-128,TETRIS_SIZE/2-128,TETRIS_SIZE/2-128);
+                        VECTOR3 size = VECTOR3(TETRIS_SIZE/2-tetris_spacing,TETRIS_SIZE/2-tetris_spacing,TETRIS_SIZE/2-tetris_spacing);
                         size *= _min(grid[x][y].param, 255);
                         size /= 255;
                         draw_cube(grid[x][y].coord, size, VECTOR3(0,0,0), CHSV(grid[x][y].hue,grid[x][y].sat,grid[x][y].bri));
@@ -365,7 +368,7 @@ class TETRIS: public LIGHT_SKETCH {
                     }
 
                     if(grid[x][y].state == GRID_FILLED) {
-                        draw_cube(grid[x][y].coord + grid[x][y].offset, VECTOR3(TETRIS_SIZE/2-128,TETRIS_SIZE/2-128,TETRIS_SIZE/2-128), VECTOR3(0,0,0), CHSV(grid[x][y].hue,grid[x][y].sat,grid[x][y].bri));
+                        draw_cube(grid[x][y].coord + grid[x][y].offset, VECTOR3(TETRIS_SIZE/2-tetris_spacing,TETRIS_SIZE/2-tetris_spacing,TETRIS_SIZE/2-tetris_spacing), VECTOR3(0,0,0), CHSV(grid[x][y].hue,grid[x][y].sat,grid[x][y].bri));
                     }
                     
                 }
@@ -461,7 +464,7 @@ class TETRIS: public LIGHT_SKETCH {
                 int x = piece.shp[i].x+piece.pos.x;
                 int y = piece.shp[i].y+piece.pos.y;
                 GRID* square = &grid[x][y];
-                draw_cube(square->coord, VECTOR3(TETRIS_SIZE/2-128,TETRIS_SIZE/2-128,TETRIS_SIZE/2-128), VECTOR3(0,0,0), CHSV(piece.hue,255,255));
+                draw_cube(square->coord, VECTOR3(TETRIS_SIZE/2-tetris_spacing,TETRIS_SIZE/2-tetris_spacing,TETRIS_SIZE/2-tetris_spacing), VECTOR3(0,0,0), CHSV(piece.hue,255,255));
                 if(place) {
                     if (square->state == GRID_FILLED) game_over = 1;
                     reset_cell(x,y);

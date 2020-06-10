@@ -2,7 +2,7 @@
 #define LIGHTS_UNTITLED_H
 
 #define NUMBER_OF_CELLS 100
-#define QUEUE_SIZE 1000
+#define QUEUE_SIZE 5000
 
 #define BORDER_BUFFER 48
 #define LIGHTNING_SPEED 4
@@ -16,7 +16,7 @@ class UNTITLED: public LIGHT_SKETCH {
     struct thing {
         VECTOR2 pos; //the absolute position on the screen, calculated from virtual position
         VECTOR2 pos2; //the virtual position, this is the variable to be adjusted by spd
-        VECTOR2_8s spd;
+        VECTOR2 spd;
         CRGB rgb;
         uint32_t max_distance;
         uint32_t new_max_distance;
@@ -32,7 +32,7 @@ class UNTITLED: public LIGHT_SKETCH {
     #define NUM_SPARKS 255
     particle particles[NUM_SPARKS];
     uint8_t current_particle;
-    bool lightning_var = 1; //1 = timer based lightning
+    bool lightning_var = 0; //1 = timer based lightning
     uint8_t lightning_cnt = 0; //how many lightning bolts have spawned
     uint8_t lightning_continue = 0; //the number frames to continue processing lightning
     bool button_status = 0;
@@ -53,7 +53,7 @@ class UNTITLED: public LIGHT_SKETCH {
     thing things[NUMBER_OF_THINGS+1];
 
     
-    uint8_t queue[QUEUE_SIZE][2];
+    uint16_t queue[QUEUE_SIZE][2];
     int16_t queue_read = 0;
     int16_t queue_write = 0;
 
@@ -69,11 +69,11 @@ class UNTITLED: public LIGHT_SKETCH {
         bool edge:1;
 
         inline void set_dist(uint32_t d) {
-            dist = d>>6;
+            dist = d>>8;
         }
 
         inline uint32_t get_dist() {
-            return dist<<6;
+            return dist<<8;
         }
     };
 
@@ -283,7 +283,7 @@ class UNTITLED: public LIGHT_SKETCH {
 
         //edges/anti-aliasing
         //step through each pixel and find edges (does the adjacent pixel contain a different thing)
-        bool do_debug = 1;
+        
         for (uint16_t y = 0; y < MATRIX_HEIGHT; y++) {
             for (uint16_t x = 0; x < MATRIX_WIDTH; x++) {
 
@@ -314,7 +314,7 @@ class UNTITLED: public LIGHT_SKETCH {
                     //  0 = 100% this pixel
                     //  255 = 100% adjacent pixel
                 int cnt = 0;
-                int16_t first_thing;
+                int16_t first_thing = 0;
 
                 grid[y][x].edge_distance = 0;
                 for (int i = 0; i < 4; i++) {

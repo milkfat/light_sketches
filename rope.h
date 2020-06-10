@@ -8,8 +8,8 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
     #define NUM_JOINTS 17
     #define ROPE_SEGMENT_LENGTH (3*256)
     #define NUM_ROPE_EFFECTS 1
-    #define NUM_ROPES 7
-    #define BALLS_PER_COLUMN (MATRIX_HEIGHT/12)
+    #define NUM_ROPES 10
+    #define BALLS_PER_COLUMN (MATRIX_HEIGHT/10)
     #define BALLS_PER_ROW (MATRIX_WIDTH/10)
     #define NUM_BALLS (BALLS_PER_COLUMN * BALLS_PER_ROW)
     #define MAX_BALL_RADIUS (5*256)
@@ -53,8 +53,8 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
 
     void reset_rope(int j) {
         JOINT * rope = ropes[j].joints;
-        int r = random(8*256)-4*256;
-        int r2 = random(5*256);
+        int r = random(10*256)-5*256;
+        int r2 = random(10*256);
         for (int i = 0; i < NUM_JOINTS; i++) {
             rope[i].s = false;
             rope[i].p = VECTOR3(MATRIX_WIDTH*256/2-((NUM_JOINTS-1)*ROPE_SEGMENT_LENGTH)/2 + i*ROPE_SEGMENT_LENGTH,(MATRIX_HEIGHT+2)*256,0);
@@ -65,7 +65,7 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
             //rope[i].b = VECTOR3((MATRIX_WIDTH/2)*256,(MATRIX_HEIGHT-20-10*i)*256,0);
             rope[i].v = VECTOR3(0,0,0);
         }
-        ropes[j].rgb = CHSV(random(256),255,255);
+        ropes[j].rgb = CHSV(random(256),0,255);
     }
 
     void reset_ball(int i) {

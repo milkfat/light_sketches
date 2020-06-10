@@ -11,6 +11,7 @@ class FLIGHT: public LIGHT_SKETCH {
     #define NUM_FLIGHT_EFFECTS 1
     int current_effect = 0;
     Z_BUF _z_buffer;
+    uint32_t default_size = 150*256;
 
   public:
     void reset() {
@@ -19,6 +20,9 @@ class FLIGHT: public LIGHT_SKETCH {
     void setup() {
         z_buffer = &_z_buffer;
         led_screen.light_falloff = 10;
+        control_variables.add(led_screen.camera_position.z, "Camera Z:", 0, 256*256);
+        control_variables.add(led_screen.screen_distance, "Screen Z:", 0, 256*256);
+        control_variables.add(default_size, "cube length", 1, 150*256);
     }
 
     void next_effect() {
@@ -67,14 +71,14 @@ class FLIGHT: public LIGHT_SKETCH {
             if (j > -1 && j < 5) {
                 this_many = 3;
             }
-            uint32_t size = 150*256;
+            uint32_t size = default_size;
             if (j == -1) {
-                size = 50*256;
+                size = _min(size,50*256);
             }
             static uint32_t val = 0;
             val++;
-            uint8_t x_pos = inoise8(val,0,0);
-            for (int i = 0; i < this_many; i+=1) {
+            //uint8_t x_pos = inoise8(val,0,0);
+            for (int i = 0; i < this_many; i++) {
                     VECTOR3 a = VECTOR3(5*256+i*10*256,0,-j*10*256+z);
                     VECTOR3 b = VECTOR3(-5*256-i*10*256,0,-j*10*256+z);
                     VECTOR3 c = VECTOR3(0,5*256+i*10*256,-j*10*256+z+2*256);

@@ -105,7 +105,7 @@ char * generate_html_controls(char * inbuff) {
             p+=sprintf(p, "%d", i);
             mystrcat(p, "\",\"");
             p+=sprintf(p, "%d", i);
-            mystrcat(p, "\";return false)'>");
+            mystrcat(p, "\");return false;'>");
             mystrcat(p, c);
             mystrcat(p, "</textarea><br>\n");
         }

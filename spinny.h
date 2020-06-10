@@ -216,8 +216,8 @@ class SPINNY: public LIGHT_SKETCH {
             reset_x_buffer();
 
 
-            uint8_t bri_r = _min(_max((abs(norm.x)*7)/8,0)+32,255);
-            uint8_t bri_g = _min(_max((abs(norm.y)*7)/8,0)+32,255);
+            //uint8_t bri_r = _min(_max((abs(norm.x)*7)/8,0)+32,255);
+            //uint8_t bri_g = _min(_max((abs(norm.y)*7)/8,0)+32,255);
             uint8_t bri_b = _min(_max((abs(norm.z)*7)/8,0)+32,255);
             CRGB rgb = squares[i].rgb;
             //rgb = CRGB(bri_r,bri_g,bri_b);

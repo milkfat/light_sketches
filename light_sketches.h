@@ -16,7 +16,7 @@
 #endif
 #define NUM_DOTS 8000
 
-#define MAX_NUMBER_OF_LIGHT_SKETCHES 20
+#define MAX_NUMBER_OF_LIGHT_SKETCHES 30
 
 uint8_t global_brightness = 255;
 
@@ -450,7 +450,7 @@ LIGHT_SKETCHES light_sketches;
 #include "spinny.h"
 #include "squares.h"
 //  #include "test2d.h"
-// #include "test3d.h"
+#include "test3d.h"
 #include "tetris.h"
 #include "text_display.h"
 // //#include "tree_sim.h"

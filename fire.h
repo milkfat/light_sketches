@@ -46,6 +46,10 @@ class FIRE2: public LIGHT_SKETCH {
       fire_calc_t pressure = 0;
       fire_calc_t x_dir = 0;
       fire_calc_t y_dir = 0;
+      fire_calc_t vx = 0;
+      fire_calc_t vy = 0;
+      fire_calc_t pvx = 0;
+      fire_calc_t pvy = 0;
 
     };
 
@@ -453,7 +457,6 @@ class FIRE2: public LIGHT_SKETCH {
               bottom_cell = (y > 0) ? cell_d(bottom_cell_, grid[y-1][x]) : nullptr;
 
               calculate_density(source_cell);
-
               calculate_velocity(source_cell);
 
               cell_c(grid[y][x], &source_cell);
@@ -725,7 +728,7 @@ class FIRE2: public LIGHT_SKETCH {
       ci.pressure = (total_particles - 10000);
 
 
-      if (ci.pressure > 0 && total_particles > 0) {
+      if (ci.pressure > 0) {
         float pt = ci.pressure/(float)total_particles;
         fire_calc_t fuel_pressure = source_cell.fuel * pt;
         fire_calc_t air_pressure = source_cell.air * pt;
@@ -821,6 +824,8 @@ class FIRE2: public LIGHT_SKETCH {
       }
       
     }
+
+
 
 
 };

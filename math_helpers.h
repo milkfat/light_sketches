@@ -92,8 +92,9 @@ class Float16Compressor
 Float16Compressor FC;
 
 
-
+#ifndef PI
 #define PI 355/113.f
+#endif
 
 static inline __attribute__ ((always_inline)) uint PI_m (const uint num) {
     return (num*355)/113;
@@ -181,24 +182,81 @@ static inline __attribute__ ((always_inline)) void swap_coords(VECTOR3& a, VECTO
   dist.z = -dist.z;
 }
 
+/*
+typedef class half_t
+{
 
+  private:
+      uint16_t val = 0;
 
+  public:
+
+      half_t() {}
+
+      //conversion to float
+      inline operator float() {
+          uint32_t v = val;
+          v <<= 16;
+          return *reinterpret_cast<float*>(&v);
+      }
+
+      //conversion from float
+      inline half_t(const float& n) {
+          float v = n;
+          val = (*reinterpret_cast<uint32_t*>(&v))>>16;
+      }
+
+      //overload +=
+      inline void operator+= (const float& rhs) {
+          uint32_t v = val;
+          v <<= 16;
+          float f = (*reinterpret_cast<float*>(&v) + (float)rhs);
+          val = (*reinterpret_cast<uint32_t*>(&f))>>16;
+      }
+
+      //overload -=
+      inline void operator-= (const float& rhs) {
+          uint32_t v = val;
+          v <<= 16;
+          float f = (*reinterpret_cast<float*>(&v) - (float)rhs);
+          val = (*reinterpret_cast<uint32_t*>(&f))>>16;
+      }
+
+      //overload *=
+      inline void operator*= (const float& rhs) {
+          uint32_t v = val;
+          v <<= 16;
+          float f = (*reinterpret_cast<float*>(&v) * (float)rhs);
+          val = (*reinterpret_cast<uint32_t*>(&f))>>16;
+      }
+
+      //overload /=
+      inline void operator/= (const float& rhs) {
+          uint32_t v = val;
+          v <<= 16;
+          float f = (*reinterpret_cast<float*>(&v) / (float)rhs);
+          val = (*reinterpret_cast<uint32_t*>(&f))>>16;
+      }
+
+} half_t;
+
+*/
 
 //create a datatype that uses 16 bits to store an 18-bit integer (-131072 to 131068)
 typedef class cint18
 {
   private:
-      int16_t val = 0;
 
   public:
+      int16_t val = 0;
 
       cint18() {
       }
 
-      #define CINT18_MULT 4
+      #define CINT18_MULT 8
       
       //conversion to int
-      inline operator int() {
+      inline operator int() const {
           return val*CINT18_MULT;
       }
 
@@ -208,9 +266,9 @@ typedef class cint18
       }
 
       //conversion from float
-      inline cint18(const float& n) {
-          val = n/CINT18_MULT;
-      }
+      // inline cint18(const float& n) {
+      //     val = n/CINT18_MULT;
+      // }
 
         //overload +=
         inline void operator+= (const int& rhs) {
@@ -277,6 +335,61 @@ static inline __attribute__((always_inline)) void iterate(VECTOR3& a, const VECT
   }
 
 }
+struct MEASURE_TIME;
 
+struct MEASUREMENTS {
+  MEASURE_TIME * objects[10];
+  int num_objects = 0;
+
+  void reg (MEASURE_TIME * p) {
+    objects[num_objects] = p;
+    num_objects++;
+  }
+
+  void print();
+
+};
+
+MEASUREMENTS measurements;
+
+struct MEASURE_TIME {
+  char name[30] = "";
+  uint32_t time_start = 0;
+  uint32_t time_accum = 0;
+  uint32_t samples = 0;
+
+  MEASURE_TIME (const char * n) {
+    strcpy(name, n);
+    measurements.reg(this);
+  }
+
+  void start() {
+    time_start = micros();
+  }
+
+  void end() {
+    time_accum += micros() - time_start;
+    samples++;
+  }
+
+};
+
+
+void MEASUREMENTS::print() {
+    static int cnt = 0;
+    cnt++;
+    if (cnt%60 == 0) {
+      for(int j = 0; j < num_objects; j++) {
+        if(objects[j]->samples != 0 ) {
+          #ifdef ARDUINO
+          Serial.print(objects[j]->name);
+          Serial.println(objects[j]->time_accum / objects[j]->samples);
+          #else
+          std::cout << objects[j]->name << (objects[j]->time_accum / objects[j]->samples) << "\n";
+          #endif
+        }
+      }
+    }
+  }
 
 #endif

@@ -157,16 +157,16 @@ class METABALLS: public LIGHT_SKETCH {
             for (int j = i; j < num_balls; j++) {
               
               //x and y distances between balls
-              int16_t xd = balls[i].x - balls[j].x;
-              int16_t yd = balls[i].y - balls[j].y;
+              int32_t xd = balls[i].x - balls[j].x;
+              int32_t yd = balls[i].y - balls[j].y;
     
               //distance between balls
-              int16_t d = xd*xd + yd*yd;
+              int32_t d = xd*xd + yd*yd;
               
               //combined radius
-              int16_t ir_temp = balls[i].r/2;
-              int16_t jr_temp = balls[j].r/2;
-              int16_t d2 = ir_temp*ir_temp + jr_temp*jr_temp;
+              int32_t ir_temp = balls[i].r/2;
+              int32_t jr_temp = balls[j].r/2;
+              int32_t d2 = ir_temp*ir_temp + jr_temp*jr_temp;
               
               //check to see if distance is less than radius
               if( d < d2 && d2 != 0 ) {
@@ -176,22 +176,22 @@ class METABALLS: public LIGHT_SKETCH {
                 //closeness of balls as a byte (0-255)
                 //0 = farthest
                 //255 = closest
-                int16_t closeness = ((d2 - d)*255)/(d2);
+                //int16_t closeness = ((d2 - d)*255)/(d2);
                 
                 //x fraction as a byte (0-255)
                 //0 = 0%
                 //255 = 100%
-                if (abs(xd)+abs(yd) != 0) {
-                  int16_t ax = (xd*255)/(abs(xd)+abs(yd));
-                  //y fraction as a byte (0-255)
-                  int16_t ay = (yd*255)/(abs(xd)+abs(yd));
+                // if (abs(xd)+abs(yd) != 0) {
+                //   int16_t ax = (xd*255)/(abs(xd)+abs(yd));
+                //   //y fraction as a byte (0-255)
+                //   int16_t ay = (yd*255)/(abs(xd)+abs(yd));
       
-                  //apply acceleration force to balls
-                  //balls[i].vx += (closeness*ax)/(255*32);
-                  //balls[i].vy += (closeness*ay)/(255*32);
-                  //balls[j].vx -= (closeness*ax)/(255*32);
-                  //balls[j].vy -= (closeness*ay)/(255*32);
-                } 
+                //   //apply acceleration force to balls
+                //   //balls[i].vx += (closeness*ax)/(255*32);
+                //   //balls[i].vy += (closeness*ay)/(255*32);
+                //   //balls[j].vx -= (closeness*ax)/(255*32);
+                //   //balls[j].vy -= (closeness*ay)/(255*32);
+                // } 
                 
               }
             }
@@ -342,9 +342,9 @@ class METABALLS: public LIGHT_SKETCH {
       //uint32_t debug_time2 = micros();
         
         //add opacity values to LEDs (for soft edges)
-        uint16_t led = 0;
         for (int y = 0; y < METABALL_MATRIX_HEIGHT; y++) {
           for (int x = 0; x < METABALL_MATRIX_WIDTH; x++) {
+            uint32_t led = XY(x,y);
             uint8_t opacity = 0;
             if (temp_led[led].r > 96) {
               opacity = _max(_min((temp_led[led].r - 96)*6, 255), 0);
@@ -357,7 +357,6 @@ class METABALLS: public LIGHT_SKETCH {
               //led_mask2[led]=0;
             }
             temp_led[led] = CRGB::Black;
-            led++;
           }    
         }
         

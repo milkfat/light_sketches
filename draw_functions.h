@@ -36,7 +36,7 @@ static inline __attribute__ ((always_inline)) void drawXY_RGB(PERSPECTIVE& scree
   
 }
 
-static inline __attribute__ ((always_inline)) void drawXY_blend_gamma(PERSPECTIVE& screen_object, const uint16_t& led, const CRGB& rgb, const uint8_t& brightness = 255) {
+static inline __attribute__ ((always_inline)) void drawXY_blend_gamma(PERSPECTIVE& screen_object, const uint32_t& led, const CRGB& rgb, const uint8_t& brightness = 255) {
   
   //treat RGB values as gamma 2.2
   //must be decoded, added, then re-encoded

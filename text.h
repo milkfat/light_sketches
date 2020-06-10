@@ -68,8 +68,8 @@ void handle_text() {
 
       //debug, draw line
       //leds[XY(round(cursor_position_x/256.0), round(cursor_position_y/256.0))].b = 255;
-      long derpx = -2*256; //(4*256L)+201;
-      long derpy = -2*256; //50*256L+45;
+      //long derpx = -2*256; //(4*256L)+201;
+      //long derpy = -2*256; //50*256L+45;
       //long derpy = 50*256L;
       //draw_line_fine(led_screen, derpx, derpy,cursor_position_x, cursor_position_y);
       for (int i = 0; i < NUM_POINTERS; i++) {
@@ -174,10 +174,10 @@ void handle_text() {
         uint16_t letter_location = font_glyphs[current_font-1][letter][0]; ///< Pointer into GFXfont->bitmap
         uint8_t letter_width = font_glyphs[current_font-1][letter][1];    ///< Bitmap dimensions in pixels
         uint8_t letter_height = font_glyphs[current_font-1][letter][2];   ///< Bitmap dimensions in pixels
-        uint8_t letter_xAdvance = font_glyphs[current_font-1][letter][3]; ///< Distance to advance cursor (x axis)
-        int8_t letter_xOffset = font_glyphs[current_font-1][letter][4];  ///< X dist from cursor pos to UL corner
-        int8_t letter_yOffset = font_glyphs[current_font-1][letter][5];  ///< Y dist from cursor pos to UL corner
-        int8_t center_offset = (MATRIX_WIDTH-letter_width)/2;
+        //uint8_t letter_xAdvance = font_glyphs[current_font-1][letter][3]; ///< Distance to advance cursor (x axis)
+        //int8_t letter_xOffset = font_glyphs[current_font-1][letter][4];  ///< X dist from cursor pos to UL corner
+        //int8_t letter_yOffset = font_glyphs[current_font-1][letter][5];  ///< Y dist from cursor pos to UL corner
+        //int8_t center_offset = (MATRIX_WIDTH-letter_width)/2;
         //float scaler = MATRIX_WIDTH/letter_width;
         for (int y = 0; y < letter_height; y++) {
           //int ypos = 0-round(y*font_scaler)+ystp-current_height;
@@ -503,6 +503,50 @@ void handle_text() {
   old_display_text=display_text;
 } //handle_text()
 
+void spherize(int32_t& u, int32_t& v) {
+//SPHERE RENDERING
+
+    //increased density at edges
+    //decreased density in center
+    //u = cos8(128-(u/MATRIX_WIDTH)/2)*MATRIX_WIDTH;
+    //v = cos8(128-(v/MATRIX_HEIGHT)/2)*MATRIX_HEIGHT;
+    u = ((cos16(32768-(u*128)/MATRIX_WIDTH)+32768)*MATRIX_WIDTH)/256;
+    v = ((cos16(32768-(v*128)/MATRIX_WIDTH)+32768)*MATRIX_HEIGHT)/256;
+
+    //now we need to adjust our square coordinates to fit inside a circle
+
+    //translate our coordinates to be centered around 0,0
+    u -= MATRIX_WIDTH*128;
+    v -= MATRIX_HEIGHT*128;
+    
+    //calculate coordinate amplitude 
+    //float: 0 - 1 (0 being center, 1 being edge of screen)
+    // float x_val = abs(u)/(float)(MATRIX_WIDTH*128);
+    // float y_val = abs(v)/(float)(MATRIX_HEIGHT*128);
+    //fixed: 0 - 256 (0 being center, 256 being edge of screen)
+    uint16_t x_val = (abs(u)*256)/(MATRIX_WIDTH*128);
+    uint16_t y_val = (abs(v)*256)/(MATRIX_HEIGHT*128);
+
+    //square each coordinate amplitude
+    //this will tell us how much we need to adjust the other coordinate
+    //this is based on a 45 degree unit vector = 1/sqrt(2) = 1/1.414 = .707
+    //1-.707 = .293 (or 75/256)
+    // float sqx = x_val*x_val*(1-.707f);
+    // float sqy = y_val*y_val*(1-.707f);
+    uint16_t sqx = (x_val*x_val*300)/65536;
+    uint16_t sqy = (y_val*y_val*300)/65536;
+
+    //use those values to adjust each coordinate
+    //u -= u*sqy;
+    //v -= v*sqx;
+    u -= (u*sqy)/1024;
+    v -= (v*sqx)/1024;
+
+    //translate our coordinates back to screen space
+    u += MATRIX_WIDTH*128;
+    v += MATRIX_HEIGHT*128;
+}
+
 
 uint8_t draw_character(uint8_t font, uint8_t chr, int32_t chr_x, int32_t chr_y, CRGB rgb = CRGB(255,0,0), uint16_t scale = 256, const bool& subtractive = 0, uint8_t sharpen = 1) {
   //ADAFRUIT FONTS
@@ -515,20 +559,25 @@ uint8_t draw_character(uint8_t font, uint8_t chr, int32_t chr_x, int32_t chr_y, 
         uint8_t letter_xAdvance = font_glyphs[font-1][letter][3]; ///< Distance to advance cursor (x axis)
         int8_t letter_xOffset = font_glyphs[font-1][letter][4];  ///< X dist from cursor pos to UL corner
         int8_t letter_yOffset = font_glyphs[font-1][letter][5];  ///< Y dist from cursor pos to UL corner
-        int8_t center_offset = (MATRIX_WIDTH-letter_width)/2;
+        //int8_t center_offset = (MATRIX_WIDTH-letter_width)/2;
         for (int y = 0; y < letter_height; y++) {
             for (int x = 0;x < letter_width; x++) {
               uint8_t pixel_bit = bitRead(font_bitmaps[font-1][letter_location+(y*letter_width+x)/8],7-(y*letter_width+x)%8);
               if (pixel_bit) {
-                long u = (letter_xOffset+x)*(scale); //fixed width
+                int32_t u = (letter_xOffset+x)*(scale); //fixed width
                 //long u = (x)*(scale);
-                long v = (-letter_yOffset-y)*(scale);
+                int32_t v = (-letter_yOffset-y)*(scale);
                 u += chr_x;
                 v += chr_y;
-                //u = ((u+128)/256)*256;
-                //v = ((v+128)/256)*256;
-                blendXY(led_screen, u, v, rgb, subtractive, sharpen);
-                //drawXY_fine(led_screen, u, v, 0, 0, 255 );
+
+                if (u >= 0  && u < MATRIX_WIDTH*256 && v >= 0 && v < MATRIX_HEIGHT*256) {
+
+                  //spherize(u,v);
+
+                  //draw them on the screen
+                  blendXY(led_screen, u, v, rgb, subtractive, sharpen);
+                  //drawXY_fine(led_screen, u, v, 0, 0, 255 );
+                }
                 
                 
               }
@@ -554,7 +603,7 @@ void hl_char_in_line(const char * chr, uint8_t font, int& highest, int& lowest) 
   }
 }
 
-void draw_characters(uint8_t font, const char * chr, int32_t chr_x, int32_t chr_y, const CRGB& rgb = CRGB(255,0,0), uint16_t scale = 256, bool subtractive = 0, uint8_t sharpen = 1) {
+int draw_characters(uint8_t font, const char * chr, int32_t chr_x, int32_t chr_y, const CRGB& rgb = CRGB(255,0,0), uint16_t scale = 256, bool subtractive = 0, uint8_t sharpen = 1) {
   int x_offset = 0;
   int y_offset = 0;
   int highest = 0;
@@ -581,11 +630,12 @@ void draw_characters(uint8_t font, const char * chr, int32_t chr_x, int32_t chr_
     x_offset += draw_character(font, chr[pos], chr_x+x_offset, chr_y+y_offset, rgb, scale, subtractive, sharpen)*scale;
     pos++;
   }
+  return x_offset;
 }
 
 
-void draw_characters(uint8_t font, std::string chr, int32_t chr_x, int32_t chr_y, const CRGB& rgb = CRGB(255,0,0), uint16_t scale = 256, bool subtractive = false, uint8_t sharpen = 1) {
-    draw_characters(font, chr.c_str(), chr_x, chr_y, rgb, scale, subtractive, sharpen);
+int draw_characters(uint8_t font, std::string chr, int32_t chr_x, int32_t chr_y, const CRGB& rgb = CRGB(255,0,0), uint16_t scale = 256, bool subtractive = false, uint8_t sharpen = 1) {
+    return draw_characters(font, chr.c_str(), chr_x, chr_y, rgb, scale, subtractive, sharpen);
 }
 
 #endif

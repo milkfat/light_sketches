@@ -20,8 +20,8 @@ static inline __attribute__ ((always_inline)) void draw_circle_fine(const int32_
   }
 
   int t0 = 0;
-  int32_t xl2;
-  int32_t yl2;
+  int32_t xl2 = 0;
+  int32_t yl2 = 0;
   //int32_t coords[16][2];
   //int32_t coord_pos = -1;
   while (t0 <= 256) {

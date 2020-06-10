@@ -40,8 +40,8 @@ TO DO:
 
 #define MATRIX_WIDTH 32
 #define MATRIX_HEIGHT 128
-#define SCREEN_WIDTH 32
-#define SCREEN_HEIGHT 128
+#define SCREEN_WIDTH MATRIX_WIDTH
+#define SCREEN_HEIGHT MATRIX_HEIGHT
 #define WINDOW_WIDTH ((MATRIX_WIDTH+2)*5)
 #define WINDOW_HEIGHT ((MATRIX_HEIGHT+2)*5)
      
@@ -287,6 +287,11 @@ int main(int argc, char **argv){
 
 	pc_screen.screen_buffer = screen_buffer;
 
+	// std::cout << "\n\n\n";
+	// for (int i = 0; i < 256; i++) {
+	// 	std::cout << i << (int)sin8(i) << " " << (int)cos8(i) << " " << (int)sin16(i*256) << " " << (int)cos16(i*256) << "\n";
+	// }
+	// std::cout << "\n\n\n";
 
 	for (int i = 0; i < NUM_LEDS; i++) {
 	    tree_coords[i] = VECTOR3(0, -150*256, 30*256);
@@ -295,6 +300,21 @@ int main(int argc, char **argv){
 	    tree_coords[i].y = (i*65535)/(NUM_LEDS-1);
 	    //std::cout << tree_coords[i].x << " " << tree_coords[i].y << " " << tree_coords[i].z << "\n";
 	}
+
+	// for (int i = 10000000-1000; i < 10000000; i++) {
+	// 	half_t num = i;6
+	// 	num+=.61f;
+	// 	num*=2.15f;
+	// 	float num2 = i;
+	// 	num2+=.61f;
+	// 	num2*=2.15f;
+	// 	std::cout << (float)((float)(i+.61f)*2.15f);
+	// 	std::cout << " = ";
+	// 	std::cout << (float)num;
+	// 	std::cout << " = ";
+	// 	std::cout << (float)num2;
+	// 	std::cout << "\n";
+	// }
 
    https_server.start();
    wss_server.start(); 
@@ -344,6 +364,26 @@ int main(int argc, char **argv){
 			while (millis() < 1000) {};
 			light_sketches.loop();	
 			while (millis() < 1000) {};
+
+			// for (uint32_t l = 0; l < 65536; l++) {
+			// 	static uint16_t shift = 0;
+			// 	static uint16_t og = 0;
+			// 	static uint16_t cnt = 0;
+			// 	static uint16_t threshold = 2;
+			// 	uint16_t g = round(255 * pow((l>>shift)/(float)(((uint16_t)65535)>>shift),1.f/2.2f));
+			// 	std::cout << l << " " << shift << " " << g << " " << (uint16_t)gamma16_encode(l) << "\n";
+			// 	if (og == g) {
+			// 		cnt++;
+			// 	} else {
+			// 		cnt = 0;
+			// 	}
+			// 	// if (cnt > threshold) {
+			// 	// 	shift++;
+			// 	// 	threshold<<=1;
+			// 	// 	cnt = 0;
+			// 	// }
+			// 	og = g;
+			// }
 			
             while (!done) {
 				

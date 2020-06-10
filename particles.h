@@ -18,13 +18,13 @@ class PARTICLES: public LIGHT_SKETCH {
         bool active;
         CRGB rgb;
     };
-    #define NUM_PARTICLES 1000
-    PARTICLE particles[NUM_PARTICLES];
+    #define NUM_PARTICLES_PARTICLES 1000
+    PARTICLE particles[NUM_PARTICLES_PARTICLES];
     int current_particle = 0;
 
   public:
     void reset() {
-        for (int i = 0; i < NUM_PARTICLES; i++) {
+        for (int i = 0; i < NUM_PARTICLES_PARTICLES; i++) {
             particles[i].active = false;
         }
     }
@@ -34,7 +34,7 @@ class PARTICLES: public LIGHT_SKETCH {
         control_variables.add(led_screen.screen_distance, "Screen Z:", 0, 256*256);
         z_buffer = &_z_buffer;
         led_screen.light_falloff = 10;
-        for (int i = 0; i < NUM_PARTICLES; i++) {
+        for (int i = 0; i < NUM_PARTICLES_PARTICLES; i++) {
             particles[i].active = false;
             particles[i].pos.z = 0;
             particles[i].spd.z = 0;
@@ -88,10 +88,10 @@ class PARTICLES: public LIGHT_SKETCH {
             particles[current_particle].spd.y = random(-50,1);
             particles[current_particle].rgb = CRGB::White;
             current_particle++;
-            current_particle%=NUM_PARTICLES;
+            current_particle%=NUM_PARTICLES_PARTICLES;
         }
 
-        for (int i = 0; i < NUM_PARTICLES; i++) {
+        for (int i = 0; i < NUM_PARTICLES_PARTICLES; i++) {
             if (particles[i].active) {
                 int cnt2 = 2;
                 while (cnt2--) {
@@ -135,10 +135,10 @@ class PARTICLES: public LIGHT_SKETCH {
             }
             particles[current_particle].rgb = CHSV(random(256),255,128);
             current_particle++;
-            current_particle%=NUM_PARTICLES;
+            current_particle%=NUM_PARTICLES_PARTICLES;
         }
 
-        for (int i = 0; i < NUM_PARTICLES; i++) {
+        for (int i = 0; i < NUM_PARTICLES_PARTICLES; i++) {
             if (particles[i].active) {
                 int cnt2 = 2;
                 while (cnt2--) {
@@ -185,11 +185,11 @@ class PARTICLES: public LIGHT_SKETCH {
                 }
                 particles[current_particle].rgb = CHSV(random(256),255,255);
                 current_particle++;
-                current_particle%=NUM_PARTICLES;
+                current_particle%=NUM_PARTICLES_PARTICLES;
             }
         }
 
-        for (int i = 0; i < NUM_PARTICLES; i++) {
+        for (int i = 0; i < NUM_PARTICLES_PARTICLES; i++) {
             if (particles[i].active) {
                 int cnt2 = 1;
                 static VECTOR3 planet = VECTOR3(0, 0, 0);

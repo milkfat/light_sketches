@@ -39,9 +39,9 @@ class MANDLEBROT: public LIGHT_SKETCH {
     bool was_moving = 0;
     uint16_t iterations = 64;
     uint16_t old_iterations = 64;
-    uint16_t layer_size = 128;
-    uint16_t user_color_shift = 0;
-    uint16_t old_user_color_shift = 0;
+    uint16_t layer_frequency = 256;
+    uint32_t user_color_shift = 0;
+    uint32_t old_user_color_shift = 0;
     uint16_t color_shift = 0;
     bool auto_color_shift = 0;
     int16_t auto_color_shift_speed = 0;
@@ -68,7 +68,7 @@ class MANDLEBROT: public LIGHT_SKETCH {
         control_variables.add(move_right,"Right", 1, 39);
         control_variables.add(move_down,"Down", 1, 40);
         control_variables.add(iterations,"Iterations", 1, 2048);
-        control_variables.add(layer_size,"Layer Size", 1, 4096);
+        control_variables.add(layer_frequency,"Layer Frequency", 1, 256);
         control_variables.add(user_color_shift,"Color Shift", 0, 512);
         control_variables.add(auto_color_shift,"Auto Shift");
         control_variables.add(auto_color_shift_speed,"Color Shift Speed", -256, 256);
@@ -103,9 +103,10 @@ class MANDLEBROT: public LIGHT_SKETCH {
         
         for(int i = 0; i < NUM_LEDS; i++) {
             old_leds[i] = leds[i].r + leds[i].g + leds[i].b;
-            if(old_leds[i] == 0 && reset_pixels == 1) {
-                samples_remaining[i] = 0;
-            }
+            //optimization, don't re-render black pixels when zooming/panning
+            //if(old_leds[i] == 0 && reset_pixels == 1) {
+            //    samples_remaining[i] = 0;
+            //}
         }
         
         LED_black();
@@ -160,12 +161,10 @@ class MANDLEBROT: public LIGHT_SKETCH {
 
         stop_time = millis() + 16; //limit fps
         if (auto_color_shift) {
-            user_color_shift+=512;
             user_color_shift+=auto_color_shift_speed;
-            user_color_shift%=512;
         }
         if (user_color_shift != old_user_color_shift) {
-            color_shift = (user_color_shift*iterations)/512;
+            color_shift = user_color_shift;
             
         } 
         old_user_color_shift = user_color_shift;
@@ -179,14 +178,40 @@ class MANDLEBROT: public LIGHT_SKETCH {
 #endif
 
             if (sample_cnt > 1) {
-                x_rand = ((random(INT32_MAX)-INT32_MAX/2)*x_pitch)/INT32_MAX;
-                y_rand = ((random(INT32_MAX)-INT32_MAX/2)*y_pitch)/INT32_MAX;
+                x_rand = ((random(INT32_MAX)-INT32_MAX/2)*x_pitch*2)/INT32_MAX;
+                y_rand = ((random(INT32_MAX)-INT32_MAX/2)*y_pitch*2)/INT32_MAX;
             }
+            static int start_line = MATRIX_WIDTH/2;
+            static int line = MATRIX_WIDTH/2;
+            static int jump = MATRIX_WIDTH;
+            if (reset_pixels) {
+                start_line = MATRIX_WIDTH/2;
+                line = MATRIX_WIDTH/2;
+                jump = MATRIX_WIDTH;
+            }
+            while (millis() < stop_time) {
+                int Px = line;
+                line += jump;
+                if (line > MATRIX_WIDTH-1) {
+                    line%=MATRIX_WIDTH;
+                    jump/=2;
+                    line-=jump/2;
+                    if (jump == start_line) {
+                        start_line /= 2;
+                        line = start_line;
+                        jump = MATRIX_WIDTH/2;
 
-            for (int Px = 0; Px < MATRIX_WIDTH; Px++) {
+                        if (jump == 1) {
+                            start_line = MATRIX_WIDTH/2;
+                            line = MATRIX_WIDTH/2;
+                            jump = MATRIX_WIDTH;
+                        }
+                    }
+                    Px = line;
+                }
                 for (int Py = 0; Py < MATRIX_HEIGHT; Py++) {
                     int led = XY(Px,Py);
-                    if(samples_remaining[led]==0) continue;
+                    if(samples_remaining[led]==0 || samples_taken[led]==65535) continue;
                     //calculate our position
 #ifdef DOUBLE_PRECISION
                     double x0 = (Px+MIN_DIMENSION/2-MATRIX_WIDTH/2)*x_pitch + x_rand - 1.75;
@@ -238,40 +263,58 @@ class MANDLEBROT: public LIGHT_SKETCH {
         }
 
         //draw our accumulated data to the screen
+        CRGB old_color = CRGB(0,0,0);
         for (int i = 0; i < NUM_LEDS; i++) {
-            if(!samples_taken[i] || !Ivals[i]) continue;
+            if(!Ivals[i]) {
+                if (samples_taken[i]) {
+                    old_color = CRGB(0,0,0);
+                } else {
+                    leds[i] = old_color;
+                }
+                continue;
+            }
             uint32_t temp0 = Ivals[i];
             temp0/=samples_taken[i];
+            uint16_t depth = temp0%=iterations; //save this for later
+            temp0 = iterations - temp0;
             temp0+=color_shift;
-            temp0%=iterations;
+            uint16_t iter = layer_frequency;
+            temp0%=iter;
+
             int16_t temp = temp0;
-            uint16_t c1a = abs(temp - (iterations/6));
-            uint16_t c1b = abs(temp+iterations - (iterations/6));
-            uint16_t c1c = abs(temp-iterations - (iterations/6));
+            uint16_t c1a = abs(temp - (iter/6));
+            uint16_t c1b = abs(temp+iter - (iter/6));
+            uint16_t c1c = abs(temp-iter - (iter/6));
             uint16_t c1 = _min(c1a,c1b);
             c1 = _min(c1,c1c);
-            uint16_t c2a = abs(temp - (iterations/2));
-            uint16_t c2b = abs(temp+iterations - (iterations/2));
-            uint16_t c2c = abs(temp-iterations - (iterations/2));
+            uint16_t c2a = abs(temp - (iter/2));
+            uint16_t c2b = abs(temp+iter - (iter/2));
+            uint16_t c2c = abs(temp-iter - (iter/2));
             uint16_t c2 = _min(c2a,c2b);
             c2 = _min(c2,c2c);
-            uint16_t c3a = abs(temp - (iterations - iterations/6));
-            uint16_t c3b = abs(temp+iterations - (iterations - iterations/6));
-            uint16_t c3c = abs(temp-iterations - (iterations - iterations/6));
+            uint16_t c3a = abs(temp - (iter - iter/6));
+            uint16_t c3b = abs(temp+iter - (iter - iter/6));
+            uint16_t c3c = abs(temp-iter - (iter - iter/6));
             uint16_t c3 = _min(c3a,c3b);
             c3 = _min(c3,c3c);
+
+
+            depth = iterations - depth;
+            depth = (depth*depth)/iterations;
+            depth = iterations - depth;
             if (c1 < layer_tightness) {
                 c1 = layer_tightness - c1;
-                nblend(leds[i],color1,(c1*255)/layer_tightness);
+                nblend(leds[i],color1,(c1*255*depth)/(layer_tightness*iterations));
             }
             if (c2 < layer_tightness) {
                 c2 = layer_tightness - c2;
-                nblend(leds[i],color2,(c2*255)/layer_tightness);
+                nblend(leds[i],color2,(c2*255*depth)/(layer_tightness*iterations));
             }
             if (c3 < layer_tightness) {
                 c3 = layer_tightness - c3;
-                nblend(leds[i],color3,(c3*255)/layer_tightness);
+                nblend(leds[i],color3,(c3*255*depth)/(layer_tightness*iterations));
             }
+            old_color = leds[i];
         }
 
 

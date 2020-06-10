@@ -4,7 +4,7 @@
 
 //DRAW LINE FINE
 
-
+uint8_t line_sharpen = 1;
 static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, const VECTOR3& b, const CRGB& rgb, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true, const bool& wide_fill = true, const bool& additive = false) {
   
   //add one pixel to compensate for rounding errors between -1 and 0
@@ -70,29 +70,29 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
   
   if (trim) {
   
-    x1_led = (x1+128)>>8;
-    x1_r = ((x1_led+1)<<8) - (x1+128);
+    x1_led = (x1+128)/256;
+    x1_r = ((x1_led+1)*256) - (x1+128);
     x2_led = (x2-128+255)/256; //ceil
-    x2_r = ((x2-128) - ((x2_led-1)<<8));
+    x2_r = ((x2-128) - ((x2_led-1)*256));
 
 
-    y1_led = (y1+128)>>8;
-    y1_r = ((y1_led+1)<<8) - (y1+128);
+    y1_led = (y1+128)/256;
+    y1_r = ((y1_led+1)*256) - (y1+128);
     y2_led = (y2-128+255)/256; //ceil
-    y2_r = ((y2-128) - ((y2_led-1)<<8));
+    y2_r = ((y2-128) - ((y2_led-1)*256));
   
   } else {
     
-    x1_led = x1>>8;
-    x1_r = ((x1_led+1)<<8) - (x1);
+    x1_led = x1/256;
+    x1_r = ((x1_led+1)*256) - (x1);
     x2_led = (x2+255)/256; //ceil
-    x2_r = ((x2) - ((x2_led-1)<<8));
+    x2_r = ((x2) - ((x2_led-1)*256));
 
 
-    y1_led = y1>>8;
-    y1_r = ((y1_led+1)<<8) - (y1);
+    y1_led = y1/256;
+    y1_r = ((y1_led+1)*256) - (y1);
     y2_led = (y2+255)/256; //ceil
-    y2_r = ((y2) - ((y2_led-1)<<8));
+    y2_r = ((y2) - ((y2_led-1)*256));
   
   }
 
@@ -119,6 +119,10 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
     float y_start = y1 + ((x1_led*256 - x1)*y_step)/256.f;
     float z_step= (z_dist*256.f)/x_dist;
     float z_start = z1 + ((x1_led*256 - x1)*z_step)/256.f;
+    // int32_t y_step = (y_dist*256)/x_dist;
+    // int32_t y_start = y1 + ((x1_led*256 - x1)*y_step)/256;
+    // int32_t z_step= (z_dist*256)/x_dist;
+    // int32_t z_start = z1 + ((x1_led*256 - x1)*z_step)/256;
 
 
     //record the off-screen portion to the y_buffer
@@ -151,7 +155,11 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
         int Hy = (y+255)/256; //ceil
         int Ly = y/256;
         uint progress = abs(y - Hy*256);
-        uint8_t b = ease8InOutApprox(_min( _max(progress, 0), 255));
+        uint8_t b = _min( _max(progress, 0), 255);
+        uint8_t s = line_sharpen;
+        while (s--) {
+          b = ease8InOutApprox(b);
+        }
         uint8_t b2 = 255-b;
         if (i == x1_led) {
           b = (b*ease8InOutApprox(_min(x1_r,255)))/255;
@@ -231,6 +239,10 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
     float x_start = x1 + ((y1_led*256-y1)*x_step)/256.f;
     float z_step  = (z_dist*256.f)/y_dist;
     float z_start = z1 + ((y1_led*256-y1)*z_step)/256.f;
+    // int32_t x_step = (x_dist*256)/y_dist;
+    // int32_t x_start = x1 + ((y1_led*256-y1)*x_step)/256;
+    // int32_t z_step  = (z_dist*256)/y_dist;
+    // int32_t z_start = z1 + ((y1_led*256-y1)*z_step)/256;
 
 
     //record the off-screen portion to the y_buffer
@@ -261,7 +273,11 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
       int Hx = (x+255)/256; //ceil
       int Lx = x/256;
       uint progress = abs(x - Hx*256);
-      uint8_t b = ease8InOutApprox(_min( _max(progress, 0), 255));
+      uint8_t b = _min( _max(progress, 0), 255);
+      uint8_t s = line_sharpen;
+      while (s--) {
+        b = ease8InOutApprox(b);
+      }
       uint8_t b2 = 255-b;
       if (i == y1_led) {
         b  = (b*ease8InOutApprox(_min(y1_r,255)))/255;

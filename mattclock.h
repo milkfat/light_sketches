@@ -768,6 +768,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
       control_variables.add(rgb_clock, "Color");
       control_variables.add(led_screen.camera_position.z, "Camera Z", 0, 256*256);
       control_variables.add(led_screen.screen_distance, "Screen Z", 0, 256*256);
+      control_variables.add(line_sharpen, "Sharpen", 0, 10);
 
       for (int i = 0; i < 6; i++) {
         digits[i].number_from = 0;

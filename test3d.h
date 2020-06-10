@@ -4,12 +4,12 @@
 
 #include "phos.h"
 
-int skipped_frames = 0;
 class TEST3D: public LIGHT_SKETCH {
   public:
     TEST3D () {setup();}
     ~TEST3D () {}
   private:
+    int skipped_frames = 0;
 
     uint16_t next_firework_frame = 0;
     
@@ -123,8 +123,8 @@ class TEST3D: public LIGHT_SKETCH {
 
   private:
 
-  #define NUM_PARTICLES 2000
-  PARTICLE particles[NUM_PARTICLES];
+  #define NUM_TEST_3D_PARTICLES 2000
+  PARTICLE particles[NUM_TEST_3D_PARTICLES];
   
 
 
@@ -154,7 +154,7 @@ class TEST3D: public LIGHT_SKETCH {
 
       //snow
       if (current_variation == SNOW) {
-        for (int i = 0; i < NUM_PARTICLES; i++) {
+        for (int i = 0; i < NUM_TEST_3D_PARTICLES; i++) {
           PARTICLE * cp = &particles[i];
           cp->x = random(-30 * 256L, 30 * 256L);
           cp->y = random(-148 * 256L, 148 * 256L);
@@ -183,8 +183,8 @@ class TEST3D: public LIGHT_SKETCH {
 
     void setup() {
       z_buffer = &_z_buffer;
-      //particles = (PARTICLE*) malloc (NUM_PARTICLES * sizeof(PARTICLE));
-      for (int i = 0; i < NUM_PARTICLES; i++) {
+      //particles = (PARTICLE*) malloc (NUM_TEST_3D_PARTICLES * sizeof(PARTICLE));
+      for (int i = 0; i < NUM_TEST_3D_PARTICLES; i++) {
         particles[i].x = random(-30 * 256L, 30 * 256L);
         particles[i].y = -127*256;
         particles[i].z = random(-148 * 256L, 148 * 256L);
@@ -197,8 +197,9 @@ class TEST3D: public LIGHT_SKETCH {
 
       phos.setup();
 
-      control_variables.add(led_screen.camera_position.z, "Camera Z:", 0, 256*256);
+      control_variables.add(led_screen.camera_position.z, "Camera Z:", 0, 1024*256);
       control_variables.add(led_screen.screen_distance, "Screen Z:", 0, 256*256);
+      control_variables.add(led_screen.light_falloff, "Light Distance:", 1, 16);
 
     }
 
@@ -295,7 +296,7 @@ void handle_test_object() {
           }
 
           for (int i = 0; i < 4; i++) {
-            draw_line_fine(led_screen, square2[i][0] + 3 * 256, square2[i][1] + 50 * 256, square2[(i + 1) % 4][0] + 3 * 256, square2[(i + 1) % 4][1] + 50 * 256);
+            draw_line_fine_hsv(led_screen, square2[i][0] + 3 * 256, square2[i][1] + 50 * 256, square2[(i + 1) % 4][0] + 3 * 256, square2[(i + 1) % 4][1] + 50 * 256);
           }
 
           int32_t r0[3];
@@ -303,19 +304,19 @@ void handle_test_object() {
           rotate(linex[0], r0);
           rotate(linex[1], r1);
 
-          draw_line_fine(led_screen, r0[0] + 3 * 256, r0[1] + 50 * 256, r1[0] + 3 * 256, r1[1] + 50 * 256, 160);
+          draw_line_fine_hsv(led_screen, r0[0] + 3 * 256, r0[1] + 50 * 256, r1[0] + 3 * 256, r1[1] + 50 * 256, 160);
 
 
           rotate(liney[0], r0);
           rotate(liney[1], r1);
 
-          draw_line_fine(led_screen, r0[0] + 3 * 256, r0[1] + 50 * 256, r1[0] + 3 * 256, r1[1] + 50 * 256, 48);
+          draw_line_fine_hsv(led_screen, r0[0] + 3 * 256, r0[1] + 50 * 256, r1[0] + 3 * 256, r1[1] + 50 * 256, 48);
 
 
           rotate(linez[0], r0);
           rotate(linez[1], r1);
 
-          draw_line_fine(led_screen, r0[0] + 3 * 256, r0[1] + 50 * 256, r1[0] + 3 * 256, r1[1] + 50 * 256, 96);
+          draw_line_fine_hsv(led_screen, r0[0] + 3 * 256, r0[1] + 50 * 256, r1[0] + 3 * 256, r1[1] + 50 * 256, 96);
 
           led_screen.rotation_alpha += 2;
           led_screen.rotation_beta += .154;
@@ -554,7 +555,7 @@ void handle_grid() {
 
 
               //draw_line_fine2(leds, p0[0], p0[1], p1[0], p1[1], hue, sat, val);
-              draw_line_fine(led_screen, p0[0], p0[1], p1[0], p1[1], hue, sat, val, -10000, val, true);
+              draw_line_fine_hsv(led_screen, p0[0], p0[1], p1[0], p1[1], hue, sat, val, -10000, val, true);
 
             }
 
@@ -621,7 +622,7 @@ void handle_grid() {
               //              p1[0] = (-150*256L * (p1[0] - 0))       / (-150*256L + p1[2]) + 0;
               //              p1[1] = (-150*256L * (p1[1] - 0)) / (-150*256L + p1[2]) + 0;
               if ( led_screen.perspective(p0) && led_screen.perspective(p1) ) {
-                draw_line_fine(led_screen, p0[0], p0[1], p1[0], p1[1], hue, sat, val, -10000, val);
+                draw_line_fine_hsv(led_screen, p0[0], p0[1], p1[0], p1[1], hue, sat, val, -10000, val);
               }
             }
           }
@@ -664,7 +665,7 @@ void handle_grid() {
 void handle_snow() {
 
           //SNOW
-          for (int i = 0; i < NUM_PARTICLES; i++) {
+          for (int i = 0; i < NUM_TEST_3D_PARTICLES; i++) {
             PARTICLE * cp = &particles[i];
             cp->x += cp->vx;
             cp->y += cp->vy;
@@ -782,12 +783,12 @@ void handle_tunnel() {
     uint8_t hue = i * (256/TUNNEL_DETAIL);
 
     if (i!=TUNNEL_DETAIL) {
-      draw_line_fine(led_screen, p0[0], p0[1], p1[0], p1[1], hue, 255, 0, -10000, 128, true);
+      draw_line_fine_hsv(led_screen, p0[0], p0[1], p1[0], p1[1], hue, 255, 0, -10000, 128, true);
       if ((i+stp2)%8 == 0 ) {
-        draw_line_fine(led_screen, p0[0], p0[1], p1[0], p1[1], hue, 255, 16, -10000, 255, true);
+        draw_line_fine_hsv(led_screen, p0[0], p0[1], p1[0], p1[1], hue, 255, 16, -10000, 255, true);
       }
     }
-    //draw_line_fine(CRGB crgb_object[], int32_t x1, int32_t y1, int32_t x2, int32_t y2, uint8_t hue = 0, uint8_t sat = 255, uint8_t val = 255, int z_depth = -10000, uint8_t val2 = 255)
+    //draw_line_fine_hsv(CRGB crgb_object[], int32_t x1, int32_t y1, int32_t x2, int32_t y2, uint8_t hue = 0, uint8_t sat = 255, uint8_t val = 255, int z_depth = -10000, uint8_t val2 = 255)
 
     #define NUM_CIRCLES_TEST3D 4
     if ( i > 0 ) {
@@ -806,7 +807,7 @@ void handle_tunnel() {
         int thing = (255 - (255 / NUM_CIRCLES_TEST3D)) + (stp4/256) / NUM_CIRCLES_TEST3D - j * (255 / NUM_CIRCLES_TEST3D);
         thing = (thing*thing)/256L;
 
-        draw_line_fine(
+        draw_line_fine_hsv(
             led_screen, 
             p0[0], 
             p0[1], 

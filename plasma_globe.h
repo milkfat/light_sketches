@@ -64,8 +64,8 @@ class PLASMA_GLOBE: public LIGHT_SKETCH {
         global_cnt++;
         for (int i = 0; i < NUM_PLASMA_THINGS; i++) {
             uint32_t cnt = global_cnt+things[i].r;
-            int32_t x;
-            int32_t y;
+            int32_t x = 0;
+            int32_t y = 0;
             int cnt2 = 2;
             while (cnt2--) {
                 if (random(50) == 0) {
