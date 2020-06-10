@@ -296,8 +296,8 @@ void parse_json(std::streambuf * inbuf) {
           if (type > 0 && type <= 6) {
             //integer datatypes
             int num = 0;
+            int sign = 1;
             while ( inbuf->sgetc() != EOF && inbuf->sgetc() != '"') {
-              int sign = 1;
               c = inbuf->sbumpc();
               if(c == '-') {
                 sign=-1;
@@ -306,8 +306,8 @@ void parse_json(std::streambuf * inbuf) {
               *p++ = c;
               num*=10;
               num+=c-48;
-              num*=sign;
             }
+            num*=sign;
             control_variables.set(cpos, num);
           } else if (type == 7 && inbuf->sbumpc() == '#') {
             //read hex value into RGB
