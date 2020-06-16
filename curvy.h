@@ -1078,12 +1078,12 @@ void draw_jelly(JELLY& jelly) {
 
       for (uint16_t y = y_start; y < y_start + MATRIX_HEIGHT/2; y++) {
         if ( y%2 == screen_section/2 ) {
+          uint8_t * led = &temp_led[XY(0,y)];
           for (uint16_t x = 0; x < MATRIX_WIDTH; x++) {
-            uint8_t bri = inoise8((x<<2)+z,y<<2,z);
             //uint8_t caustics = inoise8(((x-MATRIX_WIDTH/2)*((y+16)))/6,(y*(y+8))/6,z*2);
 
             //CRGB rgb = CHSV(142, 255, 255);
-            temp_led[XY(x,y)] = bri;
+            *led++ = inoise8((x<<2)+z,y<<2,z);
           }
         }
       }
