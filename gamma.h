@@ -90,6 +90,12 @@ static inline __attribute__ ((always_inline)) CRGB gamma8_decode(const CRGB& val
   return rgb;
 }
 
+static inline __attribute__ ((always_inline)) void gamma8_decode_ip(CRGB& value) {
+  value.r = gamma8_d[value.r];
+  value.g = gamma8_d[value.g];
+  value.b = gamma8_d[value.b];
+}
+
 static inline __attribute__ ((always_inline)) CRGB gamma8_decode(const VECTOR3& value) {
   CRGB rgb( gamma8_d[_clamp8(value.x)], gamma8_d[_clamp8(value.y)], gamma8_d[_clamp8(value.z)] );
   return rgb;
