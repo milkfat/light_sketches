@@ -20,6 +20,9 @@ class ORBIT: public LIGHT_SKETCH {
 
     void setup() {
 
+      control_variables.add(led_screen.camera_position.z, "Camera Z:", 0, 2048*256);
+      control_variables.add(led_screen.screen_distance, "Screen Z:", 0, 2048*256);
+
     }
 
     void next_effect() {
