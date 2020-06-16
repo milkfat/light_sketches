@@ -95,7 +95,7 @@ class Y_BUF2 {
   }
   // Overloading [] operator to access elements in array style 
   Y_BUF* operator[] (int index) {
-    return &(buf[index][0]);
+    return buf[index];
   } 
 
 };
@@ -119,7 +119,7 @@ class Z_BUF {
   }
   // Overloading [] operator to access elements in array style 
   int16_t* operator[] (int index) {
-    return &(buf[index][0]);
+    return buf[index];
   } 
 
 };
