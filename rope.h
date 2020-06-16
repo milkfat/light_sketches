@@ -5,14 +5,14 @@
 
 
 class ROPE_PHYSICS: public LIGHT_SKETCH {
-    #define NUM_JOINTS 17
+    #define NUM_JOINTS 10
     #define ROPE_SEGMENT_LENGTH (3*256)
     #define NUM_ROPE_EFFECTS 1
     #define NUM_ROPES 10
     #define BALLS_PER_COLUMN (MATRIX_HEIGHT/10)
     #define BALLS_PER_ROW (MATRIX_WIDTH/10)
     #define NUM_BALLS (BALLS_PER_COLUMN * BALLS_PER_ROW)
-    #define MAX_BALL_RADIUS (5*256)
+    #define MAX_BALL_RADIUS (4*256)
 
   public:
     ROPE_PHYSICS () {setup();}
@@ -53,7 +53,9 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
 
     void reset_rope(int j) {
         JOINT * rope = ropes[j].joints;
-        int r = random(10*256)-5*256;
+
+        const uint32_t x_variance = MATRIX_WIDTH*256 - (NUM_JOINTS * ROPE_SEGMENT_LENGTH);
+        int r = random(x_variance*2)-x_variance;
         int r2 = random(10*256);
         for (int i = 0; i < NUM_JOINTS; i++) {
             rope[i].s = false;
@@ -142,7 +144,7 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
         
         //move balls
         for (int i = 0; i < NUM_BALLS; i++) {
-            balls[i].rgb = gamma8_encode(CHSV(0,255,128));
+            balls[i].rgb = gamma8_encode(CHSV(0,255,32));
             balls[i].sp.x += balls[i].v.x;
             if (balls[i].sp.x < -(MAX_BALL_RADIUS+512) || balls[i].sp.x > MATRIX_WIDTH*256+MAX_BALL_RADIUS+512) {
                 reset_ball(i);
@@ -254,11 +256,10 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
         for (int i = 0; i < NUM_BALLS; i++) {
             reset_x_buffer();
             reset_y_buffer();
-            CRGB fart = balls[i].rgb;
-            draw_circle_fine(balls[i].p.x, balls[i].p.y, balls[i].r, fart);
+            draw_circle_fine(balls[i].p.x, balls[i].p.y, balls[i].r, balls[i].rgb, -1, 32);
             //fart = gamma8_encode(gamma8_encode(fart));
             //fart = gamma8_encode(fart);
-            fill_shape(256, fart);
+            fill_shape(256, balls[i].rgb);
         }
     }
 
