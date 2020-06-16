@@ -6,14 +6,19 @@
 #include "rotate.h"
 #include "scale.h"
 
-static void draw_quad(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& d, const VECTOR3& orig, const VECTOR3& norm_in, const CRGB& rgb_in = CRGB(255,0,0) ) {
+static void draw_quad(VECTOR3 a, VECTOR3 b, VECTOR3 c, VECTOR3 d, VECTOR3 orig, VECTOR3 norm_in, CRGB rgb_in = CRGB(255,0,0) ) {
   
   //optimization:
   //identify clockwise/counterclockwise orientation
   //draw in only one orientation (facing toward the camera)
-  int orientation = (b.y-a.y)*(c.x-b.x) - (c.y-b.y)*(b.x-a.x);
-  
-  if ( orientation < 0 ) {
+
+
+  bool orientation = ((float)(b.y-a.y))*(c.x-b.x) - ((float)(c.y-b.y))*(b.x-a.x) < 0;
+  //bool orientation = (((float)b.y-a.y)*((float)c.x-b.x) - ((float)c.y-b.y)*((float)b.x-a.x)) < 0;
+  //bool orientation = ((b.y/16-a.y/16)*(c.x/16-b.x/16) - (c.y/16-b.y/16)*(b.x/16-a.x/16)) < 0;
+  //bool orientation = (((b.y-a.y)/16)*((c.x-b.x)/16) - ((c.y-b.y)/16)*((b.x-a.x)/16)) < 0;
+
+  if ( orientation ) {
 
     VECTOR3 norm = norm_in;
 
@@ -102,7 +107,7 @@ int16_t get_current_cube() {
 
 
 //find cube's z depth and sort it into our buffer (ascending Z order, back-to-front)
-static void draw_cube(const VECTOR3& p, const VECTOR3& d = VECTOR3(256,256,256), const VECTOR3& r = VECTOR3(0,0,0), const CHSV& hsv = CHSV(0,0,255), const bool& persist=false, const bool& r_fine = false) {
+void draw_cube(const VECTOR3& p, const VECTOR3& d = VECTOR3(256,256,256), const VECTOR3& r = VECTOR3(0,0,0), const CHSV& hsv = CHSV(0,0,255), const bool& persist=false, const bool& r_fine = false) {
   
   int16_t current_cube = get_current_cube();
   int16_t most_recent_cube = recent_cube;
@@ -215,7 +220,7 @@ static void draw_cached_cube(const int16_t& cp) {
     led_screen.perspective(points[i]);
 
     //don't draw cube if any part is behind the camera
-    if (points[i].z > led_screen.camera_position.z-8*256) return;
+    //if (points[i].z > led_screen.camera_position.z) return;
 
   }
 
