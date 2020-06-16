@@ -5,7 +5,7 @@
 //DRAW LINE FINE
 
 uint8_t line_sharpen = 1;
-static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, const VECTOR3& b, const CRGB& rgb, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true, const bool& wide_fill = true, const bool& additive = false) {
+static void draw_line_fine_base(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b, CRGB rgb, uint8_t val = 255, uint8_t val2 = 255, bool trim = false, bool ignore_z = true, bool wide_fill = true, bool additive = false) {
   
   //add one pixel to compensate for rounding errors between -1 and 0
   int32_t x1 = a.x+256;
@@ -72,13 +72,13 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, const VECTOR3& a, co
   
     x1_led = (x1+128)/256;
     x1_r = ((x1_led+1)*256) - (x1+128);
-    x2_led = (x2-128+255)/256; //ceil
+    x2_led = (x2-128+256)/256; //ceil
     x2_r = ((x2-128) - ((x2_led-1)*256));
 
 
     y1_led = (y1+128)/256;
     y1_r = ((y1_led+1)*256) - (y1+128);
-    y2_led = (y2-128+255)/256; //ceil
+    y2_led = (y2-128+256)/256; //ceil
     y2_r = ((y2-128) - ((y2_led-1)*256));
   
   } else {
