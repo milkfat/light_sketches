@@ -20,7 +20,8 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
     uint8_t current_variation = 0;
     int pulse[5] = {255, 255, 255, 255, 255};
     int current_pulse = 0;
-    bool draw_filled = false;
+    bool draw_filled = true;
+    Z_BUF _z_buffer;
     
     enum squishy_types {
       SQUISHY_DEFAULT,
@@ -345,9 +346,10 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
         //blendXY(led_screen, draw_x, draw_y, hue, sat, 255);
         if (draw_filled) {
           draw_circle_fine_hsv(draw_x, draw_y, balls[i].vr, hue, sat, 255, i, 16, i*32);
-          draw_circle_fine_hsv(draw_x, draw_y, balls[i].vr, 0, 0, 0, i, 16, i*32);
+          //draw_circle_fine_hsv(draw_x, draw_y, balls[i].vr, 0, 0, 0, i, 16, i*32); //what this?
           CRGB rgb = CHSV(hue,sat,255);
-          y_buffer_fill(led_screen, rgb, i*32+16);
+          //y_buffer_fill(led_screen, rgb, i*32+16);
+          fill_shape(256, rgb);
           reset_y_buffer();
           reset_x_buffer();
         } else {
@@ -599,6 +601,10 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
 
 
     void setup() {
+      z_buffer = &_z_buffer;
+      control_variables.add(draw_filled, "Filled Circles");
+      control_variables.add(led_screen.light_falloff, "Light Distance:", 1, 16);
+      led_screen.light_falloff = 16;
       frame_time = millis();
       for ( int i = 0; i < NUM_SQUISHY_BALLS; i++) {
         balls[i].h = random(256);
@@ -608,10 +614,8 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
         //balls[i].y = random(1,7)*(SQUISHY_MATRIX_HEIGHT/8)*256;
         balls[i].y = ((i+1)*SQUISHY_MATRIX_HEIGHT*256)/(NUM_SQUISHY_BALLS+2);
         
-        //balls[i].r = random(512,2048);
-        balls[i].r = random(950,1736);
-        //balls[i].r = random(295,373);
-        //balls[i].r = 1024;
+        //balls[i].r = random(950,1736);
+        balls[i].r = random(sqrt(MATRIX_WIDTH*MATRIX_HEIGHT)*10,sqrt(MATRIX_WIDTH*MATRIX_HEIGHT)*20);
         balls[i].m = balls[i].r;
         balls[i].vx = random(1, 200) - 100;
         balls[i].vy = random(1, 200) - 100;
@@ -634,12 +638,7 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
     void loop() {
 //    CRGB rgb = CRGB(32,32,32);
 //    draw_line_fine(led_screen,(MATRIX_WIDTH-4)*256,0,(MATRIX_WIDTH-4)*256,(MATRIX_HEIGHT-1)*256,rgb);
-      if (button1_click) {
-        draw_filled = !draw_filled;
-        reset_y_buffer();
-        reset_x_buffer();
-        button1_click = false;
-      }
+      
 
       if (current_variation == 0) {
         gravity = 20;
