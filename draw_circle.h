@@ -12,7 +12,7 @@ static inline __attribute__ ((always_inline)) void reset_circle_angles() {
   }
 }
 
-static inline __attribute__ ((always_inline)) void draw_circle_fine(const int32_t& x, const int32_t& y, const int32_t& r, const CRGB& rgb = CRGB(255,0,0), const int& ballnum = -1, const uint8_t& step_size = 16, const int32_t& z_depth = 0) {
+static inline __attribute__ ((always_inline)) void draw_circle_fine(int32_t x, int32_t y, int32_t r, CRGB rgb = CRGB(255,0,0), int ballnum = -1, uint8_t step_size = 16, int32_t z_depth = 0) {
   
   if(step_size == 255) {
     blendXY(led_screen, x, y, rgb);
@@ -49,7 +49,7 @@ static inline __attribute__ ((always_inline)) void draw_circle_fine(const int32_
   //blendXY(led_screen, x, y, hue, sat, val);
 }
 
-static inline __attribute__ ((always_inline)) void draw_circle_fine_hsv(const int32_t& x, const int32_t& y, const int32_t& r, const uint8_t& hue = default_color, const uint8_t& sat = default_saturation, const uint8_t& val = 255, const int& ballnum = -1, const uint8_t& step_size = 16, const int32_t& z_depth = 0) {
+static inline __attribute__ ((always_inline)) void draw_circle_fine_hsv(int32_t x, int32_t y, int32_t r, uint8_t hue = default_color, uint8_t sat = default_saturation, uint8_t val = 255, int ballnum = -1, uint8_t step_size = 16, int32_t z_depth = 0) {
   CRGB rgb = CHSV(hue,sat,val); 
   draw_circle_fine(x, y, r, rgb, ballnum, step_size, z_depth);
 }  
