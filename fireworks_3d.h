@@ -4,16 +4,23 @@
 
 
 int skipped_frames = 0;
-class FIREWORKS_3D: public LIGHT_SKETCH {
+class FIREWORKS_3D: public LIGHT_SKETCH 
+{
   #define MAX_PARTICLE_AGE 24*256
+  #define FIREWORK_FRAME_TIME 8
+  int skip_count = 0;
   public:
     FIREWORKS_3D () {setup();}
     ~FIREWORKS_3D () {}
   private:
+    uint16_t particle_length = 0;
+    uint16_t particle_life = 4*256;
+    bool full_blackout = 0;
 
     uint16_t next_firework_frame = 0;
 
-    enum particle_types {
+    enum particle_types 
+    {
       NULL_PARTICLE,
       STAR_PARTICLE,
       LIFT_PARTICLE,
@@ -26,16 +33,19 @@ class FIREWORKS_3D: public LIGHT_SKETCH {
 
     bool do_not_update = 0;
 
-    void rotate(int32_t in[3], int32_t out[3]) {
+    void rotate(int32_t in[3], int32_t out[3]) 
+    {
       led_screen.matrix.rotate(in, out);
     }
 
-    void rotate(VECTOR3& p) {
+    void rotate(VECTOR3& p) 
+    {
       led_screen.matrix.rotate(p);
     }
 
 
-    struct PARTICLE {
+    struct PARTICLE 
+    {
         //const unsigned char resistsCold      = 1 << 0;
         //const unsigned char resistsTheft     = 1 << 1;
         //const unsigned char resistsAcid      = 1 << 2;
@@ -58,11 +68,15 @@ class FIREWORKS_3D: public LIGHT_SKETCH {
         uint8_t function = NULL_PARTICLE;   //index of the functions (physics and draw) that will update this particle
         int16_t age = 256*8;    //age of the particle
         uint8_t rand = 0;
+        uint8_t bri = 0;
+        uint16_t tick = 0;
+        uint8_t off_screen = false;
     };
 
 
 
-    struct PARTICLE_ATTRIBUTES {
+    struct PARTICLE_ATTRIBUTES 
+    {
         uint32_t m = 64;        //mass
         uint32_t r = 3;         //radius
         uint8_t h = 255;       //hue
@@ -74,20 +88,25 @@ class FIREWORKS_3D: public LIGHT_SKETCH {
 
   private:
 
-  #define NUM_FIREWORK_PARTICLES 1000
+  #define NUM_FIREWORK_PARTICLES 2000
   PARTICLE particles[NUM_FIREWORK_PARTICLES];
   
-  PARTICLE * current_particle() {
+  PARTICLE * current_particle() 
+  {
     static uint16_t cp = 0;
     uint16_t cnt = 0;
     PARTICLE * cpo = nullptr;
-    while (cnt < NUM_FIREWORK_PARTICLES) {
+    while (cnt < NUM_FIREWORK_PARTICLES) 
+    {
       cp++;
-      if (cp > NUM_FIREWORK_PARTICLES-1) {
+      if (cp > NUM_FIREWORK_PARTICLES-1) 
+      {
         cp = 0;
       }
-      if (!particles[cp].function) {
+      if (!particles[cp].function) 
+      {
         cpo = &particles[cp];
+        particles[cp].tick = 0;
         break;
       }
       cnt++;
@@ -100,15 +119,19 @@ class FIREWORKS_3D: public LIGHT_SKETCH {
   #define NUM_PARTICLE_ATTRIBUTES 64
   PARTICLE_ATTRIBUTES particle_attributes[NUM_PARTICLE_ATTRIBUTES];
   
-  uint16_t current_particle_attributes() {
+  uint16_t current_particle_attributes() 
+  {
     static uint16_t cpa_index = 0;
     uint16_t cnt = 0;
-    while (cnt < NUM_PARTICLE_ATTRIBUTES-1) {
+    while (cnt < NUM_PARTICLE_ATTRIBUTES-1) 
+    {
       cpa_index++;
-      if (cpa_index > NUM_PARTICLE_ATTRIBUTES-1) {
+      if (cpa_index > NUM_PARTICLE_ATTRIBUTES-1) 
+      {
         cpa_index = 0;
       }
-      if (true/*particle_attributes[cpa_index].available*/) {
+      if (true/*particle_attributes[cpa_index].available*/) 
+      {
         particle_attributes[cpa_index].available = 0;
         break;
       }
@@ -126,7 +149,8 @@ class FIREWORKS_3D: public LIGHT_SKETCH {
     }
 
 
-    struct FIREWORK_SHELL {
+    struct FIREWORK_SHELL 
+    {
       bool active = 0;
       int32_t x;
       int32_t y;
@@ -163,9 +187,11 @@ class FIREWORKS_3D: public LIGHT_SKETCH {
     }
 
     //launch a shell into the air
-    void spawn_firework_shell() {
+    void spawn_firework_shell() 
+    {
       FIREWORK_SHELL * fs = next_firework_shell();
-      if(fs) {
+      if(fs) 
+      {
         fs->age = 0;
         fs->x = 0;
         int32_t p[3] = {(MATRIX_WIDTH*256)/2,0,0};
@@ -205,10 +231,12 @@ class FIREWORKS_3D: public LIGHT_SKETCH {
         particle_attributes[lift_attribute].m = ((r*r)/(2*105)+20)*50;
         particle_attributes[lift_attribute].trail = 0;
 
-        for (int i = 0; i < (r*r)/(2*105)+20; i++) {
+        for (int i = 0; i < (r*r)/(2*105)+20; i++) 
+        {
           //find the next available particle object
           PARTICLE * cp = current_particle();
-          if (cp) {
+          if (cp) 
+          {
             cp->x = 0;
             cp->y = p[1]/2;
             cp->z = 0;
@@ -229,28 +257,36 @@ class FIREWORKS_3D: public LIGHT_SKETCH {
     }
 
     //handle each active shell
-    void handle_firework_shells(const bool test_only = false) {
-      for (int i = 0; i < NUM_FIREWORK_SHELLS; i++) {
-        if (firework_shells[i].active) {
+    void handle_firework_shells(const bool no_burst = false) 
+    {
+      for (int i = 0; i < NUM_FIREWORK_SHELLS; i++) 
+      {
+        if (firework_shells[i].active) 
+        {
           FIREWORK_SHELL * fs = &firework_shells[i];
           fs->age++;
 
           //burst at peak height
-          if (firework_shells[i].vy < -5) {
+          if (firework_shells[i].vy < -5) 
+          {
             fs->active = false;
             //create a burst using this shell's final position and velocity
-            if (!test_only) {
+            if (!no_burst) 
+            {
               spawn_firework_burst(fs->x,fs->y,fs->z,fs->vx,fs->vy,fs->vz);
             }
           }
 
           //update active shells
-          if (fs->active && fs->y < 1000*256) {
+          if (fs->active && fs->y < 1000*256) 
+          {
 
-            if(fs->age > 10) {
+            if(fs->age > 10) 
+            {
               //add random spark particles to create a tail for the rising shell
               PARTICLE * cp = current_particle();
-              if( cp && random(3) == 0) {
+              if( cp && random(3) == 0) 
+              {
                 cp->x = fs->x/2;
                 cp->y = fs->y/2;
                 cp->z = fs->z/2;
@@ -288,7 +324,8 @@ class FIREWORKS_3D: public LIGHT_SKETCH {
       }
     }
 
-    void move_particle(PARTICLE &p) {
+    void move_particle(PARTICLE &p) 
+    {
       
       PARTICLE_ATTRIBUTES * pa = &particle_attributes[p.attributes];
               //move our particles
@@ -322,15 +359,19 @@ class FIREWORKS_3D: public LIGHT_SKETCH {
       //find the ratio between old and new magnitudes to apply to our x,y,z velocity components
 
       
-      if (magnitude != 0) {
-        if (new_magnitude > 0) {
+      if (magnitude != 0) 
+      {
+        if (new_magnitude > 0) 
+        {
           p.vx = (p.vx*new_magnitude)/magnitude;
           p.vy = (p.vy*new_magnitude)/magnitude;
           p.vz = (p.vz*new_magnitude)/magnitude;
           //p.vx = (p.vx*999)/1000;
           //p.vy = (p.vy*999)/1000;
           //p.vz = (p.vz*999)/1000;
-        } else if (new_magnitude <= 0) {
+        } 
+        else if (new_magnitude <= 0) 
+        {
           p.vx /= 20;
           p.vy /= 20;
           p.vz /= 20;
@@ -345,23 +386,27 @@ class FIREWORKS_3D: public LIGHT_SKETCH {
 
     } //move_particle()
 
-    void star_physics(PARTICLE &p) {
+    void star_physics(PARTICLE &p) 
+    {
 
       //increment the particle's age
       p.age+=4;
 
       if (p.age > MAX_PARTICLE_AGE) {p.function = NULL_PARTICLE; return;}
       PARTICLE_ATTRIBUTES * pa = &particle_attributes[p.attributes];
-      if (pa->r < 27*32) {
+      if (pa->r < 27*32) 
+      {
         p.age += (27*32 - pa->r)/(6*32);
       }
 
       move_particle(p);
             
-      if (pa->trail) {
+      if (pa->trail) 
+      {
         //add random star trail particles
         PARTICLE * cp = current_particle();
-        if( cp && random(p.age/32+5) == 0) {
+        if( cp && random(p.age/32+5) == 0) 
+        {
           cp->x = p.x;
           cp->y = p.y;
           cp->z = p.z;
@@ -376,115 +421,149 @@ class FIREWORKS_3D: public LIGHT_SKETCH {
  
     } //star_particle()
 
-    void star_draw(uint16_t pi) {
-          PARTICLE * cp = &particles[pi];
-          PARTICLE_ATTRIBUTES * pa = &particle_attributes[cp->attributes];
-          uint16_t age = cp->age/8;
+    int star_draw(PARTICLE& cp) 
+    {
+          PARTICLE_ATTRIBUTES * pa = &particle_attributes[cp.attributes];
+          uint16_t age = cp.age/8;
           //darken (v = HSV value)
           int16_t v_temp = 255;
-          uint8_t r = fmix32(pi);
+          uint8_t r = fmix32(cp.rand);
           r=0;
           r = r/4 + (_max(pa->r-35,0))+32;
-          if (age > r) {
+          if (age > r) 
+          {
             v_temp -= (age-r)*4;
           }
           uint8_t v = _min(_max(v_temp,0), pa->v);
-          if (v == 0) {
-            cp->function = NULL_PARTICLE;
-            return;
+          if (v == 0) 
+          {
+            cp.function = NULL_PARTICLE;
+            return -1;
           }
           //colors become more saturated over time
-          uint8_t s = _max(_min(cp->age,pa->s),0);
+          uint8_t s = _max(_min(cp.age,pa->s),0);
 
-          VECTOR3 p(cp->x*2,cp->y*2,cp->z*2);
+          VECTOR3 p(cp.x*2,cp.y*2,cp.z*2);
           
-          draw_particle(p,pa->h,s,v);
+          return draw_particle(p,pa->h,s,(v*cp.bri)/255);
     }
 
-    void star_color_change_draw(uint16_t pi) {
-          PARTICLE * cp = &particles[pi];
-          PARTICLE_ATTRIBUTES * pa = &particle_attributes[cp->attributes];
-          int16_t age = cp->age;
+    int star_color_change_draw(PARTICLE& cp) 
+    {
+          PARTICLE_ATTRIBUTES * pa = &particle_attributes[cp.attributes];
+          int16_t age = cp.age;
           uint8_t v = 0;
           uint8_t s = 255;
-          uint16_t r = fmix32(pi);
+          uint16_t r = fmix32(cp.rand);
           r >>= 6;
-          if (age > 0) {
+          if (age > 0) 
+          {
             v = _min(_max(age/2,0),255);
           }
-          if (age > 4*256+r) {
-            v = _min(_max(6*256+r-age, 0),512)/2;
-            if (v == 0) {
-              cp->function = NULL_PARTICLE;
+          if (age > particle_life-2*256+r) 
+          {
+            v = _min(_max(particle_life+r-age, 0),512)/2;
+            if (v == 0) 
+            {
+              cp.function = NULL_PARTICLE;
             }
           }
-          if (v) {
-            VECTOR3 p(cp->x*2,cp->y*2,cp->z*2);
-            draw_particle(p,pa->h,s,v);
+          if (v) 
+          {
+            VECTOR3 p(cp.x*2,cp.y*2,cp.z*2);
+            int ret = draw_particle(p,pa->h,s,(v*cp.bri)/255);
+            //mark particles as off-screen if they are moving away from the screen
+            if 
+            (
+              (p.x < 0 && cp.vx < 0)
+              || (p.x/256 > MATRIX_WIDTH && cp.vx > 0)
+              || (p.y < 0 && cp.vy < 0)
+              || (p.y/256 > MATRIX_HEIGHT && cp.vy > 0)
+            )
+            {
+              cp.off_screen = true;
+            }
+            return ret;
           }
+      return -1;
     }
 
-    void crackle_draw(uint16_t pi) {
+    int crackle_draw(PARTICLE& cp) 
+    {
 
-          PARTICLE * cp = &particles[pi];
           //PARTICLE_ATTRIBUTES * pa = &particle_attributes[cp->attributes];
-          int16_t age = cp->age;
-          uint16_t r = fmix32(pi)%512;
+          int16_t age = cp.age;
+          uint16_t r = fmix32(cp.rand)%512;
           
-          if (r < 256) {
+          if (r < 256) 
+          {
             r = 256 - r;
             r = (((r*r)/256)+r)/2;
             r = 256 - r;
           }
-          if (r > 255) {
+          if (r > 255) 
+          {
             r -= 256;
             r = (((r*r)/256)+r)/2;
             r += 256;
           }
           r/=2;
           age -= r;
-          if (age > 2*256) {
-            if (age < 2*256+32) {
-              VECTOR3 p(cp->x*2,cp->y*2,cp->z*2);
-              draw_particle(p,0,0,96);
-            } else {
-              cp->function = NULL_PARTICLE;
+          if (age > 2*256) 
+          {
+            if (age < 2*256+32) 
+            {
+              VECTOR3 p(cp.x*2,cp.y*2,cp.z*2);
+              return draw_particle(p,0,0,(96*cp.bri)/255);
+            } 
+            else 
+            {
+              cp.function = NULL_PARTICLE;
             }
           }
-
+      return -1;
     }
 
-    void burst_particle_draw(uint16_t pi) {
-
-          PARTICLE * cp = &particles[pi];
+    int burst_particle_draw(PARTICLE& cp) 
+    {
           //PARTICLE_ATTRIBUTES * pa = &particle_attributes[cp->attributes];
-          int16_t age = cp->age;
+          int16_t age = cp.age;
           //uint16_t r = fmix32(pi)%512;
-          if (age < 108) {
-              VECTOR3 p(cp->x*2,cp->y*2,cp->z*2);
-              if (age < 16) {
-                draw_particle(p,32,0,255);
-              } else {
-                draw_particle(p,32,128,214-age*2);
+          if (age < 108) 
+          {
+              VECTOR3 p(cp.x*2,cp.y*2,cp.z*2);
+              if (age < 16) 
+              {
+                return draw_particle(p,32,0,255);
+              } 
+              else 
+              {
+                return draw_particle(p,32,128,((214-age*2)*cp.bri)/255);
               }
-            } else {
-              cp->function = NULL_PARTICLE;
+            } 
+            else 
+            {
+              cp.function = NULL_PARTICLE;
             }
           
-
+      return -1;
     }
 
-    void draw_particle(VECTOR3& p, uint8_t h, uint8_t s, uint8_t v) {
+    int draw_particle(VECTOR3& p, uint8_t h, uint8_t s, uint8_t v) 
+    {
 
           //rotate all particles using our orientation matrix
           rotate(p);
 
           //correct 3d perspective
-          if (led_screen.perspective(p)) {
+          if (led_screen.perspective(p)) 
+          {
             int16_t v_temp2 = (p[2] + 200 * 256L) / 256L;
             uint8_t v2 = (_max(_min(v_temp2, 255), 0)*v)/255;
             
             blendXY(led_screen, p[0], p[1], h, s, v2);
+
+            return (XY(p[0]/256,p[1]/256));
             
             // blendXY(led_screen, p[0], p[1], h, s, _min(v2*9,255));
             // if (v2 > 255/9) {
@@ -500,10 +579,12 @@ class FIREWORKS_3D: public LIGHT_SKETCH {
             // }
             
           }
+          return -1;
     }
 
 
-    void lift_physics(PARTICLE &p) {
+    void lift_physics(PARTICLE &p) 
+    {
       //increment the particle's age
       p.age+=8;
       if (p.age > MAX_PARTICLE_AGE) {p.function = NULL_PARTICLE; return;}
@@ -514,11 +595,19 @@ class FIREWORKS_3D: public LIGHT_SKETCH {
 
 
     //here we call the handling function for this particle
-    void handle_particles() {
+    void handle_particles() 
+    {
       int active_particles = 0;
-      for (int i = 0; i < NUM_FIREWORK_PARTICLES; i++) {
-        if (particles[i].function) {
+      for (int i = 0; i < NUM_FIREWORK_PARTICLES; i++) 
+      {
+        if (particles[i].function ) 
+        {
           active_particles++;
+          if (particles[i].function == COLOR_CHANGE_PARTICLE && particles[i].tick < particle_length) 
+          {
+            particles[i].tick++;
+            continue;
+          }
           (this->*particle_physics_functions[particles[i].function])(particles[i]);
         }
       }
@@ -527,26 +616,83 @@ class FIREWORKS_3D: public LIGHT_SKETCH {
     //an array of function pointers to functions that modify the PARTICLE structure
     //referred to as a jump table?
     void (FIREWORKS_3D::*particle_physics_functions[6])(PARTICLE&) = {nullptr,&FIREWORKS_3D::star_physics,&FIREWORKS_3D::lift_physics,&FIREWORKS_3D::star_physics,&FIREWORKS_3D::star_physics,&FIREWORKS_3D::star_physics};
-    void (FIREWORKS_3D::*particle_draw_functions[6])(uint16_t pi) = {nullptr,&FIREWORKS_3D::star_draw,&FIREWORKS_3D::star_draw,&FIREWORKS_3D::crackle_draw,&FIREWORKS_3D::star_color_change_draw,&FIREWORKS_3D::burst_particle_draw};
+    int (FIREWORKS_3D::*particle_draw_functions[6])(PARTICLE&) = {nullptr,&FIREWORKS_3D::star_draw,&FIREWORKS_3D::star_draw,&FIREWORKS_3D::crackle_draw,&FIREWORKS_3D::star_color_change_draw,&FIREWORKS_3D::burst_particle_draw};
 
     //render the particles in 3D to the buffer
-    void draw_particles() {
-
-      
-
+    void draw_particles() 
+    {
       //draw the particles
-      for (int i = 0; i < NUM_FIREWORK_PARTICLES; i++) {
-        if (particles[i].function && particles[i].age >= 0) {
-          (this->*particle_draw_functions[particles[i].function])(i);
+      for (int i = 0; i < NUM_FIREWORK_PARTICLES; i++)
+      {
+        if (particles[i].function && particles[i].age >= 0)
+        {
+          if (particles[i].function == COLOR_CHANGE_PARTICLE && particles[i].tick) 
+          {
+            particles[i].bri = 255/particles[i].tick;
+          } 
+          else 
+          {
+            particles[i].bri = 255;
+          }
+          (this->*particle_draw_functions[particles[i].function])(particles[i]);
         }
+
+        if (particles[i].function == COLOR_CHANGE_PARTICLE && particles[i].tick) 
+        {
+          PARTICLE p = particles[i];
+          uint16_t cnt = 0;
+          int last_led = -1;
+          uint16_t draw_frames = 1;
+          uint16_t draw_skip = draw_frames;
+          particles[i].off_screen = false;
+          while (!p.off_screen && cnt < p.tick && p.function) 
+          {
+            p.bri = (255*(cnt+1))/p.tick;
+            (this->*particle_physics_functions[p.function])(p);
+            // if (p.function) {
+            //   (this->*particle_physics_functions[p.function])(p);
+            //   cnt++;
+            // }
+            if (p.function && p.age > 0 && !draw_skip)
+            {
+              int current_led = (this->*particle_draw_functions[p.function])(p);
+              if (current_led == last_led) {
+                if (current_led != MATRIX_HEIGHT*MATRIX_WIDTH)
+                {
+                  draw_frames++;
+                }
+                else
+                {
+                  draw_frames = 1;
+                }
+              }
+              else
+              {
+                last_led = current_led;
+              }
+              draw_skip = draw_frames;
+            }
+            else if (draw_skip)
+            {
+              draw_skip--;
+              //skip_count++;
+            }
+            cnt++;
+          }
+
+        }
+
       }
+
     }
 
     int rotation_speed = 0;
 
-    void setup() {
+    void setup() 
+    {
       //particles = (PARTICLE*) malloc (NUM_FIREWORK_PARTICLES * sizeof(PARTICLE));
-      for (int i = 0; i < NUM_FIREWORK_PARTICLES; i++) {
+      for (int i = 0; i < NUM_FIREWORK_PARTICLES; i++) 
+      {
         particles[i].x = random(-30 * 256L, 30 * 256L);
         particles[i].y = -127*256;
         particles[i].z = random(-148 * 256L, 148 * 256L);
@@ -562,25 +708,30 @@ class FIREWORKS_3D: public LIGHT_SKETCH {
       control_variables.add(led_screen.camera_position.z, "Camera Z:", 0, 2048*256);
       control_variables.add(led_screen.screen_distance, "Screen Z:", 0, 2048*256);
       control_variables.add(rotation_speed, "Camera Rotation:", -100, 100);
+      control_variables.add(particle_length, "Particle Trail Length:", 0, 500);
+      control_variables.add(particle_life, "Particle Life:", 2*256, 20*256);
 
       reset();
     }
 
-    void reset() {
+    void reset() 
+    {
       led_screen.rotation_alpha = 0;
       led_screen.rotation_beta = 90;
       led_screen.rotation_gamma = 0;
 
       calibrate_shell_height();
 
-      for (int i = 0; i < NUM_FIREWORK_PARTICLES; i++) {
+      for (int i = 0; i < NUM_FIREWORK_PARTICLES; i++) 
+      {
         particles[i].function = NULL_PARTICLE;
       }
 
 
     }
 
-    void loop() {
+    void loop() 
+    {
 
       // debug
       // static int asdf = 0;
@@ -603,7 +754,8 @@ class FIREWORKS_3D: public LIGHT_SKETCH {
 
       // }
       
-      if (effect_beat == 1) {
+      if (effect_beat == 1) 
+      {
         effect_beat = 0;
         //reset();
       }
@@ -612,22 +764,40 @@ class FIREWORKS_3D: public LIGHT_SKETCH {
     handle_fireworks();
 
         //update the display
-        if (!do_not_update) {
+        if (!do_not_update) 
+        {
           skipped_frames--;
           //update LEDS
           LED_show();
           //clear LED buffer
-          //LED_black();
-          for (int i = 0; i < NUM_LEDS; i++) {
-            leds[i].r *= .9f;
-            leds[i].g *= .9f;
-            leds[i].b *= .9f;
+          if (full_blackout)
+          {
+            LED_black();
+          }
+          else
+          {
+            for (int i = 0; i < NUM_LEDS; i++)
+            {
+              if (leds[i].r == leds[i].g && leds[i].r == leds[i].b)
+              {
+                leds[i].r = 0;
+                leds[i].g = 0;
+                leds[i].b = 0;
+              }
+              else
+              {
+                leds[i].r *= .95f;
+                leds[i].g *= .95f;
+                leds[i].b *= .95f;
+              }
+            }
           }
         }
 
     } //loop();
 
-void handle_fireworks() {
+void handle_fireworks() 
+{
   //
           //
           //FIREWORKS!!!
@@ -635,9 +805,9 @@ void handle_fireworks() {
           //
           
           //static uint16_t max_speed = 32768/8; //this is the max speed, above which particles will start to act weird (accelerating backwards)
-          
+
           //spawn a new firework based on the number of frames that have been shown
-          static uint32_t total_frame_count = millis()/8;
+          static uint32_t total_frame_count = millis()/FIREWORK_FRAME_TIME;
 
           //physics is locked at 125fps (1000/8)...
           //because I can't be bothered to figure out how to calculate the sum of wind resistance for a non-constant time step.
@@ -645,16 +815,19 @@ void handle_fireworks() {
           //If we fall behind: continue calculating physics until we catch up (do not render, do not update the display)
           do_not_update = 1;
           uint8_t physics_count = 0;
-          while ( physics_count < 10 && millis()/8 > total_frame_count ) {
+          while ( physics_count < 10 && millis()/FIREWORK_FRAME_TIME > total_frame_count ) 
+          {
             do_not_update = 0;
             physics_count++;
 
-            if (millis()/8 - total_frame_count > 10) {
-              total_frame_count = millis()/8;
+            if (millis()/FIREWORK_FRAME_TIME - total_frame_count > 10) 
+            {
+              total_frame_count = millis()/FIREWORK_FRAME_TIME;
             }
 
             //launch shells
-            if (frame_count>next_firework_frame) {
+            if (frame_count>next_firework_frame) 
+            {
               frame_count = 0;
               spawn_firework_shell();
             }
@@ -671,7 +844,8 @@ void handle_fireworks() {
 
             //rotate everything (effectively rotating the camera)
             led_screen.rotation_gamma += rotation_speed/100.f;
-            if (led_screen.rotation_gamma > 360) {
+            if (led_screen.rotation_gamma > 360) 
+            {
               led_screen.rotation_gamma -= 360;
             }
 
@@ -686,14 +860,17 @@ void handle_fireworks() {
 
 
     //burst into colors!
-    void spawn_firework_burst(const int32_t& start_x, const int32_t& start_y, const int32_t& start_z, const int32_t& start_vx, const int32_t& start_vy, const int32_t& start_vz) {
+    void spawn_firework_burst(const int32_t& start_x, const int32_t& start_y, const int32_t& start_z, const int32_t& start_vx, const int32_t& start_vy, const int32_t& start_vz) 
+    {
       
       int do_crackle = 0;
       int do_double_crackle = 0;
-      if (random(3)) {
+      if (random(3)) 
+      {
         do_crackle = 1;
 
-        if (random(3)==0) {
+        if (random(3)==0) 
+        {
           do_double_crackle = 1;
         }
       }
@@ -728,7 +905,8 @@ void handle_fireworks() {
       uint8_t h = random(256);
 
       //default attributes
-      for (int i = 0; i < 6; i++) {
+      for (int i = 0; i < 6; i++) 
+      {
         ai[i] = current_particle_attributes();
         a[i] = &particle_attributes[ai[i]];
         a[i]->h = h;
@@ -784,12 +962,14 @@ void handle_fireworks() {
       //iterate over the z-axis
       uint16_t ring_count = 0;
       int age_count = 0;
-      while (true) {
+      while (true) 
+      {
         uint16_t iz = ring_count*z_step;
         if (iz > 32767) {break;}
         
         ring_count++;
-        for (uint16_t k = 0; k < 1; k++) {
+        for (uint16_t k = 0; k < 1; k++) 
+        {
           iz += k;
         //for (uint16_t k = 0; k < 200; k+=50) {
           //calculate our Z-velocity (you could pretend that this is a coordinate)
@@ -804,13 +984,16 @@ void handle_fireworks() {
           //std::cout << "stars: " << particles_this_ring << " iz:" << npxy << "iz:" << iz  << " vz:" << vz  << " radius:" << r << "\n";
 
           //iterate around the circumference of the slice
-          for (int i = 0; i < particles_this_ring; i++) {
-            for (int k = 0; k < 1; k++) {
+          for (int i = 0; i < particles_this_ring; i++) 
+          {
+            for (int k = 0; k < 1; k++) 
+            {
             //for (int k = 0; k < 200; k+=50) {
               //find the next available particle object
               PARTICLE * cp = current_particle();
               //create particle if an object is available
-              if(cp) {
+              if(cp) 
+              {
                 cp->function = STAR_PARTICLE;
                 cp->function = COLOR_CHANGE_PARTICLE;
                 //initial starting position
@@ -874,11 +1057,13 @@ void handle_fireworks() {
                 cp->attributes = ai[0];
                 
                 //alternate color for one hemisphere
-                if (vz < 0) {
+                if (vz < 0) 
+                {
                   cp->attributes = ai[1];
                 }
                 //modify a ring of particles to produce trails
-                if(abs(iz - 16000) < 1000) {
+                if(abs(iz - 16000) < 1000) 
+                {
                   //cp->attributes = ai[2];
                 }
                 /*
@@ -892,9 +1077,11 @@ void handle_fireworks() {
                 */
 
 
-                if (random(4)) {
+                if (random(4)) 
+                {
                   PARTICLE * cp2 = current_particle();
-                  if (cp2) {
+                  if (cp2) 
+                  {
                     *cp2 = *cp;
                     cp2->age = random(96);
                     uint16_t r = random(16,128);
@@ -905,20 +1092,25 @@ void handle_fireworks() {
                   }
                 }
 
-                if (k == 0) {
+                if (k == 0) 
+                {
                   //crackle particles
-                  if (do_crackle) {
+                  if (do_crackle) 
+                  {
                     PARTICLE * cp2 = current_particle();
-                    if (cp2) {
+                    if (cp2) 
+                    {
                       *cp2 = *cp;
                       cp2->attributes = ai[4];
                       cp2->function = CRACKLE_PARTICLE;
                       cp2->age = -256;
                     }
 
-                    if (do_double_crackle) {
+                    if (do_double_crackle) 
+                    {
                       PARTICLE * cp3 = current_particle();
-                      if (cp3) {
+                      if (cp3) 
+                      {
                         *cp3 = *cp;
                         cp3->attributes = ai[5];
                         cp3->function = CRACKLE_PARTICLE;
@@ -956,13 +1148,15 @@ void handle_fireworks() {
       }
     }
 
-  void calibrate_shell_height() {
+  void calibrate_shell_height() 
+  {
       int32_t current_velocity = 1;
       int32_t current_jump = 128;
       bool min_locked = 0;
       led_screen.update();
       uint8_t cnt = 128;
-      while (cnt--) {
+      while (cnt--) 
+      {
         FIREWORK_SHELL * fs = &firework_shells[0];
         fs->age = 0;
         fs->x = 0;
@@ -975,7 +1169,8 @@ void handle_fireworks() {
         fs->vz = 0;
         fs->active = true;
         uint16_t cnt2 = 4096;
-        while (fs->active && cnt2--) {
+        while (fs->active && cnt2--) 
+        {
           handle_firework_shells(true);
         }
         VECTOR3 tv = VECTOR3(fs->x,fs->y,fs->z);
@@ -984,25 +1179,37 @@ void handle_fireworks() {
 
         //std::cout << "Shell burst height: " << tv.y << "\n";
 
-        if(!min_locked) {
-          if(tv.y < MATRIX_HEIGHT*96) {
+        if(!min_locked) 
+        {
+          if(tv.y < MATRIX_HEIGHT*96) 
+          {
             shell_velocity_min = current_velocity;
-          } else if (current_jump > shell_velocity_min/8) {
+          } 
+          else if (current_jump > shell_velocity_min/8) 
+          {
             current_velocity-=current_jump/2;
             current_jump /= 4;
-          } else {
+          } 
+          else 
+          {
             min_locked = true;
             //std::cout << "Shell velocity min: " << shell_velocity_min << "\n";
           }
         }
 
-        if (min_locked) {
-          if(tv.y < MATRIX_HEIGHT*256) {
+        if (min_locked) 
+        {
+          if(tv.y < MATRIX_HEIGHT*256) 
+          {
             shell_velocity_max = current_velocity;
-          } else if (current_jump > shell_velocity_max/8) {
+          } 
+          else if (current_jump > shell_velocity_max/8) 
+          {
             current_velocity-=current_jump/2;
             current_jump /= 4;
-          } else {
+          } 
+          else 
+          {
             //std::cout << "Shell velocity max: " << shell_velocity_max << "\n";
             return;
           }
