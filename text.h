@@ -45,7 +45,7 @@ int32_t cube_ang3 = 0;
 
 void handle_text() {
   //if the screen has been updated then redraw the text
-  if (z_buffer != nullptr && update_since_text == 1) {
+  if (z_buffer != nullptr && update_since_text == 1 && display_text != "") {
 
     z_buffer->reset();
     static uint32_t text_time = 0;
