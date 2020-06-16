@@ -10,6 +10,8 @@ class PERSPECTIVE {
 
     private:
 
+        int32_t Cz0;
+        int32_t Sz0;
         int32_t Cz; //camera Z
         int32_t Sz; //projection screen Z (between camera and object)
         int32_t Cz2;
@@ -48,10 +50,12 @@ class PERSPECTIVE {
 
     inline __attribute__ ((always_inline)) void update() {
 
-            Cz = camera_position.z/MATRIX_PRECISION; //camera Z
-            Sz = (camera_position.z-screen_distance)/MATRIX_PRECISION; //projection screen Z (between camera and object)
-            Cz2 = Cz/2;
-            Sz2 = Sz/2;
+            Cz0 = camera_position.z;
+            Sz0 = camera_position.z-screen_distance;
+            Cz = Cz0/MATRIX_PRECISION; //camera Z
+            Sz = Sz0/MATRIX_PRECISION; //projection screen Z (between camera and object)
+            Cz2 = Cz0/(MATRIX_PRECISION*16);
+            Sz2 = Sz0/(MATRIX_PRECISION*16);
     }
 
     void reset_camera () {
@@ -63,8 +67,39 @@ class PERSPECTIVE {
         update();
     }
 
-    inline __attribute__ ((always_inline)) bool perspective(int32_t& x, int32_t& y, int32_t& z) {
+
+    inline __attribute__ ((always_inline)) bool perspective(int32_t& x, int32_t& y, int32_t& z)
+    {
+        // if (abs(x) + abs(Sz0-Cz0) < 16384)
+        // {
+        //     return perspective_hp(x, y, z);
+        // }
+        // else if (abs(x) + abs(Sz0-Cz0) < 16384*4)
+        // {
+            return perspective_mp(x, y, z);
+        // }
+        // else
+        // {
+        //     return perspective_lp(x, y, z);
+        // }
+    }
+
+    inline __attribute__ ((always_inline)) bool perspective_hp(int32_t& x, int32_t& y, int32_t& z) {
+        z = _min(z, Cz0-1);
+        if (z < Cz0) {
+            x-=camera_position.x;
+            y-=camera_position.y;
+            x = ( x * ((Sz0 - Cz0)) ) / (z-Cz0) + ((screen_width * 128));
+            y = ( y * ((Sz0 - Cz0)) ) / (z-Cz0) + ((screen_height * 128));
+            return true;
+        }
+        return false;
+    }
+
+    inline __attribute__ ((always_inline)) bool perspective_mp(int32_t& x, int32_t& y, int32_t& z) {
+        
         z/=MATRIX_PRECISION;
+        z = _min(z, Cz-1);
         if (z < Cz) {
             x-=camera_position.x;
             y-=camera_position.y;
@@ -77,6 +112,26 @@ class PERSPECTIVE {
             z*=MATRIX_PRECISION;
             return true;
         }
+        z*=MATRIX_PRECISION;
+        return false;
+    }
+
+    inline __attribute__ ((always_inline)) bool perspective_lp(int32_t& x, int32_t& y, int32_t& z) {
+        z/=MATRIX_PRECISION*16;
+        z = _min(z, Cz2-1);
+        if (z < Cz2) {
+            x-=camera_position.x;
+            y-=camera_position.y;
+            x/=MATRIX_PRECISION*16;//half precision to double each axis of our available coordinate space
+            y/=MATRIX_PRECISION*16;
+            x = ( x * ((Sz2 - Cz2)) ) / (z-Cz2) + ((screen_width * 128)/(MATRIX_PRECISION*16));
+            y = ( y * ((Sz2 - Cz2)) ) / (z-Cz2) + ((screen_height * 128)/(MATRIX_PRECISION*16));
+            x*=MATRIX_PRECISION*16;
+            y*=MATRIX_PRECISION*16;
+            z*=MATRIX_PRECISION*16;
+            return true;
+        }
+        z*=MATRIX_PRECISION*16;
         return false;
     }
 
@@ -139,7 +194,7 @@ class PERSPECTIVE {
 
     //return LED position from X,Y coordinates
     //return NUM_LEDS-1 (our safety "invisible" pixel) if coordinates are off-screen
-    inline __attribute__ ((always_inline)) uint32_t XY(const int& x, const int& y) {
+    inline __attribute__ ((always_inline)) uint32_t XY(int x, int y) {
 
         _X_MAX = _max(_X_MAX, x);
         _X_MIN = _min(_X_MIN, x);
@@ -147,7 +202,8 @@ class PERSPECTIVE {
         _Y_MIN = _min(_Y_MIN, y);
 
         if (x >= 0 && x < screen_width && y >= 0 && y < screen_height) {
-            int32_t location = y*screen_width + x;
+            int32_t location = ((screen_height-1)-y)*screen_width + x;
+
             if (location > screen_width*screen_height || location < 0) {
                 return screen_width*screen_height;
             } else {
