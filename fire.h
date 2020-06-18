@@ -23,12 +23,18 @@ class FIRE2: public LIGHT_SKETCH {
       ~FIRE2 () {}
 
     private:
+
+    #define MAX_NUM_GAS 100
+    uint8_t num_gas = 10;
+
     uint32_t order[FIRE_GRID_WIDTH*FIRE_GRID_HEIGHT];
     uint8_t current_variation = 1;
     uint8_t grid_calcs = 1;
     uint8_t velocity_calcs = 1;
     uint8_t density_calcs = 1;
     uint8_t heat_acceleration = 1;
+    uint16_t fuel_injection = 8000;
+    uint16_t air_injection = 15000;
     bool draw_flame = 0;
     bool draw_fuel = 1;
     bool draw_air = 0;
@@ -151,7 +157,6 @@ class FIRE2: public LIGHT_SKETCH {
       source_cell.air += ci.pressure;
     }
 
-    #define NUM_GAS 10
     struct GAS {
       int32_t x = -1;
       int32_t y = -1;
@@ -161,7 +166,7 @@ class FIRE2: public LIGHT_SKETCH {
       int32_t air = 5;
     };
 
-    GAS gas[NUM_GAS];
+    GAS gas[MAX_NUM_GAS];
 
     struct FLAMETHROWER_CYCLE {
       bool active = false;
@@ -238,11 +243,14 @@ class FIRE2: public LIGHT_SKETCH {
       control_variables.add(draw_fuel,"Draw Fuel", 0);
       control_variables.add(draw_smoke,"Draw Smoke", 0);
       control_variables.add(draw_air,"Draw Air", 0);
+      control_variables.add(fuel_injection,"Amount of Fuel", 0, 65535);
+      control_variables.add(air_injection,"Amount of Air", 0, 65535);
+      control_variables.add(num_gas,"Number of Gas Jets", 0, 100);
       for (int i = 0; i < FIRE_GRID_WIDTH*FIRE_GRID_HEIGHT; i++) {
         order[i] = i;
       }
       
-      for (int i = 0; i < NUM_GAS; i++) {
+      for (int i = 0; i < MAX_NUM_GAS; i++) {
         gas[i].y = -1;
       }
 
@@ -288,12 +296,12 @@ class FIRE2: public LIGHT_SKETCH {
         //display and blackout
 
         LED_show();
-        //LED_black();
-        for (int i = 0; i < NUM_LEDS; i++) {
-          leds[i].r /= 2;
-          leds[i].g /= 2;
-          leds[i].b /= 2;
-        }
+        LED_black();
+        // for (int i = 0; i < NUM_LEDS; i++) {
+        //   leds[i].r /= 2;
+        //   leds[i].g /= 2;
+        //   leds[i].b /= 2;
+        // }
 
         static unsigned long gas_time = millis();
         static uint16_t gas_pos = 0;
@@ -316,21 +324,21 @@ class FIRE2: public LIGHT_SKETCH {
             gas[gas_pos].fuel = 10;
             gas[gas_pos].air = 15;
             gas_pos++;
-            if(gas_pos > NUM_GAS - 1) {
+            if(gas_pos > num_gas - 1) {
               gas_pos = 0;
             }
           }
         
         
           //update roman candle fireballs
-          for (int i = 0; i < NUM_GAS; i++) {
+          for (int i = 0; i < num_gas; i++) {
             int j = 0;
             while (j < 5) {
               if (gas[i].x != -1) {
                 int32_t x = gas[i].x/10000;
                 int32_t y = gas[i].y/10000;
                 //gas[i].x += gas[i].vx;
-                gas[i].x = inoise8(millis()/2,0,i*10000)*MATRIX_WIDTH*(10000/128) - MATRIX_WIDTH*8000 + i*MATRIX_WIDTH*10000/NUM_GAS;
+                gas[i].x = inoise8(millis()/2,0,i*10000)*MATRIX_WIDTH*(10000/128) - MATRIX_WIDTH*8000 + i*MATRIX_WIDTH*10000/num_gas;
                 //gas[i].y = inoise8(0,millis()/2,i*10000)*800 - 90000;
                 gas[i].y = 0;
                 //y = 30;
@@ -346,11 +354,11 @@ class FIRE2: public LIGHT_SKETCH {
                   grid[y][x].vy = 400;
                   if (i%2)
                   {
-                    grid[y][x].fuel = _min(grid[y][x].fuel*CELL_DIVISOR + random(8000), FIRE_GRID_MAX)/CELL_DIVISOR;
+                    grid[y][x].fuel = _min(grid[y][x].fuel*CELL_DIVISOR + random(fuel_injection), FIRE_GRID_MAX)/CELL_DIVISOR;
                   } 
                   else
                   {
-                    grid[y][x].air = _min(grid[y][x].air*CELL_DIVISOR + random(15000), FIRE_GRID_MAX)/CELL_DIVISOR;
+                    grid[y][x].air = _min(grid[y][x].air*CELL_DIVISOR + random(air_injection), FIRE_GRID_MAX)/CELL_DIVISOR;
                   }
                 }
               }
@@ -422,10 +430,7 @@ class FIRE2: public LIGHT_SKETCH {
         //running the calculation multiple times can raise the maximum velocity of effects, but is less smooth/more jumpy
         while ( grid_cnt < grid_calcs ) {
 
-          static MEASURE_TIME d0 = MEASURE_TIME("grid effects: ");
-          d0.start();
           process_grid_effects(grid_cnt);
-          d0.end();
 
           grid_cnt++;
           //CALCULATE VELOCITIES
@@ -438,8 +443,7 @@ class FIRE2: public LIGHT_SKETCH {
             
             //push particles based on velocity
             shuffle_order();
-            static MEASURE_TIME d1 = MEASURE_TIME("calculate grid: ");
-            d1.start();
+            
             pixel_full source_cell;
             pixel_full left_cell_;
             pixel_full right_cell_;
@@ -466,9 +470,6 @@ class FIRE2: public LIGHT_SKETCH {
               cell_c(grid[y-1][x], bottom_cell);
               
             }
-            d1.end();
-
-            measurements.print();
              
              
   
@@ -506,7 +507,7 @@ class FIRE2: public LIGHT_SKETCH {
   }
 
   void shuffle_order() {
-    for (int j = 0; j < FIRE_GRID_WIDTH*FIRE_GRID_HEIGHT; j++) {
+    for (int j = 0; j < FIRE_GRID_WIDTH*FIRE_GRID_HEIGHT/8; j++) {
       uint32_t rand = random(FIRE_GRID_WIDTH*FIRE_GRID_HEIGHT);
       uint32_t temp = order[j];
       order[j] = order[rand];
