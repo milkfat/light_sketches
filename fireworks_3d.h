@@ -16,6 +16,9 @@ class FIREWORKS_3D: public LIGHT_SKETCH
     uint16_t particle_length = 0;
     uint16_t particle_life = 4*256;
     bool full_blackout = 0;
+    uint8_t fade_rate = 240;
+    int8_t wind_speed = 6;
+    int8_t gravity = 6;
 
     uint16_t next_firework_frame = 0;
 
@@ -67,7 +70,7 @@ class FIREWORKS_3D: public LIGHT_SKETCH
         uint8_t attributes = 0; //index of shared attributes (shared by other particles) such as hue, saturation, value, mass, radius... etc.
         uint8_t function = NULL_PARTICLE;   //index of the functions (physics and draw) that will update this particle
         int16_t age = 256*8;    //age of the particle
-        uint8_t rand = 0;
+        uint16_t rand = 0;
         uint8_t bri = 0;
         uint16_t tick = 0;
         uint8_t off_screen = false;
@@ -346,7 +349,7 @@ class FIREWORKS_3D: public LIGHT_SKETCH
       if (pa->r*pa->m == 0) return;
       int32_t acceleration = velocity_squared/(pa->r*pa->m);
       //randomize particle mass a bit
-      acceleration += (p.rand*acceleration)/2560;
+      acceleration += (p.rand*acceleration)/(2560*256);
       //acceleration /= 6400;
 
       //vector magnitude
@@ -379,10 +382,10 @@ class FIREWORKS_3D: public LIGHT_SKETCH
       }
           
       //apply gravity
-      p.vy -= 6;
-      //apply wind
-      p.vx -= 3;
-      p.vz -= 3;
+      p.vy -= gravity;
+      // //apply wind
+      // p.vx -= 20;
+      // p.vz -= 20;
 
     } //move_particle()
 
@@ -427,7 +430,7 @@ class FIREWORKS_3D: public LIGHT_SKETCH
           uint16_t age = cp.age/8;
           //darken (v = HSV value)
           int16_t v_temp = 255;
-          uint8_t r = fmix32(cp.rand);
+          uint8_t r = cp.rand/8;
           r=0;
           r = r/4 + (_max(pa->r-35,0))+32;
           if (age > r) 
@@ -454,13 +457,12 @@ class FIREWORKS_3D: public LIGHT_SKETCH
           int16_t age = cp.age;
           uint8_t v = 0;
           uint8_t s = 255;
-          uint16_t r = fmix32(cp.rand);
-          r >>= 6;
+          uint16_t r = cp.rand/128;
           if (age > 0) 
           {
             v = _min(_max(age/2,0),255);
           }
-          if (age > particle_life-2*256+r) 
+          if (age > particle_life+512+r) 
           {
             v = _min(_max(particle_life+r-age, 0),512)/2;
             if (v == 0) 
@@ -472,7 +474,8 @@ class FIREWORKS_3D: public LIGHT_SKETCH
           {
             VECTOR3 p(cp.x*2,cp.y*2,cp.z*2);
             int ret = draw_particle(p,pa->h,s,(v*cp.bri)/255);
-            //mark particles as off-screen if they are moving away from the screen
+            //optimization: mark particles as off-screen if they are moving away from the screen
+            //TODO: make this work at any camera angle
             if 
             (
               (p.x < 0 && cp.vx < 0)
@@ -493,7 +496,7 @@ class FIREWORKS_3D: public LIGHT_SKETCH
 
           //PARTICLE_ATTRIBUTES * pa = &particle_attributes[cp->attributes];
           int16_t age = cp.age;
-          uint16_t r = fmix32(cp.rand)%512;
+          uint16_t r = cp.rand/128;
           
           if (r < 256) 
           {
@@ -606,9 +609,14 @@ class FIREWORKS_3D: public LIGHT_SKETCH
           if (particles[i].function == COLOR_CHANGE_PARTICLE && particles[i].tick < particle_length) 
           {
             particles[i].tick++;
-            continue;
+          } 
+          else
+          {
+            (this->*particle_physics_functions[particles[i].function])(particles[i]);
           }
-          (this->*particle_physics_functions[particles[i].function])(particles[i]);
+          //apply wind
+          particles[i].x -= wind_speed;
+          particles[i].z -= wind_speed;
         }
       }
     }
@@ -628,7 +636,7 @@ class FIREWORKS_3D: public LIGHT_SKETCH
         {
           if (particles[i].function == COLOR_CHANGE_PARTICLE && particles[i].tick) 
           {
-            particles[i].bri = 255/particles[i].tick;
+            particles[i].bri = gamma8_decode(255/particles[i].tick);
           } 
           else 
           {
@@ -637,6 +645,7 @@ class FIREWORKS_3D: public LIGHT_SKETCH
           (this->*particle_draw_functions[particles[i].function])(particles[i]);
         }
 
+        //calculate "hair" particles
         if (particles[i].function == COLOR_CHANGE_PARTICLE && particles[i].tick) 
         {
           PARTICLE p = particles[i];
@@ -699,7 +708,8 @@ class FIREWORKS_3D: public LIGHT_SKETCH
         particles[i].vx = random(-255, 256);
         particles[i].vy = -255;
         particles[i].vz = random(-255, 256);
-        particles[i].rand = random(256);
+        particles[i].rand = bellCurve16(random(UINT16_MAX));
+        
       }
 
       led_screen.camera_position.z = 1024*256;
@@ -710,6 +720,10 @@ class FIREWORKS_3D: public LIGHT_SKETCH
       control_variables.add(rotation_speed, "Camera Rotation:", -100, 100);
       control_variables.add(particle_length, "Particle Trail Length:", 0, 500);
       control_variables.add(particle_life, "Particle Life:", 2*256, 20*256);
+      control_variables.add(fade_rate, "Fade Rate:", 0, 255);
+      control_variables.add(full_blackout, "No Fade:");
+      control_variables.add(wind_speed, "Wind Speed:", -128, 128);
+      control_variables.add(gravity, "Gravity:", -128, 128);
 
       reset();
     }
@@ -761,7 +775,7 @@ class FIREWORKS_3D: public LIGHT_SKETCH
       }
 
 
-    handle_fireworks();
+      handle_fireworks();
 
         //update the display
         if (!do_not_update) 
@@ -786,9 +800,9 @@ class FIREWORKS_3D: public LIGHT_SKETCH
               }
               else
               {
-                leds[i].r *= .95f;
-                leds[i].g *= .95f;
-                leds[i].b *= .95f;
+                leds[i].r = (leds[i].r*fade_rate)/255;
+                leds[i].g = (leds[i].g*fade_rate)/255;
+                leds[i].b = (leds[i].b*fade_rate)/255;
               }
             }
           }
