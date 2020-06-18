@@ -125,9 +125,8 @@ static inline __attribute__ ((always_inline)) void reset_z_buffer(int16_t z_buff
 static inline __attribute__ ((always_inline)) void LED_black() {
   
   //clear the string
-  for (int y = 0; y < MATRIX_HEIGHT; y++) {
-    memset8(&leds[y*MATRIX_WIDTH].r, 0, MATRIX_WIDTH*3);
-  }
+  memset(leds, 0, (MATRIX_WIDTH*MATRIX_HEIGHT)*3);
+  
 
   if(z_buffer != nullptr) {
     z_buffer->reset();
