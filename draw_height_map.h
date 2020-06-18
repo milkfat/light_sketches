@@ -15,12 +15,13 @@ static void height_map_to_LED(const int& threshold = -128*256, const int& light_
   
   for (uint16_t y = 0; y < MATRIX_HEIGHT; y++) {
     for (uint16_t x = 0; x < MATRIX_WIDTH; x++) {
-      uint32_t led = XY(x,y);
       //height map coordinates
       //our height map is 1 pixel wider in each dimension than the screen
-      int x2 = x+1;
-      int y2 = y+1;
-      if ((*height_map_ptr)[y2][x2] >= threshold) {
+
+      if ((*height_map_ptr)[y+1][x+1] >= threshold) {
+        int x2 = x+1;
+        int y2 = y+1;
+        uint32_t led = XY(x,y);
         //attempt to find the approximate surface normal
 
         
@@ -82,11 +83,12 @@ static void height_map_to_LED(const int& threshold = -128*256, const int& light_
 
 static inline __attribute__ ((always_inline)) void reset_heightmap() {
 
-  for (int y = 0; y < MATRIX_HEIGHT; y++) {
-    for (int x = 0; x < MATRIX_WIDTH; x++) {
-      (*height_map_ptr)[y][x] = 0;
-    }
-  }
+  // for (int y = 0; y < MATRIX_HEIGHT; y++) {
+  //   for (int x = 0; x < MATRIX_WIDTH; x++) {
+  //     (*height_map_ptr)[y][x] = 0;
+  //   }
+  // }
+  memset(height_map_ptr, 0, HEIGHTMAP_WIDTH*HEIGHTMAP_HEIGHT*sizeof((*height_map_ptr)[0][0]));
 
 }
 
