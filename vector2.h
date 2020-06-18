@@ -73,6 +73,13 @@ struct VECTOR2_CLASS {
     return *this;
   }
 
+  //overload *=
+  inline VECTOR2_CLASS<T>& operator*= (const int& rhs) {
+    this->x *= rhs;
+    this->y *= rhs;
+    return *this;
+  }
+
   inline T& operator[] (const int& index)
   {
       return index == 0 ? x : y;
