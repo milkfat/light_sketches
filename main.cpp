@@ -159,7 +159,7 @@ uint32_t debug_count2 = 0;
 
 
 SDL_bool done = SDL_FALSE;
-#include "main_helpers.cpp"
+#include "main_helpers.h"
 
 void log_camera_coordinates() {
 	std::cout << "camera: " << (int32_t)led_screen.camera_position.x << " " << (int32_t)led_screen.camera_position.y << " " << (int32_t)led_screen.camera_position.z << "\n";
