@@ -430,7 +430,7 @@ class FIREWORKS_3D: public LIGHT_SKETCH
           uint16_t age = cp.age/8;
           //darken (v = HSV value)
           int16_t v_temp = 255;
-          uint8_t r = cp.rand/8;
+          uint8_t r = cp.rand;
           r=0;
           r = r/4 + (_max(pa->r-35,0))+32;
           if (age > r) 
