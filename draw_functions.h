@@ -390,14 +390,19 @@ void fill_shape(const int& z = 0, CRGB rgb = CRGB(255,0,0)) {
   uint16_t high_x = _min(x_buffer_max,MATRIX_WIDTH-1);
   uint16_t high_y = _min(y_buffer_max,MATRIX_HEIGHT-1);
   color_scale(rgb, z_brightness(led_screen, z));
-      
+
   for (uint16_t y = low_y; y <= high_y; y++) {
       //optimized having to call XY() for every pixel
       //however this will fail on LED layouts where pixels are not stored in sequential bytes
       //TODO: fix this to work on any LED layout
-      CRGB * led = &led_screen.screen_buffer[XY(low_x,y)];
-      for (uint16_t x = low_x; x <= high_x; x++) {
-          if (x >= y_buffer[y][0] && x <= y_buffer[y][1] && y >= x_buffer[x][0] && y <= x_buffer[x][1]) {
+
+      uint16_t this_low_x = _min(_max(low_x,y_buffer[y][0]), MATRIX_WIDTH-1);
+      uint16_t this_high_x = _max(_min(high_x,y_buffer[y][1]), 0);
+
+      CRGB * led = &led_screen.screen_buffer[XY(this_low_x,y)];
+      
+      for (uint16_t x = this_low_x; x <= this_high_x; x++) {
+          if (y >= x_buffer[x][0] && y <= x_buffer[x][1]) {
               *led = rgb;
 
               //drawXYZ(led_screen, x, y, z, rgb);
@@ -405,6 +410,7 @@ void fill_shape(const int& z = 0, CRGB rgb = CRGB(255,0,0)) {
           led++;
       }
   }
+  
 }
 
 
