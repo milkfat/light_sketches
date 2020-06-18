@@ -1,6 +1,8 @@
 #ifndef LIGHTS_ARDUINO_FUNCTIONS_H
 #define LIGHTS_ARDUINO_FUNCTIONS_H
 
+#include "math_helpers.h"
+
 //getLocalTime function from ESP32 ... and Windows?
 void getLocalTime(struct tm * &timeinfo) {
       time_t rawtime;
@@ -29,20 +31,30 @@ uint64_t micros() {
 auto& ps_malloc = malloc;
 
 int random(int a, int b) {
-  int d = b - a;
-  if (d == 0) {
-      return a;
-  } else {
-    return (rand() % d) + a;
-  }
+  static uint32_t mem = rand();
+  return (a==b) ? a : (fmix32(mem++) % (b - a)) + a;
 }
 
 int random(int a) {
-  if (a == 0) {
-    return 0;
-  }
-  return rand() % a;
+  static uint32_t mem = rand();
+  return (a==0) ? 0 : fmix32(mem++) % a;
 }
+
+// int random(int a, int b) {
+//   int d = b - a;
+//   if (d == 0) {
+//       return a;
+//   } else {
+//     return (rand() % d) + a;
+//   }
+// }
+
+// int random(int a) {
+//   if (a == 0) {
+//     return 0;
+//   }
+//   return rand() % a;
+// }
 
 auto sq = [](auto num) {
     return num*num;
