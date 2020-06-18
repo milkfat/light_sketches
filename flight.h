@@ -12,6 +12,7 @@ class FLIGHT: public LIGHT_SKETCH {
     int current_effect = 0;
     Z_BUF _z_buffer;
     uint32_t default_size = 15*256;
+    uint32_t speed = 255;
 
   public:
     void reset() {
@@ -25,6 +26,7 @@ class FLIGHT: public LIGHT_SKETCH {
         control_variables.add(led_screen.camera_position.z, "Camera Z:", 0, 2048*256);
         control_variables.add(led_screen.screen_distance, "Screen Z:", 0, 2048*256);
         control_variables.add(default_size, "cube length", 1, 150*256);
+        control_variables.add(speed, "Speed", 0, 1024);
     }
 
     void next_effect() {
@@ -51,13 +53,13 @@ class FLIGHT: public LIGHT_SKETCH {
         static uint16_t r = 0;
         if(!button2_down) 
         {
-        r+=48/8;
+        r+=(48*speed)/256;
         }
         VECTOR3 rv = VECTOR3(0,0,r);
         static int z_pos = 0;
         if(!button2_down) 
         {
-        z_pos+=1024/8;
+        z_pos+=(1024*speed)/256;
         }
         static uint8_t base_hue = 0;
         if (z_pos > 100*256) {
@@ -70,8 +72,8 @@ class FLIGHT: public LIGHT_SKETCH {
         static uint16_t beta = 0;
         if(!button2_down) 
         {
-        alpha+=170/8;
-        beta+=110/8;
+        alpha+=(170*speed)/256;
+        beta+=(110*speed)/256;
         }
         led_screen.rotation_alpha = 0 + sin16(alpha)/6000.f;
         led_screen.rotation_beta = 90 + cos16(beta)/6000.f;
