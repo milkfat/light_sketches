@@ -79,6 +79,31 @@ struct Y_BUF {
 
 class Y_BUF2 {
   Y_BUF buf[MATRIX_HEIGHT][2];
+/*
+public:
+  void reset() {
+    static MEASURE_TIME m0 = MEASURE_TIME("Y_BUF reset time: ");
+    m0.start();
+      y_buffer_min = MATRIX_HEIGHT-1;
+      y_buffer_max = 0;
+      for (int y = 0; y < MATRIX_HEIGHT; y+=2) {
+        memcpy(&buf[y], &buf_zero[0], sizeof(Y_BUF)*4);
+      }
+
+    m0.end();
+    measurements.print();
+  }
+
+  Y_BUF2 () {
+    buf_zero[0].position = VECTOR3(INT32_MAX,0,0);
+    buf_zero[1].position = VECTOR3(INT32_MIN,0,0);
+    buf_zero[2].position = VECTOR3(INT32_MAX,0,0);
+    buf_zero[3].position = VECTOR3(INT32_MIN,0,0);
+    reset();
+  }
+  */
+
+
 
  public:
   void reset() {
@@ -88,6 +113,7 @@ class Y_BUF2 {
         buf[y][0].position = VECTOR3(INT32_MAX,0,0);
         buf[y][1].position = VECTOR3(INT32_MIN,0,0);
       }
+
   }
 
   Y_BUF2 () {
@@ -107,11 +133,25 @@ class Z_BUF {
 
  public:
   void reset() {
-    for (int x = 0; x < MATRIX_WIDTH; x++) {
-      for (int y = 0; y < MATRIX_HEIGHT; y++) {
-        buf[x][y] = {INT16_MIN};
-      }
-    }
+
+    //method 3: fastest
+    //memset
+    //optimization sets all values to -32640 (rather than -32768)
+    memset((uint8_t*)buf[0], -128, (MATRIX_WIDTH*MATRIX_HEIGHT)*sizeof(int16_t));
+
+    //method 1: slow
+    //reset all values in loop
+
+    // for (int x = 0; x < MATRIX_WIDTH; x++) {
+    //   for (int y = 0; y < MATRIX_HEIGHT; y++) {
+    //     buf[x][y] = INT16_MIN;
+    //  }
+    // }
+
+    //method 2: a bit faster
+    //use std::fill
+    //std::fill(&buf[0][0], &buf[MATRIX_WIDTH-1][MATRIX_HEIGHT-1], -32768);
+
   }
 
   Z_BUF () {
