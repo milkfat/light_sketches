@@ -6,13 +6,15 @@ class SNOWFLAKES: public LIGHT_SKETCH {
   public:
     SNOWFLAKES () {setup();}
     ~SNOWFLAKES () {}
-#define MAX_NUM_SNOWFLAKES 50
+#define MAX_NUM_SNOWFLAKES 255
 
 
   private:
-    uint8_t num_snowflakes = 20;
+    uint8_t num_snowflakes = 32;
 
     int current_effect = 0;
+
+    uint32_t frame_time = 0;
 
     struct SNOWFLAKE {
         uint8_t hue;
@@ -57,7 +59,6 @@ class SNOWFLAKES: public LIGHT_SKETCH {
                 p.x = random(MATRIX_WIDTH*256);
                 p.y = random(MATRIX_HEIGHT*256);
                 led_screen.reverse_perspective(p);
-                reverse_scale_z(p);
                 flake->vx = random(-128,128);
             } else { //new snowflakes will be created slightly off the edge of the screen
                 int r = random(MATRIX_HEIGHT+MATRIX_WIDTH);
@@ -66,7 +67,6 @@ class SNOWFLAKES: public LIGHT_SKETCH {
                     p.x = random(MATRIX_WIDTH*256);
                     p.y = (MATRIX_HEIGHT)*256;
                     led_screen.reverse_perspective(p);
-                    reverse_scale_z(p);
                     p.y += offset;
                     flake->vx = random(-96,96);
                 } else if (r >= MATRIX_HEIGHT/2) {
@@ -77,7 +77,6 @@ class SNOWFLAKES: public LIGHT_SKETCH {
                     r = MATRIX_HEIGHT-r;
                     p.y = r*256;
                     led_screen.reverse_perspective(p);
-                    reverse_scale_z(p);
                     p.x += offset;
                     flake->vx = random(64,8);
                     flake->vx *= -1;
@@ -89,7 +88,6 @@ class SNOWFLAKES: public LIGHT_SKETCH {
                     r = MATRIX_HEIGHT-r;
                     p.y = r*256;
                     led_screen.reverse_perspective(p);
-                    reverse_scale_z(p);
                     p.x -= offset;
                     flake->vx = random(64,8);
                 }
@@ -140,8 +138,16 @@ class SNOWFLAKES: public LIGHT_SKETCH {
     }
 
     void setup() {
-        led_screen.light_falloff = 10;
         z_buffer = &_z_buffer;
+        reset();
+        control_variables.add(num_snowflakes, "Number of flakes", 0, 255);
+        control_variables.add(led_screen.camera_position.z, "Camera Z", 0, 1024*256);
+        control_variables.add(led_screen.screen_distance, "Screen Z", 0, 1024*256);
+    }
+
+    void reset() {
+        frame_time = millis();
+        led_screen.light_falloff = 10;
         led_screen.rotation_alpha = 0;
         led_screen.rotation_beta = 90;
         led_screen.rotation_gamma = 0;
@@ -149,75 +155,63 @@ class SNOWFLAKES: public LIGHT_SKETCH {
         for (int i = 0; i < num_snowflakes; i++) {
             flake_reset(&snowflakes[i], true);
         }
-        control_variables.add(num_snowflakes, "Number of flakes", 0, 50);
-        control_variables.add(led_screen.camera_position.z, "Camera Z", 0, 256*256);
-        control_variables.add(led_screen.screen_distance, "Screen Z", 0, 256*256);
-
-    }
-
-    void reset() {
-      setup();
-      for (int i = 0; i < NUM_LEDS; i++)
-      {
-        leds[i] = CRGB::Black;
-      }
+        led_screen.camera_position.z = 570*256;
+        led_screen.screen_distance = 396*256;
+        LED_black();
 
     }
 
 
     void loop() {
-
         snow_noise_position+=2;
         
         //update the screen
         LED_show();
-        if (z_buffer != nullptr) {
-            z_buffer->reset();
-        }
 
-        //reset our led buffer
-        for (int i = 0; i < NUM_LEDS; i++)
-        {
-            leds[i] = CRGB::Black;
-        }
+        LED_black();
 
         //reset the snowflake's "drawn" flag
         for (int i = 0; i < num_snowflakes; i++) {
             snowflakes[i].flag = 1;
         }
 
-        //process each snowflake
+        //snowflake physics
+        while (millis() > frame_time) {
+            for (int i = 0; i < num_snowflakes; i++) {
+                flake_physics(&snowflakes[i]);
+            }
+            frame_time+=16;
+        }
+
+        //draw snowflakes
         for (int f = 0; f < num_snowflakes; f++) {
 
             //we want to draw our snowflakes from back to front
             //so we find the most distant snowflake that hasn't yet been drawn
             int max_z = 1000000;
             int max_flake = 0;
-            for (int j = 0; j < num_snowflakes; j++) {
-                if (snowflakes[j].flag) {
-                    if (snowflakes[j].z < max_z) {
-                        max_z = snowflakes[j].z;
-                        max_flake = j;
+            for (int i = 0; i < num_snowflakes; i++) {
+                if (snowflakes[i].flag) {
+                    if (snowflakes[i].z < max_z) {
+                        max_z = snowflakes[i].z;
+                        max_flake = i;
                     }
                 }
             }
             SNOWFLAKE * flake = &snowflakes[max_flake];
             flake->flag=0;
 
-            flake_physics(flake);
-
-
-            //alter the brightness based on z-distance from the camera
-            int16_t v = ((flake->z/256+1500)*224)/1500+32;
-            v = _min(_max(v,0), 255);
-            CRGB rgb = CHSV(flake->hue,flake->sat,v);
-            if (current_effect % 2) {
-                rgb = CHSV(0,0,v);
+            CRGB rgb;
+            
+            if (current_effect%2)
+            {
+                rgb = CHSV(flake->hue,0,255);
             }
-            int b = 64+(abs(flake->norm.z)*3)/4;
-            rgb.r = (b*rgb.r)/255;
-            rgb.g = (b*rgb.g)/255;
-            rgb.b = (b*rgb.b)/255;
+            else
+            {
+                rgb = CHSV(flake->hue,flake->sat,255);
+            }
+
             if (current_effect/2 % 2) {
                 draw_simple_flake(flake, rgb);
             } else {
@@ -226,7 +220,7 @@ class SNOWFLAKES: public LIGHT_SKETCH {
 
             if (flake->age) {
                 flake->age--;
-            } else if (!flake->on_screen) {
+            } else if (flake->y < 0 && !flake->on_screen) {
                 flake_reset(flake, false);
             }
 
@@ -349,8 +343,6 @@ class SNOWFLAKES: public LIGHT_SKETCH {
         
         //rotate according to our global matrix
         led_screen.matrix.rotate(p);
-        //adjustable scale for the z-axis          
-        scale_z(p.z);
         //add 3D perspective
         led_screen.perspective(p);
 
@@ -451,9 +443,6 @@ class SNOWFLAKES: public LIGHT_SKETCH {
                 //rotate according to our global matrix
                 led_screen.matrix.rotate(p0);
                 led_screen.matrix.rotate(p1);
-                //adjustable scale for the z-axis
-                scale_z(p0.z);
-                scale_z(p1.z);
                 //add 3D perspective
                 led_screen.perspective(p0);
                 led_screen.perspective(p1);
