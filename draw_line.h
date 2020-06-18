@@ -378,6 +378,18 @@ static inline __attribute__ ((always_inline)) void draw_line_fine(PERSPECTIVE& s
   draw_line_fine_base(screen_object, a, b, rgb, val, val2, trim, ignore_z, wide_fill,additive);
 }
 
+static inline __attribute__ ((always_inline)) void draw_line_fine(PERSPECTIVE& screen_object, const VECTOR2& ai, const VECTOR2& bi, CRGB& rgb, const int& z_depth = -10000, const uint8_t& val = 255, const uint8_t& val2 = 255, const bool& trim = false, const bool& ignore_z = true, const bool& wide_fill = true, const bool additive = false) {
+  VECTOR3 a;
+  VECTOR3 b;
+  a.x = ai.x;
+  a.y = ai.y;
+  a.z = 0;
+  b.x = bi.x;
+  b.y = bi.y;
+  b.z = 0;
+  draw_line_fine_base(screen_object, a, b, rgb, val, val2, trim, ignore_z, wide_fill,additive);
+}
+
 static void draw_line_ybuffer(const int32_t& x1i, const int32_t& y1i, const int32_t& x2i, const int32_t& y2i) {
   int32_t x1 = (x1i+128)/256;
   int32_t y1 = (y1i+128)/256;
