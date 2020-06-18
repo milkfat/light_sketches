@@ -141,12 +141,6 @@ class METABALLS: public LIGHT_SKETCH {
           
         }
 
-        //reset our height map
-        for (int x = 0; x < METABALL_HEIGHTMAP_WIDTH; x++) {
-          for (int y = 0; y < METABALL_HEIGHTMAP_HEIGHT; y++) {
-            height_map[y][x] = 0;
-          }
-        }
         
         //calculate ball positions/collisions
         for (int i = 0; i < num_balls; i++) {
