@@ -53,6 +53,8 @@ class TUNNEL: public LIGHT_SKETCH {
         y_buffer2 = &_y_buffer2;
         reset();
         led_screen.screen_distance = 225*256;
+        control_variables.add(led_screen.camera_position.z, "Camera Z", 0, 256*256);
+        control_variables.add(led_screen.screen_distance, "Screen Z", 0, 256*256*8);
         
     }
 
