@@ -38,21 +38,23 @@ TO DO:
 // #define MATRIX_WIDTH 360
 // #define MATRIX_HEIGHT 250
 
-//#define NATIVE_RES_WINDOW
+#define NATIVE_RES_WINDOW
 
-#define MATRIX_WIDTH 32
-#define MATRIX_HEIGHT 128
-#define SCREEN_WIDTH MATRIX_WIDTH
-#define SCREEN_HEIGHT MATRIX_HEIGHT
 
 #ifdef NATIVE_RES_WINDOW
+#define MATRIX_WIDTH 400
+#define MATRIX_HEIGHT 800
 #define WINDOW_WIDTH MATRIX_WIDTH
 #define WINDOW_HEIGHT MATRIX_HEIGHT
 #else
+#define MATRIX_WIDTH 128
+#define MATRIX_HEIGHT 128
 #define WINDOW_WIDTH ((MATRIX_WIDTH)*5)
 #define WINDOW_HEIGHT ((MATRIX_HEIGHT)*5)
 #endif
      
+#define SCREEN_WIDTH MATRIX_WIDTH
+#define SCREEN_HEIGHT MATRIX_HEIGHT
 //misc libraries
 #include <iostream>
 #include <string>
@@ -168,13 +170,10 @@ void log_camera_coordinates() {
 void update_matrix() {
 
     uint32_t start_time = micros();
-
-	//draw stuff
-	SDL_Event event;
-  
-
     uint32_t debug_before = micros();
 
+	//draw stuff
+  
 	//tree_thing();
 #ifdef NATIVE_RES_WINDOW
 	uint32_t * pixel = (uint32_t*)screen->pixels;
@@ -209,16 +208,17 @@ void update_matrix() {
 #endif
 
 
-	debug_micros0 += micros() - debug_before;
-	debug_count0++;
 
 
 	SDL_UpdateWindowSurface(window);
 
+	SDL_Event event;
 	poll_inputs(event);
 
 
 	
+	debug_count0++;
+	debug_micros0 += micros() - debug_before;
 }
 
 
@@ -266,6 +266,10 @@ int main(int argc, char **argv){
 	// 	std::cout << " = ";
 	// 	std::cout << (float)num2;
 	// 	std::cout << "\n";
+	// }
+
+	// for (uint i = 0; i < 4000; i++) {
+	// 	std::cout << "MSB: " << i << " " << msb(i) << "\n";
 	// }
 
    https_server.start();
@@ -353,7 +357,7 @@ int main(int argc, char **argv){
 					debug_micros2=0;
 					//std::cout << (debug_micros1_avg/(debug_micros0_avg+1.f)) << " " << debug_micros1_avg << "` " << debug_micros0_avg << "\n";
 					//std::cout << "avg iterations: " << (iteration_cnt/iteration_calls) << "\n";
-					std::cout << "Draw time: " << debug_micros0_avg << " Sketch time: " << debug_micros1_avg << " Text time: " << debug_micros2_avg << " FPS: " << fps << "\n";
+					std::cout << "Draw time: " << debug_micros0_avg << " Sketch time: " << (debug_micros1_avg-debug_micros0_avg) << " Text time: " << debug_micros2_avg << " FPS: " << fps << "\n";
 					fps = 0;
 					//std::cout << "avg iterations: " << (iteration_cnt/iteration_calls) << "\n";
 					max_iterations = 0;
