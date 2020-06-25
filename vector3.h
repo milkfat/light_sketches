@@ -95,6 +95,14 @@ struct VECTOR3_CLASS {
     return *this;
   }
 
+  //conversion from other types
+  template <class U>
+  inline VECTOR3_CLASS<T>(const VECTOR3_CLASS<U>& n) {
+      x = n.x;
+      y = n.y;
+      z = n.z;
+  }
+
   inline T& operator[] (const int& index)
   {
       return index == 0 ? x : index == 1 ? y : z;
@@ -150,7 +158,7 @@ struct VECTOR3_CLASS {
 
 
 typedef VECTOR3_CLASS<int32_t> VECTOR3;
-typedef VECTOR3_CLASS<int32_t> VECTOR3_8;
+typedef VECTOR3_CLASS<uint8_t> VECTOR3_8;
 typedef VECTOR3_CLASS<int8_t> VECTOR3_8s;
 
 
