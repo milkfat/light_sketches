@@ -33,8 +33,6 @@ class GROWCIRCLE: public LIGHT_SKETCH {
 #define SPARKLE_AMOUNT 5
 #define NUM_CIRCLES_GROWCIRCLE 1
     CIRCLE_THING circles[NUM_CIRCLES_GROWCIRCLE];
-    unsigned long time0 = millis();
-    unsigned long time1 = millis();
     uint8_t next_circle = 0;
     uint16_t next_order = 0;
 
@@ -44,7 +42,6 @@ class GROWCIRCLE: public LIGHT_SKETCH {
     uint8_t flasher_zone = 50;
     uint16_t sparkle[SPARKLE_AMOUNT] = {0};
     uint8_t fps = 0;
-    unsigned long time_fps = millis() + 1000;
 
     uint8_t hues[NUM_LEDS]; //current hue of this LED
     uint8_t sats[NUM_LEDS]; //current saturation of this LED
@@ -113,7 +110,8 @@ class GROWCIRCLE: public LIGHT_SKETCH {
           circles[c].level_max = circles[c].next_level_max;
           circles[c].next_level_min = random(16, MAX_LIGHT + 1);
           circles[c].next_level_max = circles[c].next_level_min + 64;
-          while (abs(circles[c].current_hue - circles[c].next_hue) < 48) {
+          int cnt = 10;
+          while (abs(circles[c].current_hue - circles[c].next_hue) < 48 && cnt--) {
             circles[c].next_hue = random(0, 256);
           }
           uint8_t r = random(0, 4);
@@ -128,7 +126,7 @@ class GROWCIRCLE: public LIGHT_SKETCH {
           circles[c].stp = 0;
           circles[c].current_width = 0;
           //figure out the distance of each pixel from the starting point
-          for (uint8_t x2 = 0; x2 < MATRIX_WIDTH; x2++) {
+          for (int x2 = 0; x2 < MATRIX_WIDTH; x2++) {
             for (int y2 = 0; y2 < MATRIX_HEIGHT; y2++) {
               circles[c].dists[XY(x2, y2)] = sqrt(sq((x2 - x1) * 1L) + sq((y2 - y1) * 1L));
             }
@@ -146,13 +144,13 @@ class GROWCIRCLE: public LIGHT_SKETCH {
         }
 
         uint8_t processed_cnt = 0;
-
-        while (processed_cnt < NUM_CIRCLES_GROWCIRCLE) {
+        int cnt = 10;
+        while (processed_cnt < NUM_CIRCLES_GROWCIRCLE && cnt--) {
           processed_cnt++;
-          uint8_t highest_order = -1;
-          int c = -1;
+          int16_t highest_order = -1;
+          int16_t c = -1;
           for (uint8_t i = 0; i < NUM_CIRCLES_GROWCIRCLE; i++) {
-            if (circles[i].done == 0 && !circles[i].processed && circles[i].order < highest_order) {
+            if (circles[i].done == 0 && !circles[i].processed && circles[i].order > highest_order) {
               highest_order = circles[i].order;
               c = i;
             }
