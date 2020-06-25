@@ -348,4 +348,15 @@ static inline __attribute__((always_inline)) void iterate(VECTOR3& a, const VECT
 
 }
 
+uint msb(uint n) {
+  if (!n) return 0;
+  if (n==1) return 1;
+  uint out = 1;
+  while (n) {
+    n = n>>1;
+    out = out<<1;
+  }
+  return out;
+}
+
 #endif
