@@ -315,125 +315,51 @@
 
 
 //draw a triangle and calculate x,y,z as well as the ratio of a-b-c for each pixel
-    bool draw_triangle_fine(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& norm_a, VECTOR3& norm_b, VECTOR3& norm_c, const CRGB& rgb = CRGB(255,255,255)) {
-      if (!y_buffer2) return 0;
+    bool draw_triangle_fine(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& norm_a, VECTOR3& norm_b, VECTOR3& norm_c, const CRGB& rgb_in = CRGB(255,255,255)) {
       bool on_screen = false;
+      bool orientation = ((float)(b.y-a.y))*(c.x-b.x) - ((float)(c.y-b.y))*(b.x-a.x) < 0;
 
-      int orientation = ((b.y-a.y))*((c.x-b.x)) - ((c.y-b.y))*((b.x-a.x));
-      
-      if ( orientation < 0 ) {
-        y_buffer2->reset();
+        if ( orientation ) {
 
-        static const VECTOR3 a_val(255,0,0);
-        static const VECTOR3 b_val(0,255,0);
-        static const VECTOR3 c_val(0,0,255);
+            reset_y_buffer();
+            reset_x_buffer();
+            VECTOR3 norm = norm_a+norm_b+norm_c;
+            norm/=3;
 
-        draw_line_ybuffer_fine(a, a_val, b, b_val);
-        draw_line_ybuffer_fine(b, b_val, c, c_val);
-        draw_line_ybuffer_fine(c, c_val, a, a_val);
+            // draw_line_ybuffer(a, b);
+            // draw_line_ybuffer(b, c);
+            // draw_line_ybuffer(c, d);
+            // draw_line_ybuffer(d, a);
 
-        // CRGB rgb(a_norm.x,a_norm.y,a_norm.z);
+            int32_t z_depth = a.z+norm.z; 
 
-        // draw_line_fine(led_screen, a, b, rgb, a.z, 255, 255, true);
-        // draw_line_fine(led_screen, b, c, rgb, a.z, 255, 255, true);
-        // draw_line_fine(led_screen, c, a, rgb, a.z, 255, 255, true);
-        
-        //fill between the pixels of our lines
-        for (int y = _max(y_buffer_min,0); y <= _min(y_buffer_max,MATRIX_HEIGHT-1); y++) {
-            int32_t dist_x = (*y_buffer2)[y][1].position.x/256 - (*y_buffer2)[y][0].position.x/256;
+            rotate_x(norm,16);
+            rotate_y(norm,10);
 
-          if (dist_x >= 0) {
+            //shading according to surface normal
+            uint8_t bri = _min(_max((norm.z*7)/8,0)+32,255);
 
+            CRGB rgb = rgb_in;
+            color_scale(rgb, bri);
+            reset_y_buffer();
+            reset_x_buffer();
+            a.z = z_depth-16;
+            b.z = z_depth-16;
+            c.z = z_depth-16;
+            draw_line_fine(led_screen, a, b, rgb, z_depth-16, 255, 255, true, false, true);
+            draw_line_fine(led_screen, b, c, rgb, z_depth-16, 255, 255, true, false, true);
+            draw_line_fine(led_screen, c, a, rgb, z_depth-16, 255, 255, true, false, true);
+            if (!on_screen) {
+                if ((a.x >= 0 && a.x < MATRIX_WIDTH*256 && a.y >= 0 && a.y < MATRIX_HEIGHT*256)
+                    || (b.x >= 0 && b.x < MATRIX_WIDTH*256 && b.y >= 0 && b.y < MATRIX_HEIGHT*256)
+                    || (c.x >= 0 && c.x < MATRIX_WIDTH*256 && c.y >= 0 && c.y < MATRIX_HEIGHT*256) ) {
+                      on_screen = true;
 
-            VECTOR3 ratio  = (*y_buffer2)[y][0].ratio;
-            VECTOR3 accum_ratio = ratio*256;
-            VECTOR3 step_ratio = (*y_buffer2)[y][1].ratio - ratio;
-            step_ratio*=256;
-            if (dist_x > 0) {
-              step_ratio/=dist_x;
-            }
-
-            int32_t x = (*y_buffer2)[y][0].position.x/256;
-            int32_t remainder_low = 255-(((*y_buffer2)[y][0].position.x+512)%256);
-            int32_t remainder_high = ((*y_buffer2)[y][1].position.x+512)%256;
-
-            int32_t z = (*y_buffer2)[y][0].position.z;
-            int32_t accum_z = z*256;
-            int32_t step_z = (*y_buffer2)[y][1].position.z - z;
-            step_z*=256;
-            if (dist_x > 0) {
-              step_z/=dist_x;
-            }
-            
-           
-            
-            while (x <= _min(((*y_buffer2)[y][1].position.x+512)/256-2,MATRIX_WIDTH-1)) {
-
-              VECTOR3 norm = ( (norm_a*ratio.x)/255 + (norm_b*ratio.y)/255 + (norm_c*ratio.z)/255 ).unit();
-
-              CRGB new_rgb;
-
-
-              //new_rgb.r = _max((ratio->x*norm.z)/255,0);
-              //new_rgb.g = _max((ratio->y*norm.z)/255,0);
-              //new_rgb.b = _max((ratio->z*norm.z)/255,0);
-              uint8_t norm_bri = (_min(_max(norm.z,0),255)*3)/4 + 64; //minimum brightness 64
-                if (x == ((*y_buffer2)[y][0].position.x+512)/256-2) {
-                    new_rgb.r = (norm_bri*rgb.r)/(255);
-                    new_rgb.g = (norm_bri*rgb.g)/(255);
-                    new_rgb.b = (norm_bri*rgb.b)/(255);
-                    on_screen = drawXYZ2(led_screen, x, y, z, new_rgb,remainder_low,false) || on_screen; //gamma
-                } else if (x == ((*y_buffer2)[y][1].position.x+512)/256-2) {
-                    new_rgb.r = (norm_bri*rgb.r)/(255);
-                    new_rgb.g = (norm_bri*rgb.g)/(255);
-                    new_rgb.b = (norm_bri*rgb.b)/(255);
-                    on_screen = drawXYZ2(led_screen, x, y, z, new_rgb,remainder_high,false) || on_screen; //gamma
-                } else {
-                    new_rgb.r = (norm_bri*rgb.r)/(255);
-                    new_rgb.g = (norm_bri*rgb.g)/(255);
-                    new_rgb.b = (norm_bri*rgb.b)/(255);
-                    on_screen = drawXYZ(led_screen, x, y, z, new_rgb,false) || on_screen; //gamma
                 }
-
-              x++;
-            
-              if (dist_x > 0) {
-                accum_ratio+=step_ratio;
-                ratio = accum_ratio/256;
-                
-
-                //iterate(ratio,step_ratio,a_dist_ratio,err_ratio,dist_x);
-
-                
-                accum_z+=step_z;
-                z = accum_z/256;
-                
-              }
-
             }
-            // CRGB rgb(  y_buffer2[y][0].ratio.x, y_buffer2[y][0].ratio.y, y_buffer2[y][0].ratio.z );
-            // CRGB rgb2( y_buffer2[y][1].ratio.x, y_buffer2[y][1].ratio.y, y_buffer2[y][1].ratio.z );
-            // drawXYZ(led_screen, y_buffer2[y][0].position.x, y_buffer2[y][0].position.y, y_buffer2[y][0].position.z, rgb, true);
-            // drawXYZ(led_screen, y_buffer2[y][1].position.x, y_buffer2[y][1].position.y, y_buffer2[y][1].position.z, rgb2, true);
 
-          }
-          //clear the buffer to be used for filling the triangle
-          //y_buffer2[y][0].position.x = MATRIX_WIDTH*256;
-          //y_buffer2[y][1].position.x = -1;
-        
+            fill_shape(z_depth+256, rgb);
         }
-
-
-      }
-      
-      if (!on_screen) {
-          if ((a.x >= 0 && a.x < MATRIX_WIDTH*256 && a.y >= 0 && a.y < MATRIX_HEIGHT*256)
-              || (b.x >= 0 && b.x < MATRIX_WIDTH*256 && b.y >= 0 && b.y < MATRIX_HEIGHT*256)
-              || (c.x >= 0 && c.x < MATRIX_WIDTH*256 && c.y >= 0 && c.y < MATRIX_HEIGHT*256) ) {
-                on_screen = true;
-
-          }
-      }
       return on_screen;
     } //void draw_triangle_fine()
 
