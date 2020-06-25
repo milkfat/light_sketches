@@ -320,6 +320,7 @@ class LIGHT_SKETCHES {
 
     void reset() {
       light_sketches[current_light_sketch]->reset();
+      if (send_sketch_controls) send_sketch_controls();
     }
 
     char* name() {
@@ -340,6 +341,7 @@ class LIGHT_SKETCHES {
 
     void next_effect() {
       light_sketches[current_light_sketch]->next_effect();
+      if (send_sketch_controls) send_sketch_controls();
     }
 
     void next_sketch() {
