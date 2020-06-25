@@ -28,6 +28,13 @@ uint64_t micros() {
     return elapsed.count()*1000000; 
 }
 
+uint64_t nanos() {
+    auto time_now = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = time_now - time_start;
+
+    return elapsed.count()*1000000000; 
+}
+
 auto& ps_malloc = malloc;
 
 int random(int a, int b) {
