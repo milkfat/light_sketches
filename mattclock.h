@@ -738,7 +738,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
     void next_effect() {
 
       led_screen.camera_position.z = 0*256;
-      led_screen.screen_distance = 67*256;
+      led_screen.screen_distance = _max(MATRIX_HEIGHT,MATRIX_WIDTH)*256/2;
       
       if (current_effect == TEXT_CLOCK) {
         display_text = "";
@@ -767,7 +767,7 @@ class MATTCLOCK: public LIGHT_SKETCH {
       z_buffer = &_z_buffer;
       control_variables.add(rgb_clock, "Color");
       control_variables.add(led_screen.camera_position.z, "Camera Z", 0, 256*256);
-      control_variables.add(led_screen.screen_distance, "Screen Z", 0, 256*256);
+      control_variables.add(led_screen.screen_distance, "Screen Z", 0, 256*256*8);
       control_variables.add(line_sharpen, "Sharpen", 0, 10);
 
       for (int i = 0; i < 6; i++) {
@@ -851,20 +851,20 @@ class MATTCLOCK: public LIGHT_SKETCH {
         int y_size = bound_max.y - bound_min.y - (MATRIX_HEIGHT-4)*256;
 
         if (x_size > 0 || y_size > 0 || (x_size < 0 && y_size < 0)) {
-          z_offset-=_max(x_size,y_size)/5;
-          //std::cout << "z: " << _max(x_size,y_size)/5;
+          z_offset-=_max(x_size,y_size)/25;
+          std::cout << "z: " << _max(x_size,y_size)/25 << "\n";
         }
 
         int x_center = bound_max.x + bound_min.x - (MATRIX_WIDTH)*256;
         int y_center = bound_max.y + bound_min.y - (MATRIX_HEIGHT)*256;
 
         if (x_center > 0 || x_center < 0) {
-          x_offset-=x_center/5;
-          //std::cout << " x: " << x_center/5;
+          x_offset-=x_center/25;
+          std::cout << " x: " << x_center/25 << "\n";
         }
         if (y_center > 0 || y_center < 0) {
-          y_offset-=y_center/5;
-          //std::cout << " y: " << y_center/5;
+          y_offset-=y_center/25;
+          std::cout << " y: " << y_center/25 << "\n";
         }
         //std::cout << "\n";
         
