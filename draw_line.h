@@ -4,9 +4,26 @@
 
 //DRAW LINE FINE
 
+struct LINE_PIXEL
+{
+  uint16_t x;
+  uint16_t y;
+  uint32_t z;
+  uint8_t bri;
+};
+
 uint8_t line_sharpen = 1;
 static void draw_line_fine_base(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b, CRGB rgb, uint8_t val = 255, uint8_t val2 = 255, bool trim = false, bool ignore_z = true, bool wide_fill = true, bool additive = false) {
   
+  // LINE_PIXEL pixel_buffer[(uint)sqrt((abs(x1_led-x2_led)+1)*(abs(x1_led-x2_led)+1) + (abs(y1_led-y2_led+1)+1)*(abs(y1_led-y2_led)+1))*2];
+  // uint16_t current_pixel = 0;
+  
+  // Create a buffer to store our line
+  // It will be drawn all at once at the end of the function
+  LINE_PIXEL pixel_buffer[(uint)(sqrt(MATRIX_WIDTH*MATRIX_WIDTH+MATRIX_HEIGHT*MATRIX_HEIGHT)*2)];
+  uint16_t current_pixel = 0;
+  
+
   //add one pixel to compensate for rounding errors between -1 and 0
   int32_t x1 = a.x+256;
   int32_t y1 = a.y+256;
@@ -113,7 +130,6 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b
   if (abs(x1 - x2) > abs(y1 - y2)) {
     //calculate horizontally
 
-
     //calculate starting coordinates;
     float y_step = (y_dist*256.f)/x_dist;
     float y_start = y1 + ((x1_led*256 - x1)*y_step)/256.f;
@@ -128,7 +144,9 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b
     //record the off-screen portion to the y_buffer
     if (x1_led != x_low) {
       int y_start_led = (y_start-y_step)/256;
-      for (int y = _max(_min(y_low,y_start_led),0); y <= _min(_max(y_low,y_start_led),MATRIX_HEIGHT-1); y++) {
+      int start_led = _max(_min(y_low,y_start_led),0);
+      int end_led = _min(_max(y_low,y_start_led),MATRIX_HEIGHT-1);
+      for (int y = start_led; y <= end_led; y++) {
         y_buffer_min = _min(y_buffer_min, y);
         y_buffer_max = _max(y_buffer_max, y);
         y_buffer[y][0] = 0;
@@ -183,8 +201,16 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b
           color_add_gamma8(screen_object.screen_buffer[XY(i, Hy)], rgb0);
           color_add_gamma8(screen_object.screen_buffer[XY(i, Ly)], rgb1);
         } else {
-          drawXYZ2(screen_object, i, Hy, z, rgb, ((b2*v1)>>8) + ((b2*v2)>>8), ignore_z );
-          drawXYZ2(screen_object, i, Ly, z, rgb, ((b *v1)>>8) + ((b *v2)>>8), ignore_z );
+          pixel_buffer[current_pixel].x = i;
+          pixel_buffer[current_pixel].y = Hy;
+          pixel_buffer[current_pixel].z = z;
+          pixel_buffer[current_pixel++].bri = ((b2*v1)>>8) + ((b2*v2)>>8);
+          pixel_buffer[current_pixel].x = i;
+          pixel_buffer[current_pixel].y = Ly;
+          pixel_buffer[current_pixel].z = z;
+          pixel_buffer[current_pixel++].bri = ((b *v1)>>8) + ((b *v2)>>8);
+          // drawXYZ2(screen_object, i, Hy, z, rgb, ((b2*v1)>>8) + ((b2*v2)>>8), ignore_z );
+          // drawXYZ2(screen_object, i, Ly, z, rgb, ((b *v1)>>8) + ((b *v2)>>8), ignore_z );
         }
 
         if (!wide_fill) {
@@ -225,14 +251,16 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b
     //record the off-screen portion to the y_buffer
     if (x2_led != x_high) {
       int y_start_led = (y_start-y_step)/256;
-      for (int y = _max(_min(y_high,y_start_led),0); y <= _min(_max(y_high,y_start_led),MATRIX_HEIGHT-1); y++) {
+      int start_led = _max(_min(y_high,y_start_led),0);
+      int end_led = _min(_max(y_high,y_start_led),MATRIX_HEIGHT-1);
+      for (int y = start_led; y <= end_led; y++) {
         y_buffer_min = _min(y_buffer_min, y);
         y_buffer_max = _max(y_buffer_max, y);
         y_buffer[y][1] = MATRIX_WIDTH-1;
       }
     }
-    
   } else {
+
     //calculate vertically
 
     float x_step = (x_dist*256.f)/y_dist;
@@ -248,16 +276,16 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b
     //record the off-screen portion to the y_buffer
     if (y1_led != y_low) {
       int x_start_led = (x_start-x_step)/256;
-      for (int x = _max(_min(x_low,x_start_led),0); x <= _min(_max(x_low,x_start_led),MATRIX_WIDTH-1); x++) {
+      int start_led = _max(_min(x_low,x_start_led),0);
+      int end_led = _min(_max(x_low,x_start_led),MATRIX_WIDTH-1);
+      for (int x = start_led; x <= end_led; x++) {
         x_buffer_min = _min(x_buffer_min, x);
         x_buffer_max = _max(x_buffer_max, x);
         x_buffer[x][0] = 0;
       }
     }
 
-
     for (int i = (y1_led); i <= (y2_led); i++) {
-      uint8_t v1 = val;
       int pos = i - y1_led;
       if (flip) {
         pos = y2_led - i;
@@ -296,14 +324,22 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b
 
       if (additive) {
         CRGB rgb0 = rgb;
-        color_scale(rgb0, ((b2*v1)>>8) + ((b2*v2)>>8));
+        color_scale(rgb0, ((b2*val)>>8) + ((b2*v2)>>8));
         CRGB rgb1 = rgb;
-        color_scale(rgb1, ((b *v1)>>8) + ((b *v2)>>8));
+        color_scale(rgb1, ((b *val)>>8) + ((b *v2)>>8));
         color_add_gamma8(screen_object.screen_buffer[XY(Hx, i)], rgb0);
         color_add_gamma8(screen_object.screen_buffer[XY(Lx, i)], rgb1);
       } else {
-        drawXYZ2(screen_object, Hx, i, z, rgb, ((b2*v1)>>8) + ((b2*v2)>>8), ignore_z );
-        drawXYZ2(screen_object, Lx, i, z, rgb, ((b *v1)>>8) + ((b *v2)>>8), ignore_z );
+          pixel_buffer[current_pixel].x = Hx;
+          pixel_buffer[current_pixel].y = i;
+          pixel_buffer[current_pixel].z = z;
+          pixel_buffer[current_pixel++].bri = ((b2*val)>>8) + ((b2*v2)>>8);
+          pixel_buffer[current_pixel].x = Lx;
+          pixel_buffer[current_pixel].y = i;
+          pixel_buffer[current_pixel].z = z;
+          pixel_buffer[current_pixel++].bri = ((b *val)>>8) + ((b *v2)>>8);
+        //drawXYZ2(screen_object, Hx, i, z, rgb, ((b2*val)>>8) + ((b2*v2)>>8), ignore_z );
+        //drawXYZ2(screen_object, Lx, i, z, rgb, ((b *val)>>8) + ((b *v2)>>8), ignore_z );
       }
       
       
@@ -334,10 +370,6 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b
         x_buffer[Lx][0] = _min(x_buffer[Lx][0], i+1);
         x_buffer[Lx][1] = _max(x_buffer[Lx][1], i-1);
       }
-      
-      //drawXYZ(screen_object,  ceil(x_start/256L), i, z_depth, h, s, (b2*v1)/256 + (b2*v2)/256 );
-      //drawXYZ(screen_object, floor(x_start/256L), i, z_depth, h, s, (b *v1)/256 + (b *v2)/256 );
-
 
       //add the pixel we subtracted to compensate for rounding errors between -1 and 0
       i++;
@@ -348,13 +380,19 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b
     //record the off-screen portion to the y_buffer
     if (y2_led != y_high) {
       int x_start_led = (x_start-x_step)/256;
-      for (int x = _max(_min(x_high,x_start_led),0); x <= _min(_max(x_high,x_start_led),MATRIX_WIDTH-1); x++) {
+      int start_led = _max(_min(x_high,x_start_led),0);
+      int end_led = _min(_max(x_high,x_start_led),MATRIX_WIDTH-1);
+      for (int x = start_led; x <= end_led; x++) {
         x_buffer_min = _min(x_buffer_min, x);
         x_buffer_max = _max(x_buffer_max, x);
         x_buffer[x][1] = MATRIX_HEIGHT-1;
       }
     }
     
+  }
+
+  for (int i = 0; i < current_pixel; i++) {
+    drawXYZ2(screen_object, pixel_buffer[i].x, pixel_buffer[i].y, pixel_buffer[i].z, rgb, pixel_buffer[i].bri, ignore_z );
   }
 
 } //draw_line_fine()
