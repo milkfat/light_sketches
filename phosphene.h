@@ -146,7 +146,17 @@ class PHOSPHENE: public LIGHT_SKETCH {
 
             curIdx = 0;
             while (curIdx < updatePerFrame) {
-                processPix(random(SIZE_X), random(SIZE_Y));
+                static uint16_t x = 0;
+                static uint16_t y = 0;
+                x+=random(9)+1;
+                if (x >= SIZE_X) {
+                    x-=SIZE_X;
+                    y++;
+                    if (y == SIZE_Y) {
+                        y = 0;
+                    }
+                }
+                processPix(x, y);
                 curIdx++;
             }
 
@@ -154,12 +164,13 @@ class PHOSPHENE: public LIGHT_SKETCH {
 
 
             for (int y = 0; y < SIZE_Y; y++) {
+                int led = XY(0,y);
                 for (int x = 0; x < SIZE_X; x++) {
-                    uint8_t bri = _min(_max(pixels[y][x],0),16320) >> 6;
-                    leds[XY(x,y)].r = (rgb.r*bri) >> 8;
-                    leds[XY(x,y)].g = (rgb.g*bri) >> 8;
-                    leds[XY(x,y)].b = (rgb.b*bri) >> 8;
-
+                    uint8_t bri = _min(_max(pixels[y][x],0),16320)/64;
+                    leds[led].r = (rgb.r*bri)/256;
+                    leds[led].g = (rgb.g*bri)/256;
+                    leds[led].b = (rgb.b*bri)/256;
+                    led++;
                 }
             }
 
