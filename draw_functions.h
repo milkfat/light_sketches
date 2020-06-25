@@ -36,31 +36,32 @@ static inline __attribute__ ((always_inline)) void drawXY_RGB(PERSPECTIVE& scree
   
 }
 
-static inline __attribute__ ((always_inline)) void drawXY_blend_gamma(PERSPECTIVE& screen_object, const uint32_t& led, const CRGB& rgb, const uint8_t& brightness = 255) {
+static inline __attribute__ ((always_inline)) void drawXY_blend_gamma(PERSPECTIVE& screen_object, const uint32_t& led, const CRGB& rgb, const uint8_t& alpha = 255) {
   
   //treat RGB values as gamma 2.2
   //must be decoded, added, then re-encoded
 
-  screen_object.screen_buffer[led].r = gamma16_encode( ( gamma16_decode(rgb.r)*brightness + gamma16_decode(screen_object.screen_buffer[led].r)*(255-brightness) ) >> 8);
-  screen_object.screen_buffer[led].g = gamma16_encode( ( gamma16_decode(rgb.g)*brightness + gamma16_decode(screen_object.screen_buffer[led].g)*(255-brightness) ) >> 8);
-  screen_object.screen_buffer[led].b = gamma16_encode( ( gamma16_decode(rgb.b)*brightness + gamma16_decode(screen_object.screen_buffer[led].b)*(255-brightness) ) >> 8);
+  screen_object.screen_buffer[led].r = gamma16_encode( ( gamma16_decode(rgb.r)*alpha + gamma16_decode(screen_object.screen_buffer[led].r)*(255-alpha) ) >> 8);
+  screen_object.screen_buffer[led].g = gamma16_encode( ( gamma16_decode(rgb.g)*alpha + gamma16_decode(screen_object.screen_buffer[led].g)*(255-alpha) ) >> 8);
+  screen_object.screen_buffer[led].b = gamma16_encode( ( gamma16_decode(rgb.b)*alpha + gamma16_decode(screen_object.screen_buffer[led].b)*(255-alpha) ) >> 8);
 
   //nblend(screen_object.screen_buffer[screen_object.XY(x,y)], rgb, brightness);
 
 }
 
-static inline __attribute__ ((always_inline)) bool drawXY_blend_gamma( PERSPECTIVE& screen_object, int32_t x, int32_t y, int32_t z, CRGB rgb, const uint8_t& alpha = 255, const bool& ignore_z = true) {
+static inline __attribute__ ((always_inline)) bool drawXY_blend_gamma( PERSPECTIVE& screen_object, const int32_t& x, const int32_t& y, const int32_t& z, CRGB rgb, const uint8_t& alpha = 255, const bool& ignore_z = true) {
+
   bool on_screen = false;
   //treat RGB values as gamma 2.2
   //must be decoded, added, then re-encoded
   uint32_t led = XY(x,y);
-  if (led != screen_object.screen_width*screen_object.screen_height) {
+  if (led != led_screen.screen_width*led_screen.screen_height) {
     on_screen = true;
-    if (ignore_z || z_buffer == nullptr || z/16 >= (*z_buffer)[x][y]) {
+    if (ignore_z || z_buffer == nullptr || z/16 >= (*z_buffer)[led]) {
 
       if (!ignore_z && z_buffer != nullptr) {
-        if (z/16 >= (*z_buffer)[x][y]) {
-          (*z_buffer)[x][y] = z/16; 
+        if (z/16 >= (*z_buffer)[led]) {
+          (*z_buffer)[led] = z/16; 
         } else {
           return on_screen;
         }
@@ -91,14 +92,15 @@ uint8_t z_brightness(PERSPECTIVE& screen_object, const int32_t& z) {
     return 255-_min(bri,255);
 }
 
-static inline __attribute__ ((always_inline)) bool drawXYZ(PERSPECTIVE& screen_object, int32_t x, int32_t y, int32_t z, CRGB rgb, const bool& gamma = false) {
+static inline __attribute__ ((always_inline)) bool drawXYZ(PERSPECTIVE& screen_object, int32_t x, int32_t y, int32_t z, CRGB rgb, bool gamma = false) {
   bool on_screen = false;
   if (y >= 0 && y < screen_object.screen_height && x >= 0 && x < screen_object.screen_width) {
     on_screen = true;
-    if (z_buffer == nullptr || z/16 >= (*z_buffer)[x][y]) {
+    int led = XY(x,y);
+    if (z_buffer == nullptr || z/16 >= (*z_buffer)[led]) {
 
-      if (z_buffer != nullptr && z/16 >= (*z_buffer)[x][y]) {
-        (*z_buffer)[x][y] = z/16; 
+      if (z_buffer != nullptr && z/16 >= (*z_buffer)[led]) {
+        (*z_buffer)[led] = z/16; 
       } else {
         return on_screen;
       }
@@ -109,7 +111,7 @@ static inline __attribute__ ((always_inline)) bool drawXYZ(PERSPECTIVE& screen_o
         gamma8_decode_ip(rgb);
       }
 
-      screen_object.screen_buffer[XY(x,y)] = rgb;
+      screen_object.screen_buffer[led] = rgb;
       
     }
 
