@@ -108,16 +108,6 @@ static inline __attribute__ ((always_inline)) void reset_x_buffer() {
   }
 }
 
-static inline __attribute__ ((always_inline)) void reset_z_buffer(int16_t z_buffer[MATRIX_WIDTH][MATRIX_HEIGHT]) {
-
-  //clear the Z buffer
-  for (int x = 0; x < MATRIX_WIDTH; x++) {
-    for (int y = 0; y < MATRIX_HEIGHT; y++) {
-      z_buffer[x][y] = INT16_MIN;
-    }
-  }
-
-}
 
 
 
