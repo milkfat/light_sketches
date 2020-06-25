@@ -58,60 +58,37 @@ int growing = 0;
 
 
 
-//int y_buffer[MATRIX_HEIGHT][2]; //stores the min/max X values per Y so that we can fill between them
-int32_t * y_buffer[MATRIX_HEIGHT]; //stores the min/max X values per Y so that we can fill between them
 int32_t y_buffer_max = 0;
 int32_t y_buffer_min = MATRIX_HEIGHT-1;
-int32_t x_buffer[MATRIX_WIDTH][2]; //stores the min/max Y values per X so that we can fill between them
-int32_t x_buffer_max = 0;
-int32_t x_buffer_min = MATRIX_WIDTH-1;
-
-//int z_buffer[MATRIX_WIDTH][MATRIX_HEIGHT];
-//int16_t * z_buffer[MATRIX_WIDTH];
 
 
 
 struct Y_BUF {
-    VECTOR3 position;
-    VECTOR3 ratio;
+    union {
+      struct {
+        int32_t x;
+        int32_t y;
+        int32_t z;
+      }; 
+      VECTOR3 position;
+    };
+    VECTOR3_8 ratio;
     uint8_t opacity = 255;
+
+    Y_BUF() {
+    }
 };
 
 class Y_BUF2 {
   Y_BUF buf[MATRIX_HEIGHT][2];
-/*
-public:
-  void reset() {
-    static MEASURE_TIME m0 = MEASURE_TIME("Y_BUF reset time: ");
-    m0.start();
-      y_buffer_min = MATRIX_HEIGHT-1;
-      y_buffer_max = 0;
-      for (int y = 0; y < MATRIX_HEIGHT; y+=2) {
-        memcpy(&buf[y], &buf_zero[0], sizeof(Y_BUF)*4);
-      }
-
-    m0.end();
-    measurements.print();
-  }
-
-  Y_BUF2 () {
-    buf_zero[0].position = VECTOR3(INT32_MAX,0,0);
-    buf_zero[1].position = VECTOR3(INT32_MIN,0,0);
-    buf_zero[2].position = VECTOR3(INT32_MAX,0,0);
-    buf_zero[3].position = VECTOR3(INT32_MIN,0,0);
-    reset();
-  }
-  */
-
-
 
  public:
   void reset() {
       y_buffer_min = MATRIX_HEIGHT-1;
       y_buffer_max = 0;
       for (int y = 0; y < MATRIX_HEIGHT; y++) {
-        buf[y][0].position = VECTOR3(INT32_MAX,0,0);
-        buf[y][1].position = VECTOR3(INT32_MIN,0,0);
+        buf[y][0].x = INT32_MAX;
+        buf[y][1].x = INT32_MIN;
       }
 
   }
@@ -126,7 +103,14 @@ public:
 
 };
 
-Y_BUF2* y_buffer2 = nullptr;
+int32_t x_buffer[MATRIX_WIDTH][2]; //stores the min/max Y values per X so that we can fill between them
+int32_t x_buffer_max = 0;
+int32_t x_buffer_min = MATRIX_WIDTH-1;
+
+typedef Y_BUF2 y_buffer_t;
+
+
+y_buffer_t* y_buffer = nullptr; //stores the min/max X values per Y so that we can fill between them
 
 class Z_BUF {
   int16_t buf[MATRIX_WIDTH*MATRIX_HEIGHT];

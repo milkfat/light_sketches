@@ -37,7 +37,7 @@ static void draw_quad(VECTOR3 a, VECTOR3 b, VECTOR3 c, VECTOR3 d, VECTOR3 orig, 
 
     CRGB rgb = rgb_in;
     color_scale(rgb, bri);
-    reset_y_buffer();
+    y_buffer->reset();
     reset_x_buffer();
     a.z = z_depth-16;
     b.z = z_depth-16;

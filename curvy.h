@@ -27,7 +27,6 @@ class CURVY: public LIGHT_SKETCH {
   private:
 
     Z_BUF _z_buffer;
-    Y_BUF2 _y_buffer2;
 
     #define NUM_CURVY_EFFECTS 2
     uint8_t current_effect = 0;
@@ -81,11 +80,12 @@ class CURVY: public LIGHT_SKETCH {
       uint8_t sat = 0;
 
       void new_target() {
-          target_z = random(-100*256, 300*256);
-          int low_x = 0;
-          int low_y = 0;
-          int high_x = MATRIX_WIDTH*256;
-          int high_y = MATRIX_HEIGHT*256;
+          target_z = random(-100*256, -50*256);
+          target_z = random(-100*256, -50*256);
+          int low_x = (MATRIX_WIDTH*256)/8;
+          int low_y = (MATRIX_HEIGHT*256)/8;
+          int high_x = (MATRIX_WIDTH*256*7)/8;
+          int high_y = (MATRIX_HEIGHT*256*7)/8;
           //std::cout << low_y << " " << high_y << " " << target_z << " = ";
           led_screen.reverse_perspective(low_x,low_y,target_z);
           led_screen.reverse_perspective(high_x,high_y,target_z);
@@ -125,7 +125,6 @@ class CURVY: public LIGHT_SKETCH {
 
     void setup() {
       z_buffer = &_z_buffer;
-      y_buffer2 = &_y_buffer2;
       led_screen.light_falloff = 9;
       led_screen.rotation_alpha = 0;
       led_screen.rotation_beta = 90;
@@ -135,6 +134,10 @@ class CURVY: public LIGHT_SKETCH {
         jellies[i].on_screen = false;
         jellies[i].live_until = 0;
       }
+
+      control_variables.add(led_screen.camera_position.z, "Camera Z:", 0, 1024*256);
+      control_variables.add(led_screen.screen_distance, "Screen Z:", 0, 256*256);
+      control_variables.add(led_screen.light_falloff, "Light Distance:", 1, 16);
 
       //bubbles
       bubble_time = millis();
@@ -157,7 +160,9 @@ class CURVY: public LIGHT_SKETCH {
       for (int i = 0; i < NUM_FISH; i++) {
         fishies[i].x = random(32*256) - 16*256;
         fishies[i].y = random(400*256) - 200*256;
+        fishies[i].y = random(100*256) - 50*256;
         fishies[i].z = random(200*256) - 100*256;
+        fishies[i].z = random(50*256) - 50*256;
         fishies[i].wiggle = i*1024;
         fishies[i].az = random(256);
         fishies[i].ay = random(256);
@@ -195,16 +200,14 @@ class CURVY: public LIGHT_SKETCH {
 
         
         
-        handle_jellies();
-        
-        //reset_y_buffer2(y_buffer2);
+        //handle_jellies();
         
         handle_fish();
         
-        handle_bubbles();
+        //handle_bubbles();
 
-        draw_grass();
-        draw_water();
+        //draw_grass();
+        //draw_water();
 
 
       }

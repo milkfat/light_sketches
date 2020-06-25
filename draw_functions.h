@@ -294,15 +294,15 @@ void y_buffer_fill(PERSPECTIVE& screen_object, const CRGB& rgb, const int32_t& z
         
         for (int i = _max(y_buffer_min, 0); i <= _min(y_buffer_max,screen_object.screen_height-1); i++) {
 
-          x_min_avg += _max(y_buffer[i][0], 0);
-          x_max_avg += _min(y_buffer[i][1], MATRIX_WIDTH-1);
+          x_min_avg += _max((*y_buffer)[i][0].x, 0);
+          x_max_avg += _min((*y_buffer)[i][1].x, MATRIX_WIDTH-1);
           x_cnt++;
           
-          if (y_buffer[i][0] < x_min) {
-            x_min = y_buffer[i][0];
+          if ((*y_buffer)[i][0].x < x_min) {
+            x_min = (*y_buffer)[i][0].x;
           }
-          if (y_buffer[i][1] > x_max) {
-            x_max = y_buffer[i][1];
+          if ((*y_buffer)[i][1].x > x_max) {
+            x_max = (*y_buffer)[i][1].x;
           }
         }
 
@@ -342,15 +342,15 @@ void y_buffer_fill(PERSPECTIVE& screen_object, const CRGB& rgb, const int32_t& z
         //drawXYZ(led_screen, x_center, y_center, 100000, CRGB(255,255,255));
 
   for (int y = _max(y_buffer_min, 0); y <= _min(y_buffer_max,screen_object.screen_height-1); y++) {
-    if (y_buffer[y][0] <= y_buffer[y][1]) {
+    if ((*y_buffer)[y][0].x <= (*y_buffer)[y][1].x) {
       
-        int32_t x_min2 = y_buffer[y][0];
-        int32_t x_max2 = y_buffer[y][1];
+        int32_t x_min2 = (*y_buffer)[y][0].x;
+        int32_t x_max2 = (*y_buffer)[y][1].x;
         
         
         int32_t x_dist = _max(x_center-x_min2, x_max2-x_center);
 
-      for (int x = y_buffer[y][0]; x <= y_buffer[y][1]; x++) {
+      for (int x = (*y_buffer)[y][0].x; x <= (*y_buffer)[y][1].x; x++) {
 
         int32_t y_min2 = x_buffer[x][0];
         int32_t y_max2 = x_buffer[x][1];
@@ -398,8 +398,8 @@ void fill_shape(const int& z = 0, CRGB rgb = CRGB(255,0,0)) {
       //however this will fail on LED layouts where pixels are not stored in sequential bytes
       //TODO: fix this to work on any LED layout
 
-      uint16_t this_low_x = _min(_max(low_x,y_buffer[y][0]), MATRIX_WIDTH-1);
-      uint16_t this_high_x = _max(_min(high_x,y_buffer[y][1]), 0);
+      uint16_t this_low_x = _min(_max(low_x,(*y_buffer)[y][0].x), MATRIX_WIDTH-1);
+      uint16_t this_high_x = _max(_min(high_x,(*y_buffer)[y][1].x), 0);
 
       CRGB * led = &led_screen.screen_buffer[XY(this_low_x,y)];
       

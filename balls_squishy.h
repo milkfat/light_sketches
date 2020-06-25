@@ -350,7 +350,7 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
           CRGB rgb = CHSV(hue,sat,255);
           //y_buffer_fill(led_screen, rgb, i*32+16);
           fill_shape(256, rgb);
-          reset_y_buffer();
+          y_buffer->reset();
           reset_x_buffer();
         } else {
           draw_circle_fine_hsv(draw_x, draw_y, balls[i].vr, hue, sat, 255, i, 16, i*32);

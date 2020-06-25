@@ -262,7 +262,7 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
         if (draw_balls) {
             for (int i = 0; i < NUM_BALLS; i++) {
                 reset_x_buffer();
-                reset_y_buffer();
+                y_buffer->reset();
                 draw_circle_fine(balls[i].p.x, balls[i].p.y, balls[i].r, balls[i].rgb, -1, 32);
                 //fart = gamma8_encode(gamma8_encode(fart));
                 //fart = gamma8_encode(fart);

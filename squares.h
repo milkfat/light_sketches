@@ -91,7 +91,6 @@ class SQUARES: public LIGHT_SKETCH {
     
     GRID_SQUARE grid_squares[MATRIX_WIDTH/8][MATRIX_HEIGHT/8];
     Z_BUF _z_buffer;
-    Y_BUF2 _y_buffer2;
 
     #define NUM_SQUARES_EFFECTS 4
     uint8_t current_effect = 0;
@@ -137,7 +136,6 @@ class SQUARES: public LIGHT_SKETCH {
             }
         }
         z_buffer = &_z_buffer;
-        y_buffer2 = &_y_buffer2;
     }
 
     void draw_square(const VECTOR3& a, const uint8_t& ang) {

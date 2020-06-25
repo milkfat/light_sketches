@@ -68,36 +68,6 @@ static inline __attribute__ ((always_inline)) void LED_show() {
 
 
 
-static inline __attribute__ ((always_inline)) void reset_y_buffer() {
-  for (int i = 0; i < MATRIX_HEIGHT; i++) {
-    y_buffer[i][0] = MATRIX_WIDTH + 1;
-    y_buffer[i][1] = -1;
-
-    //y_buffer2[i][0].position.x = INT32_MAX;
-    //y_buffer2[i][1].position.x = INT32_MIN;
-
-  }
-
-  y_buffer_max = 0;
-  y_buffer_min = MATRIX_HEIGHT-1;
-  
-}
-
-static inline __attribute__ ((always_inline)) void reset_y_buffer2() {
-  if (!y_buffer2) return;
-  for (int i = 0; i < MATRIX_HEIGHT; i++) {
-    y_buffer[i][0] = MATRIX_WIDTH + 1;
-    y_buffer[i][1] = -1;
-
-    (*y_buffer2)[i][0].position.x = INT32_MAX;
-    (*y_buffer2)[i][1].position.x = INT32_MIN;
-
-  }
-
-  y_buffer_max = 0;
-  y_buffer_min = MATRIX_HEIGHT-1;
-  
-}
 
 static inline __attribute__ ((always_inline)) void reset_x_buffer() {
   for (int i = 0; i < MATRIX_WIDTH; i++) {

@@ -212,7 +212,7 @@ class SPINNY: public LIGHT_SKETCH {
             c.z = squares[i].pos.z;
             d.z = squares[i].pos.z;
 
-            reset_y_buffer();
+            y_buffer->reset();
             reset_x_buffer();
 
 

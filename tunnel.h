@@ -11,7 +11,6 @@ class TUNNEL: public LIGHT_SKETCH {
     ~TUNNEL () {}
   private:
     Z_BUF _z_buffer;
-    Y_BUF2 _y_buffer2;
     uint8_t current_effect = 0;
 
 
@@ -50,7 +49,6 @@ class TUNNEL: public LIGHT_SKETCH {
 
     void setup() {
         z_buffer = &_z_buffer;
-        y_buffer2 = &_y_buffer2;
         reset();
         led_screen.screen_distance = 225*256;
         control_variables.add(led_screen.camera_position.z, "Camera Z", 0, 256*256);

@@ -254,7 +254,7 @@ class PARTICLES: public LIGHT_SKETCH {
         led_screen.perspective(planet);
         led_screen.perspective_zero(planet_r.x,planet_r.y,planet_r.z);
 
-        reset_y_buffer();
+        y_buffer->reset();
         reset_x_buffer();
 
         draw_circle_fine_hsv(planet.x, planet.y, planet_r.x,32,128,255,-1,16,planet.z);

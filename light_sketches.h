@@ -87,7 +87,7 @@ class LIGHT_SKETCHES {
         //int canvas_size = sizeof(CRGB) * (NUM_LEDS +1);
         //int heightmap_size = sizeof(int16_t) * (HEIGHTMAP_WIDTH*HEIGHTMAP_HEIGHT);
         //int mask_size = sizeof(uint8_t) * (NUM_LEDS);
-        int ybuffer_size = sizeof(int) * 2 * (MATRIX_HEIGHT);
+        int ybuffer_size = sizeof(y_buffer_t);
         //int ybuffer2_size = sizeof(Y_BUF) * 2 * (MATRIX_HEIGHT);
         //int zbuffer_size = sizeof(int16_t[MATRIX_HEIGHT]) * (MATRIX_WIDTH);
         int cubes_size = sizeof(CUBE) * NUMBER_OF_CUBES;
@@ -240,14 +240,10 @@ class LIGHT_SKETCHES {
 
 
 
+        y_buffer = new y_buffer_t; //stores the min/max X values per Y so that we can fill between them
         for (int i = 0; i < MATRIX_HEIGHT; i++) {
-          y_buffer[i] = new int[2]; //stores the min/max X values per Y so that we can fill between them
-          y_buffer[i][0] = MATRIX_WIDTH + 1;
-          y_buffer[i][1] = -1;
-          // y_buffer2[i] = new Y_BUF[2]; //stores the min/max X values per Y so that we can fill between them
-          // y_buffer2[i][0].position.x = MATRIX_WIDTH*256;
-          // y_buffer2[i][1].position.x = -1;
-
+          (*y_buffer)[i][0].x = MATRIX_WIDTH + 1;
+          (*y_buffer)[i][1].x = -1;
         }
 
 
@@ -301,7 +297,6 @@ class LIGHT_SKETCHES {
       light_sketches[current_light_sketch]->destroy();
       height_map_ptr = nullptr;
       z_buffer = nullptr;
-      y_buffer2 = nullptr;
       led_screen.light_falloff = 8;
       led_screen.reset_camera();
       next_light_sketch %= number_of_light_sketches;

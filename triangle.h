@@ -59,16 +59,16 @@
 
       //fill between the pixels of our lines
       for (int y = y_buffer_min; y <= _min(y_buffer_max,MATRIX_HEIGHT-1); y++) {
-          if (y_buffer[y][0] <= y_buffer[y][1]) {
+          if ((*y_buffer)[y][0].x <= (*y_buffer)[y][1].x) {
 
-          for (int x = y_buffer[y][0]; x <= y_buffer[y][1]; x++) {
+          for (int x = (*y_buffer)[y][0].x; x <= (*y_buffer)[y][1].x; x++) {
             drawXYZ(led_screen, x, y, orig.z, rgb);
           }
 
         }
         //clear the buffer to be used for filling the triangle
-        y_buffer[y][0] = MATRIX_WIDTH + 1;
-        y_buffer[y][1] = -1;
+        (*y_buffer)[y][0].x = MATRIX_WIDTH + 1;
+        (*y_buffer)[y][1].x = -1;
       
       }
 
@@ -84,7 +84,7 @@
 
     //draw a triangle and calculate x,y,z as well as the ratio of a-b-c for each pixel
     bool draw_triangle(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& norm_a, VECTOR3& norm_b, VECTOR3& norm_c, const CRGB& rgb = CRGB(255,255,255)) {
-      if (!y_buffer2) return 0;
+      if (!y_buffer) return 0;
       bool on_screen = false;
 
       int orientation = ((b.y-a.y))*((c.x-b.x)) - ((c.y-b.y))*((b.x-a.x));
@@ -92,7 +92,7 @@
       
       if ( orientation < 0 ) {
       
-        y_buffer2->reset();
+        y_buffer->reset();
 
         static const VECTOR3 a_val(255,0,0);
         static const VECTOR3 b_val(0,255,0);
@@ -111,30 +111,30 @@
         //fill between the pixels of our lines
         for (int y = _max(y_buffer_min,0); y <= _min(y_buffer_max,MATRIX_HEIGHT-1); y++) {
 
-            int32_t dist_x = (*y_buffer2)[y][1].position.x - (*y_buffer2)[y][0].position.x;
+            int32_t dist_x = (*y_buffer)[y][1].position.x - (*y_buffer)[y][0].position.x;
 
           if (dist_x >= 0) {
 
 
-            VECTOR3 ratio  = (*y_buffer2)[y][0].ratio;
+            VECTOR3 ratio  = (*y_buffer)[y][0].ratio;
             VECTOR3 accum_ratio = ratio*256;
-            VECTOR3 step_ratio = (*y_buffer2)[y][1].ratio - ratio;
+            VECTOR3 step_ratio = (*y_buffer)[y][1].ratio - ratio;
             step_ratio*=256;
             if (dist_x > 0) {
               step_ratio/=dist_x;
             }
 
-            int32_t x = _max((*y_buffer2)[y][0].position.x,0);
+            int32_t x = _max((*y_buffer)[y][0].position.x,0);
 
-            int32_t z = (*y_buffer2)[y][0].position.z;
+            int32_t z = (*y_buffer)[y][0].position.z;
             int32_t accum_z = z*256;
-            int32_t step_z = (*y_buffer2)[y][1].position.z - z;
+            int32_t step_z = (*y_buffer)[y][1].position.z - z;
             step_z*=256;
             if (dist_x > 0) {
               step_z/=dist_x;
             }
 
-            while (x <= _min((*y_buffer2)[y][1].position.x, MATRIX_WIDTH)) {
+            while (x <= _min((*y_buffer)[y][1].position.x, MATRIX_WIDTH)) {
 
               VECTOR3 norm = ( (norm_a*ratio.x)/255 + (norm_b*ratio.y)/255 + (norm_c*ratio.z)/255 ).unit();
               
@@ -164,15 +164,15 @@
               
 
             }
-            // CRGB rgb(  y_buffer2[y][0].ratio.x, y_buffer2[y][0].ratio.y, y_buffer2[y][0].ratio.z );
-            // CRGB rgb2( y_buffer2[y][1].ratio.x, y_buffer2[y][1].ratio.y, y_buffer2[y][1].ratio.z );
-            // drawXYZ(led_screen, y_buffer2[y][0].position.x, y_buffer2[y][0].position.y, y_buffer2[y][0].position.z, rgb, true);
-            // drawXYZ(led_screen, y_buffer2[y][1].position.x, y_buffer2[y][1].position.y, y_buffer2[y][1].position.z, rgb2, true);
+            // CRGB rgb(  y_buffer[y][0].ratio.x, y_buffer[y][0].ratio.y, y_buffer[y][0].ratio.z );
+            // CRGB rgb2( y_buffer[y][1].ratio.x, y_buffer[y][1].ratio.y, y_buffer[y][1].ratio.z );
+            // drawXYZ(led_screen, y_buffer[y][0].position.x, y_buffer[y][0].position.y, y_buffer[y][0].position.z, rgb, true);
+            // drawXYZ(led_screen, y_buffer[y][1].position.x, y_buffer[y][1].position.y, y_buffer[y][1].position.z, rgb2, true);
 
           }
           //clear the buffer to be used for filling the triangle
-          //y_buffer2[y][0].position.x = MATRIX_WIDTH*256;
-          //y_buffer2[y][1].position.x = -1;
+          //y_buffer[y][0].position.x = MATRIX_WIDTH*256;
+          //y_buffer[y][1].position.x = -1;
         
         }
 
@@ -193,7 +193,7 @@
 
     //draw a triangle and calculate x,y,z as well as the ratio of a-b-c for each pixel
     bool draw_triangle_rgb(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& norm_a, VECTOR3& norm_b, VECTOR3& norm_c, CRGB rgb_ai, CRGB rgb_bi, CRGB rgb_ci) {
-      if (!y_buffer2) return 0;
+      if (!y_buffer) return 0;
       bool on_screen = false;
 
       int orientation = ((b.y-a.y))*((c.x-b.x)) - ((c.y-b.y))*((b.x-a.x));
@@ -208,7 +208,7 @@
         rgb_b.unit_ip();
         rgb_c.unit_ip();
 
-        y_buffer2->reset();
+        y_buffer->reset();
         y_buffer_max = 0;
         y_buffer_min = MATRIX_HEIGHT-1;
 
@@ -229,30 +229,30 @@
         //fill between the pixels of our lines
         for (int y = _max(y_buffer_min,0); y <= _min(y_buffer_max,MATRIX_HEIGHT-1); y++) {
 
-            int32_t dist_x = (*y_buffer2)[y][1].position.x - (*y_buffer2)[y][0].position.x;
+            int32_t dist_x = (*y_buffer)[y][1].position.x - (*y_buffer)[y][0].position.x;
 
           if (dist_x >= 0) {
 
 
-            VECTOR3 ratio  = (*y_buffer2)[y][0].ratio;
+            VECTOR3 ratio  = (*y_buffer)[y][0].ratio;
             VECTOR3 accum_ratio = ratio*256;
-            VECTOR3 step_ratio = (*y_buffer2)[y][1].ratio - ratio;
+            VECTOR3 step_ratio = (*y_buffer)[y][1].ratio - ratio;
             step_ratio*=256;
             if (dist_x > 0) {
               step_ratio/=dist_x;
             }
 
-            int32_t x = (*y_buffer2)[y][0].position.x;
+            int32_t x = (*y_buffer)[y][0].position.x;
 
-            int32_t z = (*y_buffer2)[y][0].position.z;
+            int32_t z = (*y_buffer)[y][0].position.z;
             int32_t accum_z = z*256;
-            int32_t step_z = (*y_buffer2)[y][1].position.z - z;
+            int32_t step_z = (*y_buffer)[y][1].position.z - z;
             step_z*=256;
             if (dist_x > 0) {
               step_z/=dist_x;
             }
             
-           while (x <= (*y_buffer2)[y][1].position.x) {
+           while (x <= (*y_buffer)[y][1].position.x) {
 
               VECTOR3 norm = ( (norm_a*ratio.x)/255 + (norm_b*ratio.y)/255 + (norm_c*ratio.z)/255 ).unit();
               VECTOR3 rgb0 = ( (rgb_a*ratio.x)/255 + (rgb_b*ratio.y)/255 + (rgb_c*ratio.z)/255 )/3;
@@ -285,15 +285,15 @@
               }
 
             }
-            // CRGB rgb(  y_buffer2[y][0].ratio.x, y_buffer2[y][0].ratio.y, y_buffer2[y][0].ratio.z );
-            // CRGB rgb2( y_buffer2[y][1].ratio.x, y_buffer2[y][1].ratio.y, y_buffer2[y][1].ratio.z );
-            // drawXYZ(led_screen, y_buffer2[y][0].position.x, y_buffer2[y][0].position.y, y_buffer2[y][0].position.z, rgb, true);
-            // drawXYZ(led_screen, y_buffer2[y][1].position.x, y_buffer2[y][1].position.y, y_buffer2[y][1].position.z, rgb2, true);
+            // CRGB rgb(  y_buffer[y][0].ratio.x, y_buffer[y][0].ratio.y, y_buffer[y][0].ratio.z );
+            // CRGB rgb2( y_buffer[y][1].ratio.x, y_buffer[y][1].ratio.y, y_buffer[y][1].ratio.z );
+            // drawXYZ(led_screen, y_buffer[y][0].position.x, y_buffer[y][0].position.y, y_buffer[y][0].position.z, rgb, true);
+            // drawXYZ(led_screen, y_buffer[y][1].position.x, y_buffer[y][1].position.y, y_buffer[y][1].position.z, rgb2, true);
 
           }
           //clear the buffer to be used for filling the triangle
-          //y_buffer2[y][0].position.x = MATRIX_WIDTH*256;
-          //y_buffer2[y][1].position.x = -1;
+          //y_buffer[y][0].position.x = MATRIX_WIDTH*256;
+          //y_buffer[y][1].position.x = -1;
         
         }
 
@@ -321,15 +321,10 @@
 
         if ( orientation ) {
 
-            reset_y_buffer();
+            y_buffer->reset();
             reset_x_buffer();
             VECTOR3 norm = norm_a+norm_b+norm_c;
             norm/=3;
-
-            // draw_line_ybuffer(a, b);
-            // draw_line_ybuffer(b, c);
-            // draw_line_ybuffer(c, d);
-            // draw_line_ybuffer(d, a);
 
             int32_t z_depth = a.z+norm.z; 
 
@@ -341,7 +336,7 @@
 
             CRGB rgb = rgb_in;
             color_scale(rgb, bri);
-            reset_y_buffer();
+            y_buffer->reset();
             reset_x_buffer();
             a.z = z_depth-16;
             b.z = z_depth-16;

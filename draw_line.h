@@ -149,7 +149,7 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b
       for (int y = start_led; y <= end_led; y++) {
         y_buffer_min = _min(y_buffer_min, y);
         y_buffer_max = _max(y_buffer_max, y);
-        y_buffer[y][0] = 0;
+        (*y_buffer)[y][0].x = 0;
       }
     }
 
@@ -230,15 +230,15 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b
         if (Hy >= 0 && Hy < MATRIX_HEIGHT) {
           y_buffer_min = _min(y_buffer_min, Hy);
           y_buffer_max = _max(y_buffer_max, Hy);
-          y_buffer[Hy][0] = _min(y_buffer[Hy][0], i+1);
-          y_buffer[Hy][1] = _max(y_buffer[Hy][1], i-1);
+          (*y_buffer)[Hy][0].x = _min((*y_buffer)[Hy][0].x, i+1);
+          (*y_buffer)[Hy][1].x = _max((*y_buffer)[Hy][1].x, i-1);
         }
 
         if (Ly >= 0 && Ly < MATRIX_HEIGHT) {
           y_buffer_min = _min(y_buffer_min, Ly);
           y_buffer_max = _max(y_buffer_max, Ly);
-          y_buffer[Ly][0] = _min(y_buffer[Ly][0], i+1);
-          y_buffer[Ly][1] = _max(y_buffer[Ly][1], i-1);
+          (*y_buffer)[Ly][0].x = _min((*y_buffer)[Ly][0].x, i+1);
+          (*y_buffer)[Ly][1].x = _max((*y_buffer)[Ly][1].x, i-1);
         }
         
       }
@@ -256,7 +256,7 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b
       for (int y = start_led; y <= end_led; y++) {
         y_buffer_min = _min(y_buffer_min, y);
         y_buffer_max = _max(y_buffer_max, y);
-        y_buffer[y][1] = MATRIX_WIDTH-1;
+        (*y_buffer)[y][1].x = MATRIX_WIDTH-1;
       }
     }
   } else {
@@ -353,8 +353,8 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b
       if (i >= 0 && i < MATRIX_HEIGHT) {
         y_buffer_min = _min(i,y_buffer_min);
         y_buffer_max = _max(i,y_buffer_max);
-        y_buffer[i][0] = _min(y_buffer[i][0], Hx);
-        y_buffer[i][1] = _max(y_buffer[i][1], Lx);
+        (*y_buffer)[i][0].x = _min((*y_buffer)[i][0].x, Hx);
+        (*y_buffer)[i][1].x = _max((*y_buffer)[i][1].x, Lx);
       }
 
       if (Hx >= 0 && Hx < MATRIX_WIDTH) {
@@ -449,8 +449,8 @@ static void draw_line_ybuffer(const int32_t& x1i, const int32_t& y1i, const int3
       if (y1 >= 0 && y1 < MATRIX_HEIGHT) {
         y_buffer_min = _min(y1,y_buffer_min);
         y_buffer_max = _max(y1,y_buffer_max);
-        y_buffer[y1][0] = _min(y_buffer[y1][0], x1);
-        y_buffer[y1][1] = _max(y_buffer[y1][1], x1);
+        (*y_buffer)[y1][0].x = _min((*y_buffer)[y1][0].x, x1);
+        (*y_buffer)[y1][1].x = _max((*y_buffer)[y1][1].x, x1);
       }
       x1++;;
       err += ay_dist;
@@ -469,8 +469,8 @@ static void draw_line_ybuffer(const int32_t& x1i, const int32_t& y1i, const int3
       if (y1 >= 0 && y1 < MATRIX_HEIGHT) {
         y_buffer_min = _min(y1,y_buffer_min);
         y_buffer_max = _max(y1,y_buffer_max);
-        y_buffer[y1][0] = _min(y_buffer[y1][0], x1);
-        y_buffer[y1][1] = _max(y_buffer[y1][1], x1);
+        (*y_buffer)[y1][0].x = _min((*y_buffer)[y1][0].x, x1);
+        (*y_buffer)[y1][1].x = _max((*y_buffer)[y1][1].x, x1);
       }
       y1++;
       err += ax_dist;
@@ -490,7 +490,7 @@ static void draw_line_ybuffer_base(VECTOR3 a, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 
   a.y += 128;
   b.y += 128;
 
-    if (!y_buffer2) return;
+    if (!y_buffer) return;
     if (a.y > b.y) {
         VECTOR3 temp = a;
         VECTOR3 temp_rgb = a_rgb;
@@ -519,23 +519,23 @@ static void draw_line_ybuffer_base(VECTOR3 a, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 
           y_buffer_min = _min(c.y/256,y_buffer_min);
           y_buffer_max = _max(c.y/256,y_buffer_max);
           if (fine) {
-            if (c.x < (*y_buffer2)[c.y/256][0].position.x) {
-              (*y_buffer2)[c.y/256][0].position = c;
-              (*y_buffer2)[c.y/256][0].ratio = c_rgb;
+            if (c.x < (*y_buffer)[c.y/256][0].position.x) {
+              (*y_buffer)[c.y/256][0].position = c;
+              (*y_buffer)[c.y/256][0].ratio = c_rgb;
             }
-            if (c.x > (*y_buffer2)[c.y/256][1].position.x) {
-              (*y_buffer2)[c.y/256][1].position = c;
-              (*y_buffer2)[c.y/256][1].ratio = c_rgb;
+            if (c.x > (*y_buffer)[c.y/256][1].position.x) {
+              (*y_buffer)[c.y/256][1].position = c;
+              (*y_buffer)[c.y/256][1].ratio = c_rgb;
             }
           } else {
             VECTOR3 c2 = c/256;
-            if (c2.x < (*y_buffer2)[c2.y][0].position.x) {
-              (*y_buffer2)[c2.y][0].position = c2;
-              (*y_buffer2)[c2.y][0].ratio = c_rgb;
+            if (c2.x < (*y_buffer)[c2.y][0].position.x) {
+              (*y_buffer)[c2.y][0].position = c2;
+              (*y_buffer)[c2.y][0].ratio = c_rgb;
             }
-            if (c2.x > (*y_buffer2)[c2.y][1].position.x) {
-              (*y_buffer2)[c2.y][1].position = c2;
-              (*y_buffer2)[c2.y][1].ratio = c_rgb;
+            if (c2.x > (*y_buffer)[c2.y][1].position.x) {
+              (*y_buffer)[c2.y][1].position = c2;
+              (*y_buffer)[c2.y][1].ratio = c_rgb;
             }
           }
         }
@@ -566,7 +566,7 @@ static inline __attribute__ ((always_inline)) void draw_line_ybuffer(VECTOR3& a,
 /*
 //different method of drawing... really buggy and didn't seem much faster/slower
 static void draw_line_ybuffer_alt(VECTOR3 a, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 b_rgb) {
-  if (!y_buffer2) return;
+  if (!y_buffer) return;
   a += 128;
   b += 128;
 
@@ -577,21 +577,21 @@ static void draw_line_ybuffer_alt(VECTOR3 a, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 b
       if ( !(a.y >= 0 && a.y < MATRIX_HEIGHT) ) return;
       y_buffer_min = _min(a.y,y_buffer_min);
       y_buffer_max = _max(a.y,y_buffer_max);
-      if (a.x < (*y_buffer2)[a.y][0].position.x) {
-        (*y_buffer2)[a.y][0].position = a;
-        (*y_buffer2)[a.y][0].ratio = a_rgb;
+      if (a.x < (*y_buffer)[a.y][0].position.x) {
+        (*y_buffer)[a.y][0].position = a;
+        (*y_buffer)[a.y][0].ratio = a_rgb;
       }
-      if (a.x > (*y_buffer2)[a.y][1].position.x) {
-        (*y_buffer2)[a.y][1].position = a;
-        (*y_buffer2)[a.y][1].ratio = a_rgb;
+      if (a.x > (*y_buffer)[a.y][1].position.x) {
+        (*y_buffer)[a.y][1].position = a;
+        (*y_buffer)[a.y][1].ratio = a_rgb;
       }
-      if (b.x < (*y_buffer2)[a.y][0].position.x) {
-        (*y_buffer2)[a.y][0].position = b;
-        (*y_buffer2)[a.y][0].ratio = b_rgb;
+      if (b.x < (*y_buffer)[a.y][0].position.x) {
+        (*y_buffer)[a.y][0].position = b;
+        (*y_buffer)[a.y][0].ratio = b_rgb;
       }
-      if (b.x > (*y_buffer2)[a.y][1].position.x) {
-        (*y_buffer2)[a.y][1].position = b;
-        (*y_buffer2)[a.y][1].ratio = b_rgb;
+      if (b.x > (*y_buffer)[a.y][1].position.x) {
+        (*y_buffer)[a.y][1].position = b;
+        (*y_buffer)[a.y][1].ratio = b_rgb;
       }
       return;
   }
@@ -677,13 +677,13 @@ static void draw_line_ybuffer_alt(VECTOR3 a, VECTOR3 a_rgb, VECTOR3 b, VECTOR3 b
     if (a.y >= 0) {
       y_buffer_min = _min(a.y,y_buffer_min);
       y_buffer_max = _max(a.y,y_buffer_max);
-      if (a.x < (*y_buffer2)[a.y][0].position.x) {
-        (*y_buffer2)[a.y][0].position = a;
-        (*y_buffer2)[a.y][0].ratio = a_rgb;
+      if (a.x < (*y_buffer)[a.y][0].position.x) {
+        (*y_buffer)[a.y][0].position = a;
+        (*y_buffer)[a.y][0].ratio = a_rgb;
       }
-      if (a.x > (*y_buffer2)[a.y][1].position.x) {
-        (*y_buffer2)[a.y][1].position = a;
-        (*y_buffer2)[a.y][1].ratio = a_rgb;
+      if (a.x > (*y_buffer)[a.y][1].position.x) {
+        (*y_buffer)[a.y][1].position = a;
+        (*y_buffer)[a.y][1].ratio = a_rgb;
       }
     }
     if (a.y == b.y) break;
