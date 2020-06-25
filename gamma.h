@@ -9,9 +9,9 @@ uint8_t gamma8_e[256];
 
 //convert 16-bit linear to 8-bit gamma
 //first 256 values only, higher values should be divided by 256 and converted as 8-bit linear
-uint8_t gamma8_e_16[256]; 
+uint8_t gamma8_e_10[256];
 uint8_t gamma8_e_12[256]; 
-uint8_t gamma8_e_10[256]; 
+uint8_t gamma8_e_16[256];  
 
 //decode 8-bit gamma to 8-bit linear
 uint8_t gamma8_d[256];
@@ -26,9 +26,9 @@ void build_gamma_tables() {
   //create some lookup tables for color conversion
   for (int i = 0; i < 256; i++) {
     gamma8_e[i] = round(255.f * pow(i/255.f,1.f/2.2f));
-    gamma8_e_16[i] = round(255.f * pow(i/65535.f,1.f/2.2f));
-    gamma8_e_12[i] = round(255.f * pow(i/4095.f,1.f/2.2f));
     gamma8_e_10[i] = round(255.f * pow(i/1023.f,1.f/2.2f));
+    gamma8_e_12[i] = round(255.f * pow(i/4095.f,1.f/2.2f));
+    gamma8_e_16[i] = round(255.f * pow(i/65535.f,1.f/2.2f));
     gamma8_d[i] = round(255.f * pow(i/255.f,2.2f));
     gamma16_d[i] = round(65535.f * pow(i/255.f,2.2f));
     gamma12_d[i] = round(4095.f * pow(i/255.f,2.2f));
