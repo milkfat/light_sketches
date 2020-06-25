@@ -31,7 +31,7 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
         bool s = false; //static
         VECTOR2 p; //position
         VECTOR2 np; //next position
-        VECTOR2 v; //velocity
+        VECTOR2_16 v; //velocity
         uint8_t friction_cnt = 0;
     };
 
@@ -45,10 +45,10 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
 
     struct BALL {
         VECTOR2 sp; //static position
-        VECTOR2 offset;
-        VECTOR2 ov; //offset velocity
+        VECTOR2_16 offset;
+        VECTOR2_16 ov; //offset velocity
         VECTOR2 p; //position
-        VECTOR2 v; //velocity
+        VECTOR2_16 v; //velocity
         uint16_t r; //radius
         CRGB rgb;
     };
