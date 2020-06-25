@@ -129,7 +129,7 @@ public:
 Y_BUF2* y_buffer2 = nullptr;
 
 class Z_BUF {
-  int16_t buf[MATRIX_WIDTH][MATRIX_HEIGHT];
+  int16_t buf[MATRIX_WIDTH*MATRIX_HEIGHT];
 
  public:
   void reset() {
@@ -137,7 +137,7 @@ class Z_BUF {
     //method 3: fastest
     //memset
     //optimization sets all values to -32640 (rather than -32768)
-    memset((uint8_t*)buf[0], -128, (MATRIX_WIDTH*MATRIX_HEIGHT)*sizeof(int16_t));
+    memset(&buf, -128, (MATRIX_WIDTH*MATRIX_HEIGHT)*sizeof(int16_t));
 
     //method 1: slow
     //reset all values in loop
@@ -158,7 +158,7 @@ class Z_BUF {
     reset();
   }
   // Overloading [] operator to access elements in array style 
-  int16_t* operator[] (int index) {
+  int16_t& operator[] (int index) {
     return buf[index];
   } 
 
