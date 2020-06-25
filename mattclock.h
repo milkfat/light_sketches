@@ -852,7 +852,6 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
         if (x_size > 0 || y_size > 0 || (x_size < 0 && y_size < 0)) {
           z_offset-=_max(x_size,y_size)/25;
-          std::cout << "z: " << _max(x_size,y_size)/25 << "\n";
         }
 
         int x_center = bound_max.x + bound_min.x - (MATRIX_WIDTH)*256;
@@ -860,11 +859,9 @@ class MATTCLOCK: public LIGHT_SKETCH {
 
         if (x_center > 0 || x_center < 0) {
           x_offset-=x_center/25;
-          std::cout << " x: " << x_center/25 << "\n";
         }
         if (y_center > 0 || y_center < 0) {
           y_offset-=y_center/25;
-          std::cout << " y: " << y_center/25 << "\n";
         }
         //std::cout << "\n";
         
