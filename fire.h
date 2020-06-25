@@ -5,17 +5,17 @@
 
 #define FIRE_GRID_BORDER 1
 #define FIRE_GRID_WIDTH (MATRIX_WIDTH+FIRE_GRID_BORDER*2)
-#define FIRE_GRID_HEIGHT (MATRIX_HEIGHT+FIRE_GRID_BORDER*2)
+#define FIRE_GRID_HEIGHT (MATRIX_HEIGHT/2+FIRE_GRID_BORDER*2)
 
 #define FIRE_GRID_VELOCITY_MAX  1000000
 #define FIRE_GRID_VELOCITY_MIN -1000000
 #define FIRE_GRID_MAX  1000000
 #define FIRE_GRID_MIN -1000000
 
-#define CELL_DIVISOR 8
+#define CELL_DIVISOR 1
 
-typedef int16_t fire_cell_t; //int16_t
-typedef int16_t fire_vel_t; //cint18
+typedef int32_t fire_cell_t; //int16_t
+typedef int32_t fire_vel_t; //cint18
 typedef int32_t fire_calc_t; //int32_t
 class FIRE2: public LIGHT_SKETCH {
     public:
@@ -33,8 +33,8 @@ class FIRE2: public LIGHT_SKETCH {
     uint8_t velocity_calcs = 1;
     uint8_t density_calcs = 1;
     uint8_t heat_acceleration = 1;
-    uint16_t fuel_injection = 8000;
-    uint16_t air_injection = 15000;
+    uint32_t fuel_injection = 8000;
+    uint32_t air_injection = 15000;
     bool draw_flame = 0;
     bool draw_fuel = 1;
     bool draw_air = 0;
@@ -102,47 +102,6 @@ class FIRE2: public LIGHT_SKETCH {
      
           target_cell.vx += ci.x_dir * ci.pressure/4;
           target_cell.vy += ci.y_dir * ci.pressure/4;
-    }
-
-    inline void pull_particles(pixel_full& source_cell, pixel_full& target_cell, const cell_info& ci) {
-
-      //find the total of the target cell
-      fire_calc_t target_cell_total = target_cell.fuel + target_cell.air + target_cell.smoke;
-
-      if ( target_cell_total > ci.pressure && target_cell_total != 0 ) {
-        float ratio = ci.pressure/(float)target_cell_total;
-        fire_calc_t smoke = target_cell.smoke*ratio;
-        fire_calc_t fuel = target_cell.fuel*ratio;
-        fire_calc_t air = target_cell.air*ratio;
-        
-        //record the removed particles
-        target_cell.smoke -= smoke;
-        target_cell.fuel -= fuel;
-        target_cell.air -= air;
-        
-        //find the total number of moved particles
-        fire_calc_t moved_total = fuel+air+smoke;
-
-        //add the moved particles to the source cell, calculate velocities
-        fire_calc_t existing_total = source_cell.fuel + source_cell.air + source_cell.smoke;
-        fire_calc_t total = moved_total + existing_total;
-        if (total != 0) {
-          source_cell.fuel += fuel;
-          source_cell.air += air;
-          source_cell.smoke += smoke;
-          float existing_ratio = existing_total/(float)total;
-          float moved_ratio = moved_total/(float)total;
-          source_cell.vx = source_cell.vx * existing_ratio + target_cell.vx * moved_ratio;
-          source_cell.vy = source_cell.vy * existing_ratio + target_cell.vy * moved_ratio;
-
-          //add a bit of velocity to the target cell (sucking effect?)
- //comment
-          target_cell.vx += ci.x_dir * ci.pressure/4;
-          target_cell.vy += ci.y_dir * ci.pressure/4;
-
-        }
-        
-      }
     }
 
     void pull_air(pixel_full& source_cell, const cell_info& ci) {
@@ -243,8 +202,8 @@ class FIRE2: public LIGHT_SKETCH {
       control_variables.add(draw_fuel,"Draw Fuel", 0);
       control_variables.add(draw_smoke,"Draw Smoke", 0);
       control_variables.add(draw_air,"Draw Air", 0);
-      control_variables.add(fuel_injection,"Amount of Fuel", 0, 65535);
-      control_variables.add(air_injection,"Amount of Air", 0, 65535);
+      control_variables.add(fuel_injection,"Amount of Fuel", 0, 1000000);
+      control_variables.add(air_injection,"Amount of Air", 0, 1000000);
       control_variables.add(num_gas,"Number of Gas Jets", 0, 100);
       for (int i = 0; i < FIRE_GRID_WIDTH*FIRE_GRID_HEIGHT; i++) {
         order[i] = i;
@@ -292,6 +251,13 @@ class FIRE2: public LIGHT_SKETCH {
       //60 fps max
       if (millis() > 1000 && millis() - 16 > frame_time) {
         frame_time = millis();
+
+        if(random(100) == 0) {
+          int rh = random(FIRE_GRID_HEIGHT);
+          int rw = random(FIRE_GRID_WIDTH);
+          grid[rh][rw].fuel = 2000000;
+          grid[rh][rw].air = 2000000;
+        }
        
         //display and blackout
 
@@ -318,7 +284,7 @@ class FIRE2: public LIGHT_SKETCH {
             gas[gas_pos].x = 0;
             gas[gas_pos].y = random(50000);
             if (random(2)) {
-              gas[gas_pos].x = MATRIX_WIDTH*10000-1;
+              gas[gas_pos].x = FIRE_GRID_WIDTH*10000-1;
               gas[gas_pos].vx *= -1;
             }
             gas[gas_pos].fuel = 10;
@@ -333,17 +299,24 @@ class FIRE2: public LIGHT_SKETCH {
           //update roman candle fireballs
           for (int i = 0; i < num_gas; i++) {
             int j = 0;
-            while (j < 5) {
+            while (j < 1) {
               if (gas[i].x != -1) {
-                int32_t x = gas[i].x/10000;
-                int32_t y = gas[i].y/10000;
                 //gas[i].x += gas[i].vx;
-                gas[i].x = inoise8(millis()/2,0,i*10000)*MATRIX_WIDTH*(10000/128) - MATRIX_WIDTH*8000 + i*MATRIX_WIDTH*10000/num_gas;
+                gas[i].x = inoise8(millis()/2,0,i*10000)*FIRE_GRID_WIDTH*2 + (i*FIRE_GRID_WIDTH*256*5)/6;
+                gas[i].x %= FIRE_GRID_WIDTH*256;
                 //gas[i].y = inoise8(0,millis()/2,i*10000)*800 - 90000;
                 gas[i].y = 0;
+                int32_t x = gas[i].x/256;
+                int32_t y = gas[i].y/256;
+
+                gas[i].vx = random(50000);
+                gas[i].vy = random(500000);
+                if (random(2)) {
+                  gas[i].vx *= -1;
+                }
                 //y = 30;
                 //gas[i].vx *= .99f;
-                if(x < 0 || x > MATRIX_WIDTH*10000 || y < 0 || y > MATRIX_HEIGHT*10000) 
+                if(x < 0 || x > (FIRE_GRID_WIDTH-1) || y < 0 || y > (FIRE_GRID_HEIGHT-1))
                 {  
                   //do nothing
                 }
@@ -351,7 +324,7 @@ class FIRE2: public LIGHT_SKETCH {
                 {
                   grid[y][x].vy = gas[i].vy/CELL_DIVISOR;
                   grid[y][x].vx = gas[i].vx/CELL_DIVISOR;
-                  grid[y][x].vy = 400;
+                  //grid[y][x].vy = 400;
                   if (i%2)
                   {
                     grid[y][x].fuel = _min(grid[y][x].fuel*CELL_DIVISOR + random(fuel_injection), FIRE_GRID_MAX)/CELL_DIVISOR;
@@ -442,7 +415,7 @@ class FIRE2: public LIGHT_SKETCH {
 
             
             //push particles based on velocity
-            shuffle_order();
+            //shuffle_order();
             
             pixel_full source_cell;
             pixel_full left_cell_;
@@ -450,8 +423,20 @@ class FIRE2: public LIGHT_SKETCH {
             pixel_full top_cell_;
             pixel_full bottom_cell_;
             for (int i = 0; i < FIRE_GRID_WIDTH*FIRE_GRID_HEIGHT; i++) {
-              uint16_t y = order[i] / FIRE_GRID_WIDTH;
-              uint16_t x = order[i] % FIRE_GRID_WIDTH;
+              //uint16_t y = order[i%(FIRE_GRID_WIDTH*FIRE_GRID_HEIGHT)] / FIRE_GRID_WIDTH;
+              //uint16_t x = order[i%(FIRE_GRID_WIDTH*FIRE_GRID_HEIGHT)] % FIRE_GRID_WIDTH;
+               static uint16_t y = 0;
+               static uint16_t x = 0;
+
+              x+=random(9)+1;
+              if (x >= FIRE_GRID_WIDTH) {
+                x-=FIRE_GRID_WIDTH;
+                y++;
+                if ( y >= FIRE_GRID_HEIGHT) {
+                  y-=FIRE_GRID_HEIGHT;
+                }
+              }
+
 
               cell_d(source_cell, grid[y][x]);
 
@@ -532,6 +517,9 @@ class FIRE2: public LIGHT_SKETCH {
           air = cell->air*CELL_DIVISOR;
           fuel = cell->fuel*CELL_DIVISOR;
           smoke = _max(cell->smoke, 0)*CELL_DIVISOR;
+          cell->vy += cell->smoke/8;
+          cell->vx -= ( cell->vx * cell->air ) / (_max( cell->air + cell->smoke + cell->fuel, 1)*2);
+          cell->vy -= ( cell->vy * cell->air ) / (_max( cell->air + cell->smoke + cell->fuel, 1)*2);
           //add drag
           //smoke to air
 
@@ -560,9 +548,9 @@ class FIRE2: public LIGHT_SKETCH {
 
               if(draw_flame == 1) {
                 //draw flame (burning fuel and air)
-                r += burned_fuel<<1;
-                g += burned_fuel>>2;
-                b += burned_fuel>>3;
+                r += _min(burned_fuel<<1,255);
+                g += _min(burned_fuel>>2,255);
+                b += _min(burned_fuel>>3,255);
               }
 
               
@@ -572,9 +560,9 @@ class FIRE2: public LIGHT_SKETCH {
 
             if(draw_fuel == 1) {
                 uint16_t fuel2 = fuel*5;
-                r += fuel2>>5;
-                g += fuel2>>8;
-                b += fuel2>>9;     
+                r += _min(fuel2>>5,255);
+                g += _min(fuel2>>8,255);
+                b += _min(fuel2>>9,255);     
             }
 
           }
@@ -583,9 +571,13 @@ class FIRE2: public LIGHT_SKETCH {
 
          
           if (draw_smoke && smoke >> 9) {
-            b += smoke>>9;
-            r += smoke>>11;
-            g += smoke>>11;
+            b += _min(smoke>>9,255);
+            r += _min(smoke>>11,255);
+            g += _min(smoke>>11,255);
+          }
+
+          if (draw_air) {
+            g = _min(air>>5,255);
           }
 
           if(r | g | b) {
@@ -619,17 +611,17 @@ class FIRE2: public LIGHT_SKETCH {
         
         if (flame_on)
         {
-          grid[10][MATRIX_WIDTH/2].vy = (INT16_MAX*3)/4;
-          //grid[10][MATRIX_WIDTH/2].vx = 0;
-          int asdf = grid[10][MATRIX_WIDTH/2].air+grid[10][MATRIX_WIDTH/2].smoke;
-          //grid[10][MATRIX_WIDTH/2].fuel = random(INT16_MAX/2);
-          grid[10][MATRIX_WIDTH/2].fuel += asdf;
-          grid[10][MATRIX_WIDTH/2].air = 0;
-          grid[10][MATRIX_WIDTH/2].smoke = 0;
-          //grid[10][MATRIX_WIDTH/2].smoke = 30000;
-          //grid[9][MATRIX_WIDTH/2].air = 0;
-          //grid[9][MATRIX_WIDTH/2].fuel = 0;
-          //fgrid[9][MATRIX_WIDTH/2].smoke = 0;
+          grid[10][FIRE_GRID_WIDTH/2].vy = (INT16_MAX*3)/4;
+          //grid[10][FIRE_GRID_WIDTH/2].vx = 0;
+          int asdf = grid[10][FIRE_GRID_WIDTH/2].air+grid[10][FIRE_GRID_WIDTH/2].smoke;
+          //grid[10][FIRE_GRID_WIDTH/2].fuel = random(INT16_MAX/2);
+          grid[10][FIRE_GRID_WIDTH/2].fuel += asdf;
+          grid[10][FIRE_GRID_WIDTH/2].air = 0;
+          grid[10][FIRE_GRID_WIDTH/2].smoke = 0;
+          //grid[10][FIRE_GRID_WIDTH/2].smoke = 30000;
+          //grid[9][FIRE_GRID_WIDTH/2].air = 0;
+          //grid[9][FIRE_GRID_WIDTH/2].fuel = 0;
+          //fgrid[9][FIRE_GRID_WIDTH/2].smoke = 0;
         }
 
       }
@@ -670,9 +662,9 @@ class FIRE2: public LIGHT_SKETCH {
         
         if (source_cell.vx != 0) {
           int32_t x_portion = (abs(source_cell.vx)*(float)v_total_constrain) / v_total;
-          ci.moved_fuel = (source_cell.fuel*x_portion)/10000;
-          ci.moved_air = (source_cell.air*x_portion)/10000;
-          ci.moved_smoke = (source_cell.smoke*x_portion)/10000;
+          ci.moved_fuel = (source_cell.fuel*x_portion)/20000;
+          ci.moved_air = (source_cell.air*x_portion)/20000;
+          ci.moved_smoke = (source_cell.smoke*x_portion)/20000;
           ci.moved_total = ci.moved_fuel + ci.moved_air + ci.moved_smoke;
           if (ci.moved_total > 0) {
             if (source_cell.vx > 0) {   
@@ -692,9 +684,9 @@ class FIRE2: public LIGHT_SKETCH {
 
         if (source_cell.vy != 0) {
           int32_t y_portion = (abs(source_cell.vy)*(float)v_total_constrain) / v_total;
-          ci.moved_fuel = (source_cell.fuel*y_portion)/10000;
-          ci.moved_air = (source_cell.air*y_portion)/10000;
-          ci.moved_smoke = (source_cell.smoke*y_portion)/10000;
+          ci.moved_fuel = (source_cell.fuel*y_portion)/20000;
+          ci.moved_air = (source_cell.air*y_portion)/20000;
+          ci.moved_smoke = (source_cell.smoke*y_portion)/20000;
           ci.moved_total = ci.moved_fuel + ci.moved_air + ci.moved_smoke;
           if (ci.moved_total > 0) {
             if (source_cell.vy > 0) {
@@ -725,8 +717,45 @@ class FIRE2: public LIGHT_SKETCH {
 
       //total number of particles in cell
       fire_calc_t total_particles = source_cell.fuel + source_cell.air + source_cell.smoke;
+
+      //total number of particles in neighboring cells
+      fire_calc_t neighboring_pressure = 0;
+      uint8_t neighbor_count = 4;
+        if (right_cell) {
+            neighboring_pressure += right_cell->fuel;
+            neighboring_pressure += right_cell->air;
+            neighboring_pressure += right_cell->smoke;
+        } else {
+            neighboring_pressure += 10000;
+        }
+        
+        if (top_cell) {
+            neighboring_pressure += top_cell->fuel;
+            neighboring_pressure += top_cell->air;
+            neighboring_pressure += top_cell->smoke;
+        } else {
+            neighboring_pressure += 10000;
+        }
+
+        if (bottom_cell) {
+            neighboring_pressure += bottom_cell->fuel;
+            neighboring_pressure += bottom_cell->air;
+            neighboring_pressure += bottom_cell->smoke;
+        } else {
+            neighboring_pressure += 10000;
+        }
+
+        if (left_cell) {
+            neighboring_pressure += left_cell->fuel;
+            neighboring_pressure += left_cell->air;
+            neighboring_pressure += left_cell->smoke;
+        } else {
+            neighboring_pressure += 10000;
+        }
+
+        neighboring_pressure/=neighbor_count;
       //particle imbalance (number of particles above/below our base threshold/pressure)
-      ci.pressure = (total_particles - 10000);
+      ci.pressure = (total_particles - neighboring_pressure);
 
 
       if (ci.pressure > 0) {
@@ -735,15 +764,15 @@ class FIRE2: public LIGHT_SKETCH {
         fire_calc_t air_pressure = source_cell.air * pt;
         fire_calc_t smoke_pressure = source_cell.smoke * pt;
 
-        source_cell.fuel -= fuel_pressure;
-        source_cell.air -= air_pressure;
-        source_cell.smoke -= smoke_pressure;
-
         //number of particles to push to neighboring cells
         ci.moved_fuel = fuel_pressure / 5;
         ci.moved_air = air_pressure / 5;
         ci.moved_smoke = smoke_pressure / 5;
         ci.moved_total = ci.moved_fuel + ci.moved_air + ci.moved_smoke;
+
+        source_cell.fuel -= ci.moved_fuel*5;
+        source_cell.air -= ci.moved_air*5;
+        source_cell.smoke -= ci.moved_smoke*5;
 
         source_cell.fuel += ci.moved_fuel;
         source_cell.air += ci.moved_air;
@@ -755,6 +784,10 @@ class FIRE2: public LIGHT_SKETCH {
             ci.x_dir = 1;
             ci.y_dir = 0;
             velocity_transfer(source_cell, *right_cell, ci);
+          } else {
+            source_cell.fuel += ci.moved_fuel;
+            source_cell.air += ci.moved_air;
+            source_cell.smoke += ci.moved_smoke;
           }
 
           //left cell
@@ -762,6 +795,10 @@ class FIRE2: public LIGHT_SKETCH {
             ci.x_dir = -1;
             ci.y_dir = 0;
             velocity_transfer(source_cell, *left_cell, ci);
+          } else {
+            source_cell.fuel += ci.moved_fuel;
+            source_cell.air += ci.moved_air;
+            source_cell.smoke += ci.moved_smoke;
           }
 
           //top cell
@@ -776,52 +813,39 @@ class FIRE2: public LIGHT_SKETCH {
             ci.x_dir = 0;
             ci.y_dir = -1;
             velocity_transfer(source_cell, *bottom_cell, ci);
+          } else {
+            source_cell.fuel += ci.moved_fuel;
+            source_cell.air += ci.moved_air;
+            source_cell.smoke += ci.moved_smoke;
           }
         
       }
-
-      if ( ci.pressure < 0) {
-        //number of particles to grab from adjacent cells
-        ci.pressure /= -4;
-
-        uint8_t off_grid_cnt = 4;
-        //right cell
-        if (right_cell) {
-          ci.x_dir = -1;
-          ci.y_dir = 0;
-          pull_particles(source_cell, *right_cell, ci);
-          off_grid_cnt--;
-        }
-        
-        //left cell
-        if (left_cell) {
-          ci.x_dir = 1;
-          ci.y_dir = 0;
-          pull_particles(source_cell, *left_cell, ci);
-          off_grid_cnt--;
-        } 
-
-        //top cell
-        if (top_cell) {
-          ci.x_dir = 0;
-          ci.y_dir = -1;
-          pull_particles(source_cell, *top_cell, ci);
-          off_grid_cnt--;
-        } 
-
-        //bottom cell
-        if (bottom_cell) {
-          ci.x_dir = 0;
-          ci.y_dir = 1;
-          pull_particles(source_cell, *bottom_cell, ci);
-          off_grid_cnt--;
-        } 
-
-        if (off_grid_cnt) {
-          ci.pressure*=off_grid_cnt;
-          pull_air(source_cell, ci);
-        }
-              
+      if (ci.pressure < 0 && (ci.pressure+total_particles)){
+          ci.pressure = -ci.pressure;
+          if (!top_cell) {
+            source_cell.vy -= (ci.pressure*ci.pressure)/(ci.pressure+total_particles);
+            //source_cell.vy -= ci.pressure;
+            source_cell.air += ci.pressure;
+            return;
+          }
+          if (!bottom_cell) {
+            source_cell.vy += (ci.pressure*ci.pressure)/(ci.pressure+total_particles);
+            //source_cell.vy += ci.pressure;
+            source_cell.air += ci.pressure;
+            return;
+          }
+          if (!left_cell) {
+            source_cell.vx += (ci.pressure*ci.pressure)/(ci.pressure+total_particles);
+            //source_cell.vx += ci.pressure;
+            source_cell.air += ci.pressure;
+            return;
+          }
+          if (!right_cell) {
+            source_cell.vx -= (ci.pressure*ci.pressure)/(ci.pressure+total_particles);
+            //source_cell.vx -= ci.pressure;
+            source_cell.air += ci.pressure;
+            return;
+          }
       }
       
     }
