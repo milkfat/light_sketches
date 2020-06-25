@@ -80,6 +80,13 @@ struct VECTOR2_CLASS {
     return *this;
   }
 
+  //conversion from other types
+  template <class U>
+  inline VECTOR2_CLASS<T>(const VECTOR2_CLASS<U>& n) {
+      x = n.x;
+      y = n.y;
+  }
+
   inline T& operator[] (const int& index)
   {
       return index == 0 ? x : y;
@@ -110,6 +117,7 @@ struct VECTOR2_CLASS {
 
 typedef VECTOR2_CLASS<int32_t> VECTOR2;
 typedef VECTOR2_CLASS<int32_t> VECTOR2_8;
+typedef VECTOR2_CLASS<int16_t> VECTOR2_16;
 typedef VECTOR2_CLASS<int8_t> VECTOR2_8s;
 
 
