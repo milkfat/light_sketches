@@ -29,8 +29,8 @@ static void draw_quad(VECTOR3 a, VECTOR3 b, VECTOR3 c, VECTOR3 d, VECTOR3 orig, 
 
     int32_t z_depth = orig.z+norm.z; 
 
-    rotate_x(norm,32);
-    rotate_y(norm,32);
+    rotate_x(norm,24);
+    rotate_y(norm,16);
 
     //shading according to surface normal
     uint8_t bri = _min(_max((norm.z*7)/8,0)+32,255);
@@ -119,8 +119,12 @@ void draw_cube(const VECTOR3& p, const VECTOR3& d = VECTOR3(256,256,256), const 
     VECTOR3 newp = p;
     led_screen.matrix.rotate(newp);
 
+    int x = (newp.x-led_screen.camera_position.x)/256;
+    int y = (newp.y-led_screen.camera_position.y)/256;
+    int z = (newp.z-led_screen.camera_position.z)/256;
+
     c->persist = persist;
-    c->z = newp.z;
+    c->z = -sqrt(x*x+y*y+z*z); //use distance-from-camera to sort our cubes
     c->p = p;
     c->d = d;
     c->r = r;
