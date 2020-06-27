@@ -408,7 +408,7 @@ void fill_shape(const int& z = 0, CRGB rgb = CRGB(255,0,0)) {
       uint8_t high_alpha_x = (*y_buffer)[y][1].alpha;
 
       int pos = XY(this_low_x,y);
-      CRGB * led = &led_screen.screen_buffer[XY(this_low_x,y)];
+      CRGB * led = &led_screen.screen_buffer[pos];
       
       for (uint16_t x = this_low_x; x <= this_high_x; x++) {
           if (y >= x_buffer[x][0].y && y <= x_buffer[x][1].y) {

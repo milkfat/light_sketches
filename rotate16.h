@@ -70,7 +70,8 @@ static inline __attribute__ ((always_inline)) void rotate16_z(VECTOR3& p, const 
     rotate16_z(p.x, p.y, p.z, s, c);
 }
 
-static inline __attribute__ ((always_inline)) void rotate16(VECTOR3& p, VECTOR3& r) {
+template <class T, class U>
+static inline __attribute__ ((always_inline)) void rotate16(VECTOR3_CLASS<T>& p, VECTOR3_CLASS<U>& r) {
     rotate16_x(p, r.x);
     rotate16_y(p, r.y);
     rotate16_z(p, r.z);

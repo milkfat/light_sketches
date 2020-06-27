@@ -76,8 +76,8 @@ static void draw_quad(VECTOR3 a, VECTOR3 b, VECTOR3 c, VECTOR3 d, VECTOR3 orig, 
 
 struct CUBE {
     VECTOR3 p = VECTOR3(0,0,0); //position X,Y,Z
-    VECTOR3 d = VECTOR3(0,0,0); //dimensions X,Y,Z
-    VECTOR3 r = VECTOR3(0,0,0); //rotation X,Y,Z
+    VECTOR3_16 d = VECTOR3(0,0,0); //dimensions X,Y,Z
+    VECTOR3_16 r = VECTOR3(0,0,0); //rotation X,Y,Z
     bool r_fine = false;
     int32_t z = 0;
     CRGB rgb = CRGB(0,0,0);

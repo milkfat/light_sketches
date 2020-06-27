@@ -13,7 +13,7 @@
 #endif
 
 
-#define NUM_FISH 30
+#define NUM_FISH 100
 #define NUM_JELLIES 1
 
 class CURVY: public LIGHT_SKETCH {
@@ -30,6 +30,8 @@ class CURVY: public LIGHT_SKETCH {
 
     #define NUM_CURVY_EFFECTS 2
     uint8_t current_effect = 0;
+
+    int16_t first_fish = 0;
 
 
     uint8_t temp_led[NUM_LEDS+1];
@@ -78,25 +80,28 @@ class CURVY: public LIGHT_SKETCH {
       int32_t new_target_age = 0;
       uint8_t hue = 0;
       uint8_t sat = 0;
+      int32_t camera_distance;
+      int16_t prev; //doubly linked list, Z-sorted
+      int16_t next; //doubly linked list, Z-sorted
 
       void new_target() {
           target_z = random(-100*256, -50*256);
-          target_z = random(-100*256, -50*256);
-          int low_x = (MATRIX_WIDTH*256)/8;
-          int low_y = (MATRIX_HEIGHT*256)/8;
-          int high_x = (MATRIX_WIDTH*256*7)/8;
-          int high_y = (MATRIX_HEIGHT*256*7)/8;
+          target_z = random(0*256, 0*256);
+          int low_x = (MATRIX_WIDTH*256*15)/32;
+          int low_y = (MATRIX_HEIGHT*256*15)/32;
+          int high_x = (MATRIX_WIDTH*256*17)/32;
+          int high_y = (MATRIX_HEIGHT*256*17)/32;
           //std::cout << low_y << " " << high_y << " " << target_z << " = ";
           led_screen.reverse_perspective(low_x,low_y,target_z);
           led_screen.reverse_perspective(high_x,high_y,target_z);
 
           //std::cout << low_y << " " << high_y << " " << target_z << " result: ";
-          target_x = random(high_x-low_x) + low_x;
+          target_x = 0;
           //target_x = 0;
-          target_y = random(high_y-low_y) + low_y;
+          target_y = 0;
           //std::cout << target_y << "\n";
           //target_z = 0;
-          add_speed = random(20000)+10000;
+          add_speed = random(200)+100;
       }
     };
     FISH fishies[NUM_FISH];
@@ -124,20 +129,36 @@ class CURVY: public LIGHT_SKETCH {
     }
 
     void setup() {
-      z_buffer = &_z_buffer;
+
+      control_variables.add(led_screen.camera_position.z, "Camera Z:", 0, 256*256*4);
+      control_variables.add(led_screen.screen_distance, "Screen Z:", 0, 256*256*4);
+      control_variables.add(led_screen.light_falloff, "Light Distance:", 1, 16);
+
+      reset();
+
+      //initialize our doubly linked list
+      for (int i = 0; i < NUM_FISH; i++) {
+        fishies[i].prev = i-1;
+        fishies[i].next = i+1;
+        if (fishies[i].next == NUM_FISH) {
+          fishies[i].next = -1;
+        }
+      }
+
+    }
+
+    void reset() {
+      
       led_screen.light_falloff = 9;
       led_screen.rotation_alpha = 0;
       led_screen.rotation_beta = 90;
       led_screen.rotation_gamma = 0;
+
       //jellyfish
       for (int i = 0; i < NUM_JELLIES; i++) {
         jellies[i].on_screen = false;
         jellies[i].live_until = 0;
       }
-
-      control_variables.add(led_screen.camera_position.z, "Camera Z:", 0, 1024*256);
-      control_variables.add(led_screen.screen_distance, "Screen Z:", 0, 256*256);
-      control_variables.add(led_screen.light_falloff, "Light Distance:", 1, 16);
 
       //bubbles
       bubble_time = millis();
@@ -158,11 +179,11 @@ class CURVY: public LIGHT_SKETCH {
 
       //fish
       for (int i = 0; i < NUM_FISH; i++) {
-        fishies[i].x = random(32*256) - 16*256;
+        fishies[i].x = random(0*256) - 0*256;
         fishies[i].y = random(400*256) - 200*256;
-        fishies[i].y = random(100*256) - 50*256;
+        fishies[i].y = random(0*256) - 0*256;
         fishies[i].z = random(200*256) - 100*256;
-        fishies[i].z = random(50*256) - 50*256;
+        fishies[i].z = random(0*256) - 0*256;
         fishies[i].wiggle = i*1024;
         fishies[i].az = random(256);
         fishies[i].ay = random(256);
@@ -170,12 +191,9 @@ class CURVY: public LIGHT_SKETCH {
         fishies[i].age = millis();
         fishies[i].hue = random(256);
         fishies[i].sat = random(0,256);
+        fishies[i].new_target();
       }
 
-    }
-
-    void reset() {
-      setup();
       LED_black();
 
     }
@@ -709,7 +727,7 @@ void draw_jelly(JELLY& jelly) {
     }
     
     inline bool dt(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& norm_a, VECTOR3& norm_b, VECTOR3& norm_c, const CRGB& rgb = CRGB(255,255,255)) {
-      return (current_effect) ? draw_triangle_fine(a,b,c,norm_a,norm_b,norm_c,rgb) : draw_triangle(a,b,c,norm_a,norm_b,norm_c,rgb);
+      return (current_effect) ? draw_triangle_fine(a,b,c,norm_a,norm_b,norm_c,rgb) : draw_triangle(a,b,c,norm_b,norm_a,norm_c,rgb);
         
     }
 
@@ -787,8 +805,15 @@ void draw_jelly(JELLY& jelly) {
     void handle_fish() {
       for (int i = 0; i < NUM_FISH; i++) {
         update_fish(fishies[i]);
-        draw_fish(fishies[i]);
       }
+      int current_fish = first_fish;
+      // << "\n\n\n";
+      while (current_fish != -1) {
+        //std::cout << fishies[current_fish].prev << " < " << current_fish << " > " << fishies[current_fish].next << " : " << fishies[current_fish].camera_distance << "\n"; 
+        draw_fish(fishies[current_fish]);
+        current_fish = fishies[current_fish].next;
+      }
+      //std::cout << "\n\n\n";
     }//handle_fish()
 
 
@@ -860,13 +885,50 @@ void draw_jelly(JELLY& jelly) {
 
 
       }
+      //sort farthest to nearest
+      fish.camera_distance = led_screen.camera_distance(fish.x, fish.y, fish.z);
+      //move left
+      while (fish.prev != -1 && fish.camera_distance > fishies[fish.prev].camera_distance) {
+        int16_t temp_prev = fish.prev;
+        int16_t temp_next = fish.next;
+        if (fishies[temp_prev].prev != -1) {
+          fishies[fishies[temp_prev].prev].next = fishies[temp_prev].next;
+        } else {
+          first_fish = fishies[temp_prev].next;
+        }
+        fish.prev = fishies[temp_prev].prev;
+        fish.next = temp_prev;
+        fishies[temp_prev].prev = fishies[temp_prev].next;
+        fishies[temp_prev].next = temp_next;
+        if (temp_next != -1) {
+          fishies[temp_next].prev = temp_prev;
+        }
+      }
+
+      //move right
+      while (fish.next != -1 && fish.camera_distance < fishies[fish.next].camera_distance) {
+        int16_t temp_prev = fish.prev;
+        int16_t temp_next = fish.next;
+        if (fishies[temp_next].next != -1) {
+          fishies[fishies[temp_next].next].prev = fishies[temp_next].prev;
+        }
+        fish.prev = temp_next;
+        fish.next = fishies[temp_next].next;
+        fishies[temp_next].next = fishies[temp_next].prev;
+        fishies[temp_next].prev = temp_prev;
+        if (temp_prev != -1) {
+          fishies[temp_prev].next = temp_next;
+        } else {
+          first_fish = temp_next;
+        }
+      }
+
     } //update_fish()
 
     void draw_fish(FISH& fish) {
 
       VECTOR3 points_3d[FISH_POINTS];
       VECTOR3 points_2d[FISH_POINTS];
-      int32_t detail_z = 0;
       int32_t on_screen = false;
       for (int i = 0; i < FISH_POINTS; i++) {
         VECTOR3* p = &points_3d[i];
@@ -885,12 +947,8 @@ void draw_jelly(JELLY& jelly) {
         p->x += fish.x;
         p->y += fish.y;
         p->z += fish.z;
-        p->z = -p->z;
         led_screen.matrix.rotate(*p);
 
-        //scale_z(*p);
-        
-        detail_z = p->z;
 
         led_screen.perspective(*p,points_2d[i]);
 
@@ -915,110 +973,64 @@ void draw_jelly(JELLY& jelly) {
         uint8_t i = 8; //body right
         uint8_t j = 9; //tail center
 
-        uint8_t detail = 255;
-        //lower the level of detail when farther away
-        if (detail_z > -150*256) {
-          detail = 128;
-        }
-        // int bri = detail_z/512+255;
-        // bri = _max(_min(bri,255),0);
         uint8_t bri = 222;
 
         //draw_triangle(points_2d[a],points_2d[b],points_2d[j],fish.hue,fish.sat,bri);
         //draw_triangle(points_2d[b],points_2d[g],points_2d[j],fish.hue,fish.sat,bri);
-        VECTOR3 right(0,0,-255);
+        VECTOR3 right(0,0,255);
         rotate_z(right, fish.az);
         rotate_y(right, fish.ay);
         led_screen.matrix.rotate(right);
-        rotate_x(right,-24);
-        VECTOR3 left(0,0,255);
+        //rotate_x(right,-24);
+        VECTOR3 left(0,0,-255);
         rotate_z(left, fish.az);
         rotate_y(left, fish.ay);
         led_screen.matrix.rotate(left);
-        rotate_x(left,-24);
-        VECTOR3 up(0,-255,0);
+        //rotate_x(left,-24);
+        VECTOR3 up(0,255,0);
         rotate_z(up, fish.az);
         rotate_y(up, fish.ay);
         led_screen.matrix.rotate(up);
-        rotate_x(up,-24);
-        VECTOR3 down(0,255,0);
+        //rotate_x(up,-24);
+        VECTOR3 down(0,-255,0);
         rotate_z(down, fish.az);
         rotate_y(down, fish.ay);
         led_screen.matrix.rotate(down);
-        rotate_x(down,-24);
-        VECTOR3 front(-255,0,0);
+        //rotate_x(down,-24);
+        VECTOR3 front(255,0,0);
         rotate_z(front, fish.az);
         rotate_y(front, fish.ay);
         led_screen.matrix.rotate(front);
-        rotate_x(front,-24);
-        VECTOR3 back(255,0,0);
+        //rotate_x(front,-24);
+        VECTOR3 back(-255,0,0);
         rotate_z(back, fish.az);
         rotate_y(back, fish.ay);
         led_screen.matrix.rotate(back);
-        rotate_x(right,-24);
+        //rotate_x(right,-24);
 
         CRGB rgb = CHSV(fish.hue,fish.sat,bri);
 
-        VECTOR3 tnorm = normal(points_2d[a],points_2d[b],points_2d[j]);
-        VECTOR3 tnorm2 = normal(points_2d[b],points_2d[g],points_2d[j]);
+        VECTOR3 tnorm = normal(points_2d[b],points_2d[a],points_2d[j]);
+        VECTOR3 tnorm2 = normal(points_2d[g],points_2d[b],points_2d[j]);
         VECTOR3 atnorm = tnorm*-1;
         VECTOR3 atnorm2 = tnorm2*-1;
 
-        //if (points_2d[a].z > -200*256) {
-
-          dt( points_2d[a],points_2d[b],points_2d[j],tnorm,right,right,rgb );
-          dt( points_2d[b],points_2d[g],points_2d[j],right,tnorm2,right,rgb );
-          dt( points_2d[b],points_2d[a],points_2d[j],left,atnorm,left,rgb );
-          dt( points_2d[g],points_2d[b],points_2d[j],atnorm2,left,left,rgb );
-          
-          dt(points_2d[c],points_2d[b],points_2d[i],down,back,right,rgb);
-          dt(points_2d[d],points_2d[c],points_2d[i],front,down,right,rgb);
-          dt(points_2d[e],points_2d[d],points_2d[i],up,front,right,rgb);
-          dt(points_2d[b],points_2d[e],points_2d[i],back,up,right,rgb);
-
-          dt(points_2d[b],points_2d[c],points_2d[h],back,down,left,rgb);
-          dt(points_2d[c],points_2d[d],points_2d[h],down,front,left,rgb);
-          dt(points_2d[d],points_2d[e],points_2d[h],front,up,left,rgb);
-          dt(points_2d[e],points_2d[b],points_2d[h],up,back,left,rgb);
-
-        // } else {
-
-        //   draw_triangle_flat(points_2d[a],points_2d[b],points_2d[j],fish.hue,fish.sat,bri,true);
-        //   draw_triangle_flat(points_2d[b],points_2d[g],points_2d[j],fish.hue,fish.sat,bri,true);
-
-        //   draw_triangle_flat(points_2d[b],points_2d[c],points_2d[h],fish.hue,fish.sat,bri,false);
-        //   draw_triangle_flat(points_2d[c],points_2d[d],points_2d[h],fish.hue,fish.sat,bri,false);
-        //   draw_triangle_flat(points_2d[d],points_2d[e],points_2d[h],fish.hue,fish.sat,bri,false);
-        //   draw_triangle_flat(points_2d[e],points_2d[b],points_2d[h],fish.hue,fish.sat,bri,false);
-
-        //   draw_triangle_flat(points_2d[c],points_2d[b],points_2d[i],fish.hue,fish.sat,bri,false);
-        //   draw_triangle_flat(points_2d[d],points_2d[c],points_2d[i],fish.hue,fish.sat,bri,false);
-        //   draw_triangle_flat(points_2d[e],points_2d[d],points_2d[i],fish.hue,fish.sat,bri,false);
-        //   draw_triangle_flat(points_2d[b],points_2d[e],points_2d[i],fish.hue,fish.sat,bri,false);
+        dt( points_2d[b],points_2d[a],points_2d[j],tnorm,right,right,rgb );
+        dt( points_2d[g],points_2d[b],points_2d[j],right,tnorm2,right,rgb );
+        dt( points_2d[a],points_2d[b],points_2d[j],left,atnorm,left,rgb );
+        dt( points_2d[b],points_2d[g],points_2d[j],atnorm2,left,left,rgb );
         
-        // }
+        dt(points_2d[b],points_2d[c],points_2d[i],down,back,right,rgb);
+        dt(points_2d[c],points_2d[d],points_2d[i],front,down,right,rgb);
+        dt(points_2d[d],points_2d[e],points_2d[i],up,front,right,rgb);
+        dt(points_2d[e],points_2d[b],points_2d[i],back,up,right,rgb);
 
-        //matt_curve8(points,FISH_POINTS,fish.hue,fish.sat,bri,false,false,true,255,detail);
+        dt(points_2d[c],points_2d[b],points_2d[h],back,down,left,rgb);
+        dt(points_2d[d],points_2d[c],points_2d[h],down,front,left,rgb);
+        dt(points_2d[e],points_2d[d],points_2d[h],front,up,left,rgb);
+        dt(points_2d[b],points_2d[e],points_2d[h],up,back,left,rgb);
+
       }
-            // //fish debug, lines between fish and target
-            // int32_t v0[3] = {fish.x,fish.y,fish.z};
-            // int32_t v1[3] = {fish.target_x, fish.target_y, fish.target_z};
-            // int32_t p0[3];
-            // int32_t p1[3];
-
-            // matrix.rotate(v0, p0);
-            // matrix.rotate(v1, p1);
-
-            // p0[2] += -180 * 256 + (200 * 256 * debug_scaler) / 256;
-            // p1[2] += -180 * 256 + (200 * 256 * debug_scaler) / 256;
-
-            // //correct 3d perspective
-            
-            // led_screen.perspective(p0);
-            // led_screen.perspective(p1);
-
-            // draw_line_fine(led_screen, p0[0], p0[1], p1[0], p1[1], 255, 255, 255, -10000, 255, true);
-
     } //void draw_fish(FISH& fish)
 
 

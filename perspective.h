@@ -169,19 +169,22 @@ class PERSPECTIVE {
     //takes screen X,Y coordinate along with the desired Z coordinate
     //modifies X,Y to provide X,Y,Z coordinate
     inline __attribute__ ((always_inline)) bool reverse_perspective(int32_t& x, int32_t& y, int32_t& z) {
-        x/=MATRIX_PRECISION;//half precision to double each axis of our available coordinate space
-        y/=MATRIX_PRECISION;
-        z/=MATRIX_PRECISION;
-        x = ( x - (screen_width*128)/MATRIX_PRECISION ) * ( z - Cz );
-        x /= ( Sz - Cz );
-        y = ( y - (screen_height*128)/MATRIX_PRECISION ) * ( z - Cz );
-        y /=  ( Sz - Cz );
-        x*=MATRIX_PRECISION;
-        y*=MATRIX_PRECISION;
-        z*=MATRIX_PRECISION;
-        x+=camera_position.x;
-        y+=camera_position.y;
-        return true;
+        if (Sz != Cz) {
+            x/=MATRIX_PRECISION;//half precision to double each axis of our available coordinate space
+            y/=MATRIX_PRECISION;
+            z/=MATRIX_PRECISION;
+            x = ( x - (screen_width*128)/MATRIX_PRECISION ) * ( z - Cz );
+            x /= ( Sz - Cz );
+            y = ( y - (screen_height*128)/MATRIX_PRECISION ) * ( z - Cz );
+            y /=  ( Sz - Cz );
+            x*=MATRIX_PRECISION;
+            y*=MATRIX_PRECISION;
+            z*=MATRIX_PRECISION;
+            x+=camera_position.x;
+            y+=camera_position.y;
+            return true;
+        }
+        return false;
     }
 
     inline __attribute__ ((always_inline)) bool reverse_perspective(int32_t p[3]) {
@@ -245,6 +248,15 @@ class PERSPECTIVE {
     inline __attribute__ ((always_inline)) int32_t y_boundary_status_lower() {
         return -_Y_MIN;
     }
+
+    inline int32_t camera_distance(int32_t x, int32_t y, int32_t z) {
+        matrix.rotate(x, y, z);
+        x = (x-camera_position.x)/256;
+        y = (y-camera_position.y)/256;
+        z = (z-camera_position.z)/256;
+        return sqrt(x*x+y*y+z*z);
+    }
+    
 
 };
 

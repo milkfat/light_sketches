@@ -174,6 +174,7 @@ struct VECTOR3_CLASS {
 typedef VECTOR3_CLASS<int32_t> VECTOR3;
 typedef VECTOR3_CLASS<uint8_t> VECTOR3_8;
 typedef VECTOR3_CLASS<int8_t> VECTOR3_8s;
+typedef VECTOR3_CLASS<uint16_t> VECTOR3_16;
 
 
 inline VECTOR3 abs(const VECTOR3& v) {

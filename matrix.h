@@ -104,7 +104,7 @@ class MATRIX {
 
         }
 
-        void rotate (VECTOR3& in) {
+        inline void rotate (VECTOR3& in) {
             VECTOR3 temp;
             temp.x = in.x;
             temp.y = in.y;
@@ -112,25 +112,25 @@ class MATRIX {
             rotate(temp.x, temp.y, temp.z, in.x, in.y, in.z);
         }
 
-        void rotate_camera (VECTOR3& in) {
+        inline void rotate_camera (VECTOR3& in) {
             rotate_camera(in.x, in.y, in.z, in.x, in.y, in.z);
         }
         
-        void rotate (VECTOR3& in, VECTOR3& out) {
+        inline void rotate (VECTOR3& in, VECTOR3& out) {
             rotate(in.x, in.y, in.z, out.x, out.y, out.z);
         }
 
-        void rotate_camera(VECTOR3& in, VECTOR3& out) {
+        inline void rotate_camera(VECTOR3& in, VECTOR3& out) {
             rotate_camera(in.x, in.y, in.z, out.x, out.y, out.z);
         }
             
 
 
-        void rotate (int32_t in[3], int32_t out[3]) {
+        inline void rotate (int32_t in[3], int32_t out[3]) {
             rotate(in[0],in[1],in[2],out[0],out[1],out[2]);
         }
 
-        void rotate (int32_t in[3]) {
+        inline void rotate (int32_t in[3]) {
         
             int32_t temp[3] = {
                 in[0],
@@ -139,6 +139,16 @@ class MATRIX {
             };
 
             rotate(temp, in);
+
+        }
+
+        inline void rotate (int32_t& x, int32_t& y, int32_t& z) {
+        
+            int32_t temp_x = x;
+            int32_t temp_y = y;
+            int32_t temp_z = z;
+
+            rotate(temp_x, temp_y, temp_z, x, y, z);
 
         }
 
