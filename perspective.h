@@ -42,9 +42,9 @@ class PERSPECTIVE {
 
 
     void camera_move (VECTOR3 v) {
-        matrix.rotate(v);
-        v.x = -v.x;
-        v.y = -v.y;
+        //matrix.rotate(v);
+        //v.x = -v.x;
+        //v.y = -v.y;
         camera_position+=v;
     }
 

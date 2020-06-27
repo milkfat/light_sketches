@@ -13,6 +13,7 @@ struct LINE_PIXEL
 };
 
 uint8_t line_sharpen = 1;
+const int screen_diagonal = (uint)(sqrt(MATRIX_WIDTH*MATRIX_WIDTH+MATRIX_HEIGHT*MATRIX_HEIGHT)*2);
 static void draw_line_fine_base(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b, CRGB rgb, uint8_t val = 255, uint8_t val2 = 255, bool trim = false, bool ignore_z = true, bool wide_fill = true, bool additive = false) {
   
   // LINE_PIXEL pixel_buffer[(uint)sqrt((abs(x1_led-x2_led)+1)*(abs(x1_led-x2_led)+1) + (abs(y1_led-y2_led+1)+1)*(abs(y1_led-y2_led)+1))*2];
@@ -20,7 +21,7 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b
   
   // Create a buffer to store our line
   // It will be drawn all at once at the end of the function
-  LINE_PIXEL pixel_buffer[(uint)(sqrt(MATRIX_WIDTH*MATRIX_WIDTH+MATRIX_HEIGHT*MATRIX_HEIGHT)*2)];
+  LINE_PIXEL pixel_buffer[screen_diagonal];
   uint16_t current_pixel = 0;
   
 
@@ -223,8 +224,8 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b
         if (i >= 0 && i < MATRIX_WIDTH) {
           x_buffer_min = _min(i,x_buffer_min);
           x_buffer_max = _max(i,x_buffer_max);
-          x_buffer[i][0] = _min(x_buffer[i][0], Hy);
-          x_buffer[i][1] = _max(x_buffer[i][1], Ly);
+          x_buffer[i][0].y = _min(x_buffer[i][0].y, Hy);
+          x_buffer[i][1].y = _max(x_buffer[i][1].y, Ly);
         }
 
         if (Hy >= 0 && Hy < MATRIX_HEIGHT) {
@@ -281,7 +282,7 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b
       for (int x = start_led; x <= end_led; x++) {
         x_buffer_min = _min(x_buffer_min, x);
         x_buffer_max = _max(x_buffer_max, x);
-        x_buffer[x][0] = 0;
+        x_buffer[x][0].y = 0;
       }
     }
 
@@ -360,15 +361,15 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b
       if (Hx >= 0 && Hx < MATRIX_WIDTH) {
         x_buffer_min = _min(x_buffer_min, Hx);
         x_buffer_max = _max(x_buffer_max, Hx);
-        x_buffer[Hx][0] = _min(x_buffer[Hx][0], i+1);
-        x_buffer[Hx][1] = _max(x_buffer[Hx][1], i-1);
+        x_buffer[Hx][0].y = _min(x_buffer[Hx][0].y, i+1);
+        x_buffer[Hx][1].y = _max(x_buffer[Hx][1].y, i-1);
       }
 
       if (Lx >= 0 && Lx < MATRIX_WIDTH) {
         x_buffer_min = _min(x_buffer_min, Lx);
         x_buffer_max = _max(x_buffer_max, Lx);
-        x_buffer[Lx][0] = _min(x_buffer[Lx][0], i+1);
-        x_buffer[Lx][1] = _max(x_buffer[Lx][1], i-1);
+        x_buffer[Lx][0].y = _min(x_buffer[Lx][0].y, i+1);
+        x_buffer[Lx][1].y = _max(x_buffer[Lx][1].y, i-1);
       }
 
       //add the pixel we subtracted to compensate for rounding errors between -1 and 0
@@ -385,7 +386,7 @@ static void draw_line_fine_base(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b
       for (int x = start_led; x <= end_led; x++) {
         x_buffer_min = _min(x_buffer_min, x);
         x_buffer_max = _max(x_buffer_max, x);
-        x_buffer[x][1] = MATRIX_HEIGHT-1;
+        x_buffer[x][1].y = MATRIX_HEIGHT-1;
       }
     }
     

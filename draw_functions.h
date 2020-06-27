@@ -40,10 +40,14 @@ static inline __attribute__ ((always_inline)) void drawXY_blend_gamma(PERSPECTIV
   
   //treat RGB values as gamma 2.2
   //must be decoded, added, then re-encoded
+  if (alpha == 255) {
+    screen_object.screen_buffer[led] = rgb;
+  } else {
+    screen_object.screen_buffer[led].r = gamma16_encode( ( gamma16_decode(rgb.r)*alpha + gamma16_decode(screen_object.screen_buffer[led].r)*(255-alpha) ) >> 8);
+    screen_object.screen_buffer[led].g = gamma16_encode( ( gamma16_decode(rgb.g)*alpha + gamma16_decode(screen_object.screen_buffer[led].g)*(255-alpha) ) >> 8);
+    screen_object.screen_buffer[led].b = gamma16_encode( ( gamma16_decode(rgb.b)*alpha + gamma16_decode(screen_object.screen_buffer[led].b)*(255-alpha) ) >> 8);
 
-  screen_object.screen_buffer[led].r = gamma16_encode( ( gamma16_decode(rgb.r)*alpha + gamma16_decode(screen_object.screen_buffer[led].r)*(255-alpha) ) >> 8);
-  screen_object.screen_buffer[led].g = gamma16_encode( ( gamma16_decode(rgb.g)*alpha + gamma16_decode(screen_object.screen_buffer[led].g)*(255-alpha) ) >> 8);
-  screen_object.screen_buffer[led].b = gamma16_encode( ( gamma16_decode(rgb.b)*alpha + gamma16_decode(screen_object.screen_buffer[led].b)*(255-alpha) ) >> 8);
+  }
 
   //nblend(screen_object.screen_buffer[screen_object.XY(x,y)], rgb, brightness);
 
@@ -315,15 +319,15 @@ void y_buffer_fill(PERSPECTIVE& screen_object, const CRGB& rgb, const int32_t& z
 
         for (int i = _max(x_min, 0); i <= _min(x_max,screen_object.screen_width-1); i++) {
 
-          y_min_avg += _max(x_buffer[i][0],0);
-          y_max_avg += _min(x_buffer[i][1],screen_object.screen_height-1);
+          y_min_avg += _max(x_buffer[i][0].y,0);
+          y_max_avg += _min(x_buffer[i][1].y,screen_object.screen_height-1);
           y_cnt++;
 
-          if (x_buffer[i][0] < y_min) {
-            y_min = x_buffer[i][0];
+          if (x_buffer[i][0].y < y_min) {
+            y_min = x_buffer[i][0].y;
           }
-          if (x_buffer[i][1] > y_max) {
-            y_max = x_buffer[i][1];
+          if (x_buffer[i][1].y > y_max) {
+            y_max = x_buffer[i][1].y;
           }
         }
 
@@ -352,8 +356,8 @@ void y_buffer_fill(PERSPECTIVE& screen_object, const CRGB& rgb, const int32_t& z
 
       for (int x = (*y_buffer)[y][0].x; x <= (*y_buffer)[y][1].x; x++) {
 
-        int32_t y_min2 = x_buffer[x][0];
-        int32_t y_max2 = x_buffer[x][1];
+        int32_t y_min2 = x_buffer[x][0].y;
+        int32_t y_max2 = x_buffer[x][1].y;
 
         int32_t x_pos = (x - x_min2);
         int32_t y_pos = (y - y_min2);
@@ -400,16 +404,28 @@ void fill_shape(const int& z = 0, CRGB rgb = CRGB(255,0,0)) {
 
       uint16_t this_low_x = _min(_max(low_x,(*y_buffer)[y][0].x), MATRIX_WIDTH-1);
       uint16_t this_high_x = _max(_min(high_x,(*y_buffer)[y][1].x), 0);
+      uint8_t low_alpha_x = (*y_buffer)[y][0].alpha;
+      uint8_t high_alpha_x = (*y_buffer)[y][1].alpha;
 
+      int pos = XY(this_low_x,y);
       CRGB * led = &led_screen.screen_buffer[XY(this_low_x,y)];
       
       for (uint16_t x = this_low_x; x <= this_high_x; x++) {
-          if (y >= x_buffer[x][0] && y <= x_buffer[x][1]) {
-              *led = rgb;
-
-              //drawXYZ(led_screen, x, y, z, rgb);
+          if (y >= x_buffer[x][0].y && y <= x_buffer[x][1].y) {
+              if (y == x_buffer[x][0].y) {
+                drawXY_blend_gamma(led_screen, pos, rgb, x_buffer[x][0].alpha);
+              } else if (y == x_buffer[x][1].y) {
+                drawXY_blend_gamma(led_screen, pos, rgb, x_buffer[x][1].alpha);
+              } else if (x == (*y_buffer)[y][0].x) {
+                drawXY_blend_gamma(led_screen, pos, rgb, low_alpha_x);
+              } else if (x == (*y_buffer)[y][1].x) {
+                drawXY_blend_gamma(led_screen, pos, rgb, high_alpha_x);
+              } else {
+                *led = rgb;
+              }
           }
           led++;
+          pos++;
       }
   }
   

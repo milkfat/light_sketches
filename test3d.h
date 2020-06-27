@@ -182,7 +182,6 @@ class TEST3D: public LIGHT_SKETCH {
     PHOS phos;
 
     void setup() {
-      z_buffer = &_z_buffer;
       //particles = (PARTICLE*) malloc (NUM_TEST_3D_PARTICLES * sizeof(PARTICLE));
       for (int i = 0; i < NUM_TEST_3D_PARTICLES; i++) {
         particles[i].x = random(-30 * 256L, 30 * 256L);

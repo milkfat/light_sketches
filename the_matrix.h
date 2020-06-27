@@ -43,7 +43,6 @@ class THE_MATRIX: public LIGHT_SKETCH {
     }
 
     void setup() {
-        z_buffer = &_z_buffer;
         for (int i = 0; i < NUM_GRASS; i++) {
             grass[i].x = random(1,100)*256;
             if (random(2)) {

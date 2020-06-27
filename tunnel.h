@@ -48,11 +48,11 @@ class TUNNEL: public LIGHT_SKETCH {
     }
 
     void setup() {
-        z_buffer = &_z_buffer;
         reset();
         led_screen.screen_distance = 225*256;
         control_variables.add(led_screen.camera_position.z, "Camera Z", 0, 256*256);
         control_variables.add(led_screen.screen_distance, "Screen Z", 0, 256*256*8);
+        control_variables.add(led_screen.light_falloff, "Light Distance:", 1, 16);
         
     }
 
@@ -145,9 +145,9 @@ class TUNNEL: public LIGHT_SKETCH {
                     triangles[i].b.z += TUNNEL_SPEED;
                     triangles[i].c.z += TUNNEL_SPEED;
                 }
-                 triangles[i].a.z = _min(triangles[i].a.z, led_screen.camera_position.z-45*256);
-                 triangles[i].b.z = _min(triangles[i].b.z, led_screen.camera_position.z-45*256);
-                 triangles[i].c.z = _min(triangles[i].c.z, led_screen.camera_position.z-45*256);
+                 triangles[i].a.z = triangles[i].a.z;
+                 triangles[i].b.z = triangles[i].b.z;
+                 triangles[i].c.z = triangles[i].c.z;
                
                 VECTOR3 pa;
                 VECTOR3 pb;
@@ -164,21 +164,21 @@ class TUNNEL: public LIGHT_SKETCH {
                 led_screen.perspective(pa);
                 led_screen.perspective(pb);
                 led_screen.perspective(pc);
-                if (pa.z >= led_screen.camera_position.z-50*256 && pb.z >= led_screen.camera_position.z-50*256 && pc.z >= led_screen.camera_position.z-50*256) {
-                    triangles[i].active = false;
-                    continue;
-                }
+                // if (pa.z >= led_screen.camera_position.z-50*256 && pb.z >= led_screen.camera_position.z-50*256 && pc.z >= led_screen.camera_position.z-50*256) {
+                //     triangles[i].active = false;
+                //     continue;
+                // }
 
                  //bool test = draw_triangle_rgb( pa,pb,pc,pn,pn,pn,triangles[i].rgb_a,triangles[i].rgb_b,triangles[i].rgb_c );
                 // bool test2 = draw_triangle_rgb( pa,pc,pb,pn,pn,pn,triangles[i].rgb_a,triangles[i].rgb_b,triangles[i].rgb_c );
-                bool test = draw_triangle_fine( pa,pb,pc,pn,pn,pn,triangles[i].rgb_a );
+                bool on_screen = draw_triangle_fine( pa,pb,pc,pn,pn,pn,triangles[i].rgb_a );
                 // draw_line_fine(led_screen, pa, pb, triangles[i].rgb_a);
                 // draw_line_fine(led_screen, pb, pc, triangles[i].rgb_a);
                 // draw_line_fine(led_screen, pc, pb, triangles[i].rgb_a);
                 //bool test2 = draw_triangle( pa,pc,pb,pn,pn,pn,triangles[i].rgb_a );
-                if (!current_effect && !(test)) {
-                     triangles[i].active = false;
-                }
+                // if (!current_effect && !(on_screen)) {
+                //      triangles[i].active = false;
+                // }
 
             }
         }

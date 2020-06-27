@@ -30,7 +30,6 @@ class SPINNY: public LIGHT_SKETCH {
 
     void setup() {
         led_screen.screen_distance = 300*256;
-        z_buffer = &_z_buffer;
         led_screen.light_falloff = 10;
         for (int i = 0; i < NUM_SQUARES; i++) {
             squares[i].pos.x = random(MATRIX_WIDTH*512)-MATRIX_WIDTH*256;

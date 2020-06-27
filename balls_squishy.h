@@ -601,7 +601,6 @@ class BALLS_SQUISHY: public LIGHT_SKETCH {
 
 
     void setup() {
-      z_buffer = &_z_buffer;
       control_variables.add(draw_filled, "Filled Circles");
       control_variables.add(led_screen.light_falloff, "Light Distance:", 1, 16);
       led_screen.light_falloff = 16;

@@ -221,7 +221,6 @@ class TETRIS: public LIGHT_SKETCH {
 
         new_piece();
 
-        z_buffer = &_z_buffer;
         led_screen.light_falloff = 10;
 
         border_width = (MATRIX_WIDTH%TETRIS_WIDTH)/2;

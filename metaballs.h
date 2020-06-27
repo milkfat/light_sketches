@@ -335,16 +335,16 @@ class METABALLS: public LIGHT_SKETCH {
 
       //uint32_t debug_time2 = micros();
         
-        //add opacity values to LEDs (for soft edges)
+        //add alpha values to LEDs (for soft edges)
         for (int y = 0; y < METABALL_MATRIX_HEIGHT; y++) {
           for (int x = 0; x < METABALL_MATRIX_WIDTH; x++) {
             uint32_t led = XY(x,y);
-            uint8_t opacity = 0;
+            uint8_t alpha = 0;
             if (temp_led[led].r > 96) {
-              opacity = _max(_min((temp_led[led].r - 96)*6, 255), 0);
-              //led_mask2[led] = opacity;
-              height_map[y+1][x+1] = (height_map[y+1][x+1]*opacity)/255;
-              color_scale(leds[led], opacity);
+              alpha = _max(_min((temp_led[led].r - 96)*6, 255), 0);
+              //led_mask2[led] = alpha;
+              height_map[y+1][x+1] = (height_map[y+1][x+1]*alpha)/255;
+              color_scale(leds[led], alpha);
             } else {
               leds[led] = CRGB::Black;
               height_map[y+1][x+1] = 0;

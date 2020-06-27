@@ -138,7 +138,6 @@ class SNOWFLAKES: public LIGHT_SKETCH {
     }
 
     void setup() {
-        z_buffer = &_z_buffer;
         reset();
         control_variables.add(num_snowflakes, "Number of flakes", 0, 255);
         control_variables.add(led_screen.camera_position.z, "Camera Z", 0, 1024*256);

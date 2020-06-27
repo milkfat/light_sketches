@@ -135,7 +135,6 @@ class SQUARES: public LIGHT_SKETCH {
                 grid_squares[x][y].spd = x*256+random(384);
             }
         }
-        z_buffer = &_z_buffer;
     }
 
     void draw_square(const VECTOR3& a, const uint8_t& ang) {

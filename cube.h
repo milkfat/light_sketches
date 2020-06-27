@@ -43,10 +43,10 @@ static void draw_quad(VECTOR3 a, VECTOR3 b, VECTOR3 c, VECTOR3 d, VECTOR3 orig, 
     b.z = z_depth-16;
     c.z = z_depth-16;
     d.z = z_depth-16;
-    draw_line_fine(led_screen, a, b, rgb, z_depth-16, 255, 255, true, false, true);
-    draw_line_fine(led_screen, b, c, rgb, z_depth-16, 255, 255, true, false, true);
-    draw_line_fine(led_screen, c, d, rgb, z_depth-16, 255, 255, true, false, true);
-    draw_line_fine(led_screen, d, a, rgb, z_depth-16, 255, 255, true, false, true);
+    draw_line_fine_new(led_screen, a, b, rgb);
+    draw_line_fine_new(led_screen, b, c, rgb);
+    draw_line_fine_new(led_screen, c, d, rgb);
+    draw_line_fine_new(led_screen, d, a, rgb);
     
     //what's this for?
     // for (int x = 0; x < MATRIX_WIDTH; x++) {

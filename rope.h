@@ -101,7 +101,6 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
         control_variables.add(num_joints,"Number of Joints",1,MAX_NUM_JOINTS);
         control_variables.add(draw_balls,"Draw Balls");
         control_variables.add(gravity,"Gravity",1,50);
-        z_buffer = &_z_buffer;
         for (int i = 0; i < NUM_BALLS; i++) {
             reset_ball(i);
             balls[i].p.x = -MAX_BALL_RADIUS + (i%BALLS_PER_ROW) * ((MATRIX_WIDTH*256+MAX_BALL_RADIUS*2+MAX_BALL_RADIUS/2)/(BALLS_PER_ROW));

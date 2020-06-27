@@ -36,6 +36,7 @@ class LIGHT_SKETCH {
 #include "math_helpers.h"
 #include "draw_functions.h"
 #include "draw_line.h"
+#include "draw_line_new.h"
 #include "draw_curve.h"
 #include "draw_circle.h"
 #include "rotate.h"

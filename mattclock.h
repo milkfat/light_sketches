@@ -764,7 +764,6 @@ class MATTCLOCK: public LIGHT_SKETCH {
     }
 
     void setup() {
-      z_buffer = &_z_buffer;
       control_variables.add(rgb_clock, "Color");
       control_variables.add(led_screen.camera_position.z, "Camera Z", 0, 256*256);
       control_variables.add(led_screen.screen_distance, "Screen Z", 0, 256*256*8);

@@ -32,7 +32,6 @@ class PARTICLES: public LIGHT_SKETCH {
     void setup() {
         control_variables.add(led_screen.camera_position.z, "Camera Z:", 0, 256*256);
         control_variables.add(led_screen.screen_distance, "Screen Z:", 0, 256*256);
-        z_buffer = &_z_buffer;
         led_screen.light_falloff = 10;
         for (int i = 0; i < NUM_PARTICLES_PARTICLES; i++) {
             particles[i].active = false;

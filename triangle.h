@@ -324,12 +324,19 @@
             y_buffer->reset();
             reset_x_buffer();
             VECTOR3 norm = norm_a+norm_b+norm_c;
-            norm/=3;
+            norm /= 3;
 
-            int32_t z_depth = a.z+norm.z; 
+            VECTOR3 mid = a+b+c;
+            mid /= 3;
+
+            int32_t z_depth = mid.z+norm.z; 
 
             rotate_x(norm,16);
             rotate_y(norm,10);
+
+            VECTOR3 a_ratio = VECTOR3(255,0,0);
+            VECTOR3 b_ratio = VECTOR3(0,255,0);
+            VECTOR3 c_ratio = VECTOR3(0,0,255);
 
             //shading according to surface normal
             uint8_t bri = _min(_max((norm.z*7)/8,0)+32,255);
@@ -341,9 +348,9 @@
             a.z = z_depth-16;
             b.z = z_depth-16;
             c.z = z_depth-16;
-            draw_line_fine(led_screen, a, b, rgb, z_depth-16, 255, 255, true, false, true);
-            draw_line_fine(led_screen, b, c, rgb, z_depth-16, 255, 255, true, false, true);
-            draw_line_fine(led_screen, c, a, rgb, z_depth-16, 255, 255, true, false, true);
+            draw_line_fine_new(led_screen, a, b, rgb, a_ratio, b_ratio);
+            draw_line_fine_new(led_screen, b, c, rgb, b_ratio, c_ratio);
+            draw_line_fine_new(led_screen, c, a, rgb, c_ratio, a_ratio);
             if (!on_screen) {
                 if ((a.x >= 0 && a.x < MATRIX_WIDTH*256 && a.y >= 0 && a.y < MATRIX_HEIGHT*256)
                     || (b.x >= 0 && b.x < MATRIX_WIDTH*256 && b.y >= 0 && b.y < MATRIX_HEIGHT*256)
@@ -353,7 +360,7 @@
                 }
             }
 
-            fill_shape(z_depth+256, rgb);
+            fill_shape(z_depth, rgb);
         }
       return on_screen;
     } //void draw_triangle_fine()
