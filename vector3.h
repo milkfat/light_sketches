@@ -11,7 +11,8 @@ struct VECTOR3_CLASS {
 
   inline VECTOR3_CLASS<T> (const T& x_in, const T& y_in, const T& z_in): x(x_in), y(y_in), z(z_in) {}
   
-  inline VECTOR3_CLASS<T> operator + (VECTOR3_CLASS<T> const &p_in) { 
+  template <class U>
+  inline VECTOR3_CLASS<T> operator + (VECTOR3_CLASS<U> const &p_in) { 
     VECTOR3_CLASS<T> p; 
     p.x = x + p_in.x; 
     p.y = y + p_in.y; 
@@ -19,7 +20,8 @@ struct VECTOR3_CLASS {
     return p; 
   } 
 
-  inline VECTOR3_CLASS<T> operator - (VECTOR3_CLASS<T> const &p_in) { 
+  template <class U>
+  inline VECTOR3_CLASS<T> operator - (VECTOR3_CLASS<U> const &p_in) { 
     VECTOR3_CLASS<T> p; 
     p.x = x - p_in.x; 
     p.y = y - p_in.y; 
@@ -27,7 +29,8 @@ struct VECTOR3_CLASS {
     return p; 
   } 
   
-  inline VECTOR3_CLASS<T> operator - (VECTOR3_CLASS<T> const &p_in) const { 
+  template <class U>
+  inline VECTOR3_CLASS<T> operator - (VECTOR3_CLASS<U> const &p_in) const { 
     VECTOR3_CLASS<T> p; 
     p.x = x - p_in.x; 
     p.y = y - p_in.y; 
@@ -40,10 +43,19 @@ struct VECTOR3_CLASS {
   } 
 
   inline VECTOR3_CLASS<T> operator * (int const &num) { 
-    VECTOR3_CLASS<T> p; 
+  VECTOR3_CLASS<T> p; 
     p.x = x * num; 
     p.y = y * num; 
     p.z = z * num; 
+    return p; 
+  }
+
+  template <class U>
+  inline VECTOR3_CLASS<T> operator * (VECTOR3_CLASS<U> const& v) { 
+    VECTOR3_CLASS<T> p; 
+    p.x = x * v.x; 
+    p.y = y * v.y; 
+    p.z = z * v.z; 
     return p; 
   } 
 
@@ -57,14 +69,16 @@ struct VECTOR3_CLASS {
 
 
   //overload -=
-  inline VECTOR3_CLASS<T>& operator-= (const VECTOR3_CLASS<T>& rhs) {
+  template <class U>
+  inline VECTOR3_CLASS<T>& operator-= (const VECTOR3_CLASS<U>& rhs) {
     this->x -= rhs.x;
     this->y -= rhs.y;
     this->z -= rhs.z;
     return *this;
   }
   //overload +=
-  inline VECTOR3_CLASS<T>& operator+= (const VECTOR3_CLASS<T>& rhs) {
+  template <class U>
+  inline VECTOR3_CLASS<T>& operator+= (const VECTOR3_CLASS<U>& rhs) {
     this->x += rhs.x;
     this->y += rhs.y;
     this->z += rhs.z;
