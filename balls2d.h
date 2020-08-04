@@ -1,5 +1,6 @@
 #ifndef LIGHTS_BALLS_2D_H
 #define LIGHTS_BALLS_2D_H
+//#define DEBUG_CHECK_ORDER
 
 //BALLS 2D
 
@@ -9,178 +10,339 @@ class BALLS2D: public LIGHT_SKETCH {
     BALLS2D () {setup();}
     ~BALLS2D () {}
 
+    static int default_gravity;
     static int gravity;
     static float gravity_x;
     static float gravity_y;
-    static float frame_delta;
-    static unsigned long debug_time2;
-    unsigned long frame_time = millis();
+    #define BALLS2D_RADIUS 1024
 
   private:
+    int _dampen_ball = 95;
+    int _dampen_wall = 95;
+    int _friction_wall = 95;
+    float dampen_ball;
+    float dampen_wall;
+    float friction_wall;
+    int energy_transfer = 100;
+    Z_BUF _z_buffer;
     uint8_t current_variation = 0;
     int pulse[5] = {255, 255, 255, 255, 255};
     int current_pulse = 0;
 
+    #define BALLS2D_GRID 120
+    #define BALLS2D_GRID_MAX 10
+    static uint frame_divisor;
+    static int16_t collision_grid[BALLS2D_GRID][BALLS2D_GRID][BALLS2D_GRID_MAX];
+    static uint16_t collision_grid_cnt[BALLS2D_GRID][BALLS2D_GRID];
 
-
-#define NUM_BALLS 20
+#define NUM_BALLS2D 500
 
   private:
+    int16_t first_collision = -1;
+    int16_t last_collision = -1;
+
     class BALL {
 
       public:
-        uint8_t h;
-        int x_led;
-        int y_led;
         float x;
         float y;
         float vx = 5;
         float vy = 0;
         float distx;
         float disty;
-        float r = 256;
-        float m = 1;
-        bool sleeping = false;
         uint8_t cnt = 0;
-        int dist[5] = {0, 0, 0, 0, 0};
+        float radius = BALLS2D_RADIUS;
 
-        void update() {
-
-
-          cnt = 0;
-          vx -= gravity_x;
-          vy -= gravity_y;
-          distx = vx * frame_delta;
-          disty = vy * frame_delta;
-          x += distx;
-          y += disty;
-          x_led = x / 256;
-          y_led = y / 256;
-        }
-
-    };
-
-    BALL balls[NUM_BALLS];
-
-    //create a buffer to store unresolved collisions
-    class COLLISION {
-      public:
-        int i; //ball 1
         int j; // ball 2
         float dt; //time of collision 0-1; 1 being earliest; 0 being latest
         float d; //distance between balls (square root)
         char flag; //type of collision 'B' = ball, 't' = top wall, 'l' = left wall, 'b' = bottom wall, 'r' = right wall
         bool unresolved = false; //does this collision need to be resolved?
-    };
-#define COLLISION_BUFFER_SIZE 6
-    COLLISION collision_buffer[(NUM_BALLS * COLLISION_BUFFER_SIZE)];
-    int max_buffer_position = -1;
-    int collision_buffer_position = 0;
 
-    void add_to_buffer(const int& ii, const int& ij, const float& idt, const char& iflag, const float& id = 0) {
+        uint8_t grid_x;
+        uint8_t grid_y;
+        int16_t prev_collision = -1;
+        int16_t next_collision = -1;
 
-      //find the first available buffer position
-      for (int i = 0; i < (NUM_BALLS * COLLISION_BUFFER_SIZE); i++) {
-        if (collision_buffer[i].unresolved == false) {
-          collision_buffer_position = i;
-          if (i > max_buffer_position) {
-            max_buffer_position = i;
+        void grid_position() {
+          grid_x = (x*BALLS2D_GRID)/(MATRIX_WIDTH*256);
+          grid_y = (y*BALLS2D_GRID)/(MATRIX_HEIGHT*256);
+          grid_x = _min(_max(grid_x, 0), BALLS2D_GRID-1);
+          grid_y = _min(_max(grid_y, 0), BALLS2D_GRID-1);
+        }
+
+        void add_to_grid(int ball) {
+          int pos = collision_grid_cnt[grid_x][grid_y]++;
+          collision_grid[grid_x][grid_y][pos] = ball;
+        }
+
+        void grid_update(int ball) {
+          uint8_t old_grid_x = grid_x;
+          uint8_t old_grid_y = grid_y;
+          grid_position();
+          //remove ball from old grid position
+          //add to new position
+          if (old_grid_x != grid_x || old_grid_y != grid_y) {
+            bool move = false;
+            for (int i = 0; i < BALLS2D_GRID_MAX; i++) {
+              if (move) {
+                collision_grid[old_grid_x][old_grid_y][i-1] = collision_grid[old_grid_x][old_grid_y][i];
+              } else if (collision_grid[old_grid_x][old_grid_y][i] == ball) {
+                move = true;
+              }
+            }
+            collision_grid_cnt[old_grid_x][old_grid_y]--;
+            add_to_grid(ball);
           }
-          break;
+        }
+
+// 8/1 = 8
+// 4/1.5 + 8/1.5 = 8
+// 2/2   + 4/2   + 6/2 = 6
+// 2/2.5 + 4/2.5 + 6/2.5 + 8/2.5 = 8
+// 2/3   + 4/3   + 6/3   + 8/3   + 10/3 = 10
+// 2/3.5 + 4/3.5 + 6/3.5 + 8/3.5 + 10/3.5 + 12/3.5 = 12
+// 4 + 12 = 16    (4+6)/2 = 5  (10+12)/2 = 16 
+// 2 + 8 = 10  (2+2)/4 = 1 (4+4)/4 = 2 (8+6)/4 = 3.5 (14+8)/4 = 5.5
+// (2+2)/4.8 + (4+4)/4.8 + (8+6)/4.8 + (14+8)/4.8 = 10
+// (2+3.2)/4 + (5.2+3.2)/4 + (8.4+3.2)/4 + (11.6+3.2)/4 = 10
+// (2+2)/7 + (4+2)/7 + (6+2)/7 + (8+2)/7 + (10+2)/7 + (12+2)/7 + (14+2)/7 = 10
+// 1 + 2 + 3.5 + 5.5 = 12
+
+        void gravity() {
+          vx -= gravity_x;
+          vy -= gravity_y;
+        }
+
+        void update(int ball) {
+          cnt = 0;
+          distx = vx/frame_divisor;
+          disty = vy/frame_divisor;
+          x += distx;
+          y += disty;
+          grid_update(ball);
+        }
+
+    };
+
+    BALL balls[NUM_BALLS2D];
+
+    #ifdef DEBUG_CHECK_ORDER
+    int16_t debug_order[NUM_BALLS2D];
+    void check_order() {
+
+          {
+            int i = first_collision;
+            int p = 0;
+            int prev = -1;
+            while (i != -1) {
+              if (balls[i].prev_collision != prev) {
+
+              }
+              prev = i;
+              debug_order[p] = debug_order[p];
+              i = balls[i].next_collision; 
+              p++;
+            }
+          }
+
+          for (int i = 0; i < NUM_BALLS2D; i++) {
+              debug_order[i] = -2;
+          }
+
+          {
+            int i = first_collision;
+            int p = 0;
+            while (i != -1) {
+              debug_order[p] = i;
+              i = balls[i].next_collision; 
+              p++;
+            }
+            debug_order[p] = -1;
+          }
+    }
+    #endif
+    void sort_collisions(int i) {
+    #ifdef DEBUG_CHECK_ORDER
+    check_order();
+      //remove the ball from the list if necessary
+      int debug_prev_collision = balls[i].prev_collision;
+      int debug_next_collision = balls[i].next_collision;
+    #endif
+
+      if (balls[i].prev_collision != -1) {
+        balls[balls[i].prev_collision].next_collision = balls[i].next_collision;
+        if (balls[i].next_collision == -1) {
+          last_collision = balls[i].prev_collision;
+        }
+      }
+      if (balls[i].next_collision != -1) {
+        balls[balls[i].next_collision].prev_collision = balls[i].prev_collision;
+        if (balls[i].prev_collision == -1) {
+          first_collision = balls[i].next_collision;
         }
       }
 
-      collision_buffer[collision_buffer_position].i = ii;
-      collision_buffer[collision_buffer_position].j = ij;
-      collision_buffer[collision_buffer_position].dt = idt;
-      collision_buffer[collision_buffer_position].flag = iflag;
-      collision_buffer[collision_buffer_position].d = id;
-      collision_buffer[collision_buffer_position].unresolved = true;
+    #ifdef DEBUG_CHECK_ORDER
+    check_order();
+    #endif
 
+      int p = first_collision;
+      int pp = -1;
+      if(p == i) return;
+      if (p == -1) {
+        //this is the first entry
+    #ifdef DEBUG_CHECK_ORDER
+    check_order();
+    #endif
+        balls[i].prev_collision = -1;
+        balls[i].next_collision = -1;
+        first_collision = i;
+        last_collision = i;
+        return;
+    #ifdef DEBUG_CHECK_ORDER
+    check_order();
+    #endif
+      } else {
+        //compare collision times
+        while ( balls[p].dt > balls[i].dt ) {
 
+          if (balls[p].next_collision == -1) {
+            //insert at the end of the list
+            balls[p].next_collision = i;
+            balls[i].prev_collision = p;
+            balls[i].next_collision = -1;
+            last_collision = i;
+
+    #ifdef DEBUG_CHECK_ORDER
+    check_order();
+    #endif
+            return;
+          }
+          //move down the list
+          pp = p;
+          p = balls[p].next_collision;
+        }
+
+    #ifdef DEBUG_CHECK_ORDER
+    check_order();
+    #endif
+        
+        //insert into the list
+        balls[i].next_collision = p;
+        balls[i].prev_collision = pp;
+        balls[p].prev_collision = i;
+        if (pp != -1) {
+          balls[pp].next_collision = i;
+        } else {
+          first_collision = i;
+        }
+        
+
+    #ifdef DEBUG_CHECK_ORDER
+    check_order();
+    #endif
+      }
+
+    }
+
+    void add_to_buffer(const int& ii, const int& ij, const float& idt, const char& iflag, const float& id = 0) {
+      if (idt > balls[ii].dt) {
+        if (iflag != 'B') {
+          balls[ii].j = ij;
+          balls[ii].dt = idt;
+          balls[ii].flag = iflag;
+          balls[ii].d = id;
+          balls[ii].unresolved = true;
+          sort_collisions(ii);
+
+        } else if (idt > balls[ij].dt) {
+          balls[ii].j = ij;
+          balls[ii].dt = idt;
+          balls[ii].flag = iflag;
+          balls[ii].d = id;
+          balls[ii].unresolved = true;
+          sort_collisions(ii);
+
+          balls[ij].j = ii;
+          balls[ij].dt = idt;
+          balls[ij].flag = iflag;
+          balls[ij].d = id;
+          balls[ij].unresolved = true;
+        }
+      }
 
     }
 
     //find the next unresolved collision and void any collisions involving either of the two balls
     int next_collision() {
-      int i;
-      int j;
-      float earliest_dt = 0;
-      int earliest_collision = -1;
-      int my_cnt = 0;
+      int i = first_collision;
 
-      for (int k = 0; k <= (max_buffer_position); k++) {
-        if (collision_buffer[k].unresolved) {
-          my_cnt++;
-        }
-        if (collision_buffer[k].unresolved && ( fabsf(collision_buffer[k].dt) > earliest_dt ) ) {
-          earliest_dt = fabsf(collision_buffer[k].dt);
-          earliest_collision = k;
-          i = collision_buffer[k].i;
-          j = collision_buffer[k].j;
-        }
+      //look for the first unresolved collision
+      while (i != -1 && !balls[i].unresolved) {
+        balls[i].prev_collision = -1;
+        balls[i].next_collision = -1;
+        i = balls[i].next_collision;
       }
 
-      if (earliest_collision == -1) {
-        return earliest_collision;
+      if (i == -1) {
+        return i;
       }
 
-      //      DEBUG
-      //      if (earliest_collision != -1) {
-      //        for (int m = 0;m < NUM_LEDS;m++) {
-      //              debug_canvas[m] = leds[m];
-      //            }
-      //            blendXY(led_screen, balls[i].x, balls[i].y, 0, 0, 255);
-      //            if (collision_buffer[earliest_collision].flag == 'B') {
-      //              blendXY(led_screen, balls[j].x, balls[j].y, 0, 0, 255);
-      //            }
-      //            LED_show();
-      //            for (int m = 0;m < NUM_LEDS;m++) {
-      //              leds[m] = debug_canvas[m];
-      //            }
-      //      }
-
-      //if we find a collision, void any collisions involving either of the two balls
-      for (int k = 0; k <= (max_buffer_position); k++) {
-        //void any collisions with the first ball
-        if (collision_buffer[k].i == i || (collision_buffer[k].flag == 'B' && collision_buffer[k].j == i) ) {
-          collision_buffer[k].unresolved = false;
-
-        }
-        //void any collisions with the second ball, if this is a two-ball collision
-        if (collision_buffer[earliest_collision].flag == 'B' && ( collision_buffer[k].i == j || (collision_buffer[k].flag == 'B' && collision_buffer[k].j == j ) ) ) {
-          collision_buffer[k].unresolved = false;
-
-        }
+      //make sure the other ball contains the same collision information
+      if (balls[i].flag == 'B' && !(balls[balls[i].j].flag == 'B' && balls[balls[i].j].j == i)) {
+        balls[i].flag = 'x';
       }
 
-      return earliest_collision;
+
+    #ifdef DEBUG_CHECK_ORDER
+    check_order();
+    #endif
+      //mark the ball(s) as resolved
+      balls[i].unresolved = false;
+      first_collision = balls[i].next_collision;
+      if(first_collision != -1) {
+        balls[first_collision].prev_collision = -1;
+      }
+      balls[i].next_collision = -1;
+      balls[i].prev_collision = -1;
+      if (balls[i].flag == 'B') {
+        balls[balls[i].j].unresolved = false;
+      }
+    #ifdef DEBUG_CHECK_ORDER
+    check_order();
+    #endif
+      return i;
     }
 
     //check for collisions with walls
-    void check_wall_collisions(const int& i) {
+    void check_wall_collisions(int i) {
       //check for collisions with walls
 
-      if (balls[i].y + balls[i].r > (MATRIX_HEIGHT - 1.f) * 256.f) {
-        float dt = ( balls[i].y + balls[i].r - ((MATRIX_HEIGHT - 1.f) * 256.f) ) / (balls[i].disty);
+      //top
+      if (balls[i].grid_y == BALLS2D_GRID-1 && balls[i].y + balls[i].radius > (MATRIX_HEIGHT - 1) * 256.f) {
+        float dt = ( balls[i].y + balls[i].radius - (MATRIX_HEIGHT-1) * 256.f ) / balls[i].disty;
         if (dt != 0) {
           add_to_buffer(i, 0, dt, 't');
         }
       }
-      if (balls[i].y - balls[i].r < -1.f * 256.f) {
-        float dt = ( balls[i].y - balls[i].r + 1.f * 256.f) / (balls[i].disty);
+      //bottom
+      if (balls[i].grid_y == 0 && balls[i].y - balls[i].radius < 0) {
+        float dt = ( balls[i].y - balls[i].radius) / balls[i].disty;
         if (dt != 0) {
           add_to_buffer(i, 0, dt, 'b');
         }
       }
-      if (balls[i].x - balls[i].r < -1.f * 256.f) {
-        float dt = ( balls[i].x - balls[i].r  + 1.f * 256.f) / (balls[i].distx);
+      //left
+      if (balls[i].grid_x == 0 &&  balls[i].x - balls[i].radius < 0) {
+        float dt = ( balls[i].x - balls[i].radius) / (balls[i].distx);
         if (dt != 0) {
           add_to_buffer(i, 0, dt, 'l');
         }
       }
-      if (balls[i].x + balls[i].r > MATRIX_WIDTH * 256.f) {
-        float dt = ( balls[i].x + balls[i].r - (MATRIX_WIDTH * 256.f) ) / (balls[i].distx);
+      //right
+      if (balls[i].grid_x == BALLS2D_GRID-1 && balls[i].x + balls[i].radius > (MATRIX_WIDTH-1) * 256.f) {
+        float dt = ( balls[i].x + balls[i].radius - ((MATRIX_WIDTH-1) * 256.f) ) / (balls[i].distx);
         if (dt != 0) {
           add_to_buffer(i, 0, dt, 'r');
         }
@@ -188,16 +350,58 @@ class BALLS2D: public LIGHT_SKETCH {
 
     }
 
+    bool check_ball_collisions_bool(int i) {
+      int grid_x_min = _max(balls[i].grid_x-1, 0);
+      int grid_x_max = _min(balls[i].grid_x+1, BALLS2D_GRID-1);
+      int grid_y_min = _max(balls[i].grid_y-1, 0);
+      int grid_y_max = _min(balls[i].grid_y+1, BALLS2D_GRID-1);
+
+      for (int x = grid_x_min; x <= grid_x_max; x++) {
+        for (int y = grid_y_min; y <= grid_y_max; y++) {
+          uint cnt = collision_grid_cnt[x][y];
+          for (int p = 0; p < cnt; p++) {
+            int j = collision_grid[x][y][p];
+            if (j < i) {
+              if ( check_ball_collision_bool(i, j) ) {
+                return true;
+              }
+            }
+          }
+        }
+      }
+      return false;
+    }
+
+    void check_ball_collisions(int i) {
+      int grid_x_min = _max(balls[i].grid_x-1, 0);
+      int grid_x_max = _min(balls[i].grid_x+1, BALLS2D_GRID-1);
+      int grid_y_min = _max(balls[i].grid_y-1, 0);
+      int grid_y_max = _min(balls[i].grid_y+1, BALLS2D_GRID-1);
+
+      for (int x = grid_x_min; x <= grid_x_max; x++) {
+        for (int y = grid_y_min; y <= grid_y_max; y++) {
+          uint cnt = collision_grid_cnt[x][y];
+          for (int p = 0; p < cnt; p++) {
+            int j = collision_grid[x][y][p];
+            if (j != i) {
+              check_ball_collision(i, j);
+            }
+          }
+        }
+      }
+    }
+
     //check for collisions with balls
-    void check_ball_collisions(const int& i, const int& j) {
-      //if ( abs(balls[i].x_led - balls[j].x_led) < 3 && abs(balls[i].y_led - balls[j].y_led) < 3 ) {
+    void check_ball_collision(const int& i, const int& j) {
+      if ( abs(balls[i].x - balls[j].x) > balls[i].radius+balls[j].radius || abs(balls[i].y - balls[j].y) > balls[i].radius+balls[j].radius  )
+        return;
 
       float dx = balls[j].x - balls[i].x;
       float dy = balls[j].y - balls[i].y;
       float dd = (dx * dx) + (dy * dy);
 
       //proceed with collision if detected
-      if (dd < ( (balls[i].r + balls[j].r) * (balls[i].r + balls[j].r) - 1.f) ) {
+      if (dd < ( (balls[i].radius + balls[j].radius) * (balls[i].radius + balls[j].radius)) ) {
         //do some maths to calculate the collision
         float d = sqrt(dd);
 
@@ -205,12 +409,94 @@ class BALLS2D: public LIGHT_SKETCH {
         float vp1 = (balls[i].distx) * dx / d + (balls[i].disty) * dy / d;
         float vp2 = (balls[j].distx) * dx / d + (balls[j].disty) * dy / d;
         if (vp1 != vp2) {
-          float dt = (balls[i].r + balls[j].r - d) / (vp1 - vp2);
+          float dt = (balls[i].radius + balls[j].radius - d) / (vp1 - vp2);
           add_to_buffer(i, j, dt, 'B', d);
+          // if (current_variation == 1 && dt < 0) {
+          //   uint8_t hue = random(256);
+          //   CRGB rgb = CHSV(hue, 255, 255);
+          //   CRGB rgb2 = CHSV(hue, 128, 255);
+          //   draw_circle_fine(balls[i].x, balls[i].y, balls[i].radius, rgb, -1, 32);
+          //   draw_line_fine(led_screen, balls[i].x, balls[i].y, balls[i].x-balls[i].distx, balls[i].y-balls[i].disty, rgb);
+          //   draw_circle_fine(balls[j].x, balls[j].y, balls[j].radius, rgb2, -1, 32);
+          //   draw_line_fine(led_screen, balls[j].x, balls[j].y, balls[j].x-balls[j].distx, balls[j].y-balls[j].disty, rgb);
+          // }
         }
       }
 
       //}
+    }
+
+    bool check_ball_collision_bool(const int& i, const int& j) {
+      if ( abs(balls[i].x - balls[j].x) > balls[i].radius+balls[j].radius || abs(balls[i].y - balls[j].y) > balls[i].radius+balls[j].radius  )
+        return false;
+
+      float dx = balls[j].x - balls[i].x;
+      float dy = balls[j].y - balls[i].y;
+      float dd = (dx * dx) + (dy * dy);
+
+      //proceed with collision if detected
+      if (dd < ( (balls[i].radius + balls[j].radius) * (balls[i].radius + balls[j].radius)) ) {
+        return true;
+      }
+      return false;
+    }
+
+    void create_ball_column() {
+
+      int current_x = BALLS2D_RADIUS;
+      int current_y = BALLS2D_RADIUS;
+      int x_offset = random(MATRIX_WIDTH*256);
+      for ( int i = 0; i < NUM_BALLS2D; i++) {
+        balls[i].radius = random(BALLS2D_RADIUS*7/8,(BALLS2D_RADIUS*9)/8);
+        balls[i].x = current_x;
+        balls[i].x += x_offset;
+        balls[i].x = ((uint)balls[i].x)%(MATRIX_WIDTH*256);
+
+        balls[i].y = current_y;
+        current_y += random(BALLS2D_RADIUS*2,BALLS2D_RADIUS*3);
+        if (current_y > MATRIX_HEIGHT*256 - BALLS2D_RADIUS) {
+          current_y = BALLS2D_RADIUS;
+          current_x += random(BALLS2D_RADIUS*2,BALLS2D_RADIUS*3);
+          current_x %= MATRIX_WIDTH*256;
+        }
+        balls[i].vx = random(1, 200) - 100;
+        balls[i].vy = random(1, 200) - 100;
+        balls[i].grid_position();
+        balls[i].add_to_grid(i);
+
+      }
+    }
+
+    void create_ball_ball() {
+      int offset = 0;
+      int angle = 0;
+      for ( int i = 0; i < NUM_BALLS2D; i++ ) {
+
+        while ( true ) {
+          int x = ((cos8(angle)-(int)128)*offset)/128;
+          int y = ((sin8(angle)-(int)128)*offset)/128;
+          balls[i].x = x + MATRIX_WIDTH*128;
+          balls[i].y = y + MATRIX_HEIGHT*128;
+          balls[i].grid_position();
+          balls[i].add_to_grid(i);
+
+          if ( !check_ball_collisions_bool(i) ) {
+            break;
+          }
+
+          angle++;
+          if (angle > 255) {
+            offset+=BALLS2D_RADIUS*3;
+            angle = 0;
+          }
+
+        }
+
+
+        balls[i].vx = 15*256;
+        balls[i].vy = 5*256;
+
+      }
     }
 
 
@@ -220,197 +506,133 @@ class BALLS2D: public LIGHT_SKETCH {
   public:
     void next_effect() {
       current_variation++;
-      current_variation %= 3;
+      current_variation %= 4;
     }
 
 
 
     void setup() {
-      frame_time = millis();
-      led_screen.rotation_alpha = 0;
-      led_screen.rotation_beta = 90;
-      led_screen.rotation_gamma = 0;
-      for ( int i = 0; i < NUM_BALLS; i++) {
-        balls[i].h = random(256);
-        balls[i].x = i % 2 * 2 * 256 + 2 * 256;
-        balls[i].y = 120 * 255L - (i / 2) * 5 * 255;
-        balls[i].vx = random(1, 200) - 100;
-        balls[i].vy = random(1, 200) - 100;
-        balls[i].r = 917;
-      }
+      control_variables.add(default_gravity, "Gravity:", -200, 200);
+      control_variables.add(_dampen_ball, "Ball dampening:", 0, 100);
+      control_variables.add(_dampen_wall, "Wall dampening:", 0, 100);
+      control_variables.add(_friction_wall, "Wall friction:", 0, 100);
+      control_variables.add(energy_transfer, "Energy transfer:", 0, 100);
+      reset();
+      
     }
 
     void reset() {
       led_screen.rotation_alpha = 0;
       led_screen.rotation_beta = 90;
       led_screen.rotation_gamma = 0;
-      for (int i = 0; i < NUM_BALLS; i++) {
-        if (balls[i].y < 3 * 256) {
-          balls[i].vy += 1000;
-          balls[i].sleeping = false;
+      // for (int i = 0; i < NUM_BALLS2D; i++) {
+      //   if (balls[i].y < 8000) {
+      //     balls[i].vy += 2000;
+      //   }
+      // }
+
+      //reset the grid
+      for (int x = 0; x < BALLS2D_GRID; x++) {
+        for (int y = 0; y < BALLS2D_GRID; y++) {
+          collision_grid_cnt[x][y] = 0;
         }
       }
+
+      //invalidate any existing collisions (in case reset() is being called asynchronously)
+      for ( int i = 0; i < NUM_BALLS2D; i++) {
+        balls[i].dt = 0.5f;
+        balls[i].flag = 'x';
+      }
+
+      //create_ball_column();
+      create_ball_ball();
+
     }
 
 
     void loop() {
-      //base our values on ~60FPS
-      frame_delta = (millis() - frame_time) / 16.0f;
+      dampen_ball = (1.f*_dampen_ball)/100.f;
+      dampen_wall = (1.f*_dampen_wall)/100.f;
+      friction_wall = (1.f*_friction_wall)/100.f;
 
-      //limit our frame_delta to avoid huge jumps through time (like when switching sketches)
-      if (frame_delta > 1) {
-        frame_delta = 1;
+
+
+      gravity = default_gravity;
+      
+      switch (current_variation) {
+        case 0:
+          gravity_y = gravity;
+          gravity_x = 0;
+          break;
+        case 1:
+          gravity_y = 0;
+          gravity_x = gravity;
+          break;
+        case 2:
+          gravity_y = -gravity;
+          gravity_x = 0;
+          break;
+        case 3:
+          gravity_y = 0;
+          gravity_x = -gravity;
+          break;
+        default:
+          gravity_y = gravity;
+          gravity_x = 0;
       }
 
-
-      if (effect_beat == 1) {
-        effect_beat = 0;
-        if (current_variation == 0) {
-          reset();
-        }
-        if (current_variation == 1) {
-          //kind of 3d pulsing effect
-          for (int i = 0; i < NUM_BALLS; i++) {
-            balls[i].dist[current_pulse] = sqrt(sq(balls[i].x / 256L - MATRIX_WIDTH / 2) + sq(balls[i].y / 256L - MATRIX_HEIGHT / 2));
-            balls[i].dist[current_pulse] += 80;
-            balls[i].dist[current_pulse] += random(20);
-          }
-          pulse[current_pulse] = 0;
-        }
-        if (current_variation == 2) {
-          //slow wave pulsing effect
-          for (int i = 0; i < NUM_BALLS; i++) {
-            balls[i].dist[current_pulse] = sqrt(sq(balls[i].x / 256L - MATRIX_WIDTH / 2) + sq(balls[i].y / 256L - MATRIX_HEIGHT / 2));
-            //balls[i].dist[current_pulse] += 80;
-            //balls[i].dist[current_pulse] += random(20);
-          }
-          pulse[current_pulse] = -20;
-        }
-        current_pulse++;
-        current_pulse %= 5;
-
+      //apply gravity acceleration
+      for (int i = 0; i < NUM_BALLS2D; i++) {
+        balls[i].gravity();
       }
 
+      uint calc_cnt = 0;
+      frame_divisor = 32;
+      uint32_t total_cnt = 0;
+      uint32_t microseconds = micros();
+      uint32_t collisions = 0;
 
-      if (current_variation == 0) {
-        gravity = 20;
-      } else {
-        gravity = 0;
-        gravity_x = 0;
-        gravity_y = 0;
-      }
+      while (calc_cnt < frame_divisor) {
+        calc_cnt++;
 
-      if (current_variation == 0) {
+        //reset balls and update positions
+        first_collision = -1;
+        last_collision = -1;
 
-
-        //construct ZXY rotation matrix
-
-        //find our angles in radians
-        //float alpha = ((rotation_alpha-180.0) * PI) / 180.0; //Z
-        float beta = (led_screen.rotation_beta * PI) / 180.f; //X;
-        float gamma = (led_screen.rotation_gamma * PI) / 180.f; //Y
-
-        //store sin/cos in variables
-        //float cZ = 1.0*cos( alpha );
-        float cX = 1.f * cos( beta );
-        //float cY = 1.0*cos( gamma );
-        //float sZ = 1.0*sin( alpha );
-        float sX = 1.f * sin( beta );
-        float sY = 1.f * sin( gamma );
-
-        //create our matrix
-        //float m11 = 1.0 * cZ * cY - 1.0 * sZ * sX * sY;
-        //float m12 = 1.0 * - cX * sZ;
-        //float m13 = 1.0 * cY * sZ * sX + cZ * sY;
-
-        //float m21 = 1.0 * cY * sZ + 1.0 * cZ * sX * sY;
-        //float m22 = 1.0 * cZ * cX;
-        //float m23 = 1.0 * sZ * sY - 1.0 * cZ * cY * sX;
-
-        float m31 = 1.f * - cX * sY;
-        float m32 = 1.f * sX;
-        //float m33 = 1.0 * cX * cY;
-
-        /*
-          X' m11,    m12,    m13,
-          Y' m21,    m22,    m23,
-          Z' m31,    m32,    m33
-        */
-
-        //Bottom of phone (phone laying flat on table, gravity towards bottom of phone);
-        //float bx = 0;
-        //float by = 1;
-        //float bz = 0;
-
-        gravity_y = 1.f * m32 * gravity * frame_delta * frame_delta;
-        gravity_x = 1.f * m31 * gravity * frame_delta * frame_delta;
-
-        /*
-          //Around Z-axis: //back to front of phone
-          x = x*cos(alpha) - y*sin(alpha);
-          y = x*sin(alpha) + y*cos(alpha);
-          z = z;
-          //Around X-axis: //left to right of phone
-          x = x
-          y = y*cos(beta) - z*sin(beta);
-          z = y*sin(beta) + z*cos(beta);
-          //Around Y-axis: //bottom to top of phone
-          x = x*cos(gamma) + z*sin(gamma);
-          y = y;
-          z = z*cos(gamma) - x*sin(gamma);
-        */
-
-        //Side of phone (phone laying flat on table, gravity towards right of phone);
-        //float lx = 1;
-        //float ly = 0;
-        //float lz = 0;
-
-
-      }
-
-      if (frame_delta > 0.01) {
-        uint16_t total_cnt = 0;
-        //uint32_t milliseconds = millis();
-        uint32_t microseconds = micros();
-
-        frame_time = millis(); //update the time for the next frame
-
-
-        for (int i = 0; i < NUM_BALLS; i++) {
-          balls[i].update();
+        for (int i = 0; i < NUM_BALLS2D; i++) {
+          balls[i].prev_collision = -1;
+          balls[i].next_collision = -1;
+          balls[i].dt = 0;
+          balls[i].update(i);
         }
 
-        int iterations = 0;
         //calculate collisions
 #ifdef DEBUG
         static int max_k = 0;
 #endif
+          //int checks = 20;
         while (true) {
 
-
+          //make sure there are no lingering collisions
           int k = next_collision();
-
+          //reset all balls
           if (k == -1) {
-            max_buffer_position = 0;
 
-
-            for (int i = 0; i < (NUM_BALLS * COLLISION_BUFFER_SIZE); i++) {
-              collision_buffer[i].unresolved = false;
+            first_collision = -1;
+            last_collision = -1;
+            for (int i = 0; i < NUM_BALLS2D; i++) {
+              balls[i].unresolved = false;
+              balls[i].dt = 0;
+              balls[i].prev_collision = -1;
+              balls[i].next_collision = -1;
             }
 
-            //find all existing collisions
-            for (int i = 0; i < NUM_BALLS; i++) {
-
+            
+            for (int i = 0; i < NUM_BALLS2D; i++) {
               //check for collisions with walls
               check_wall_collisions(i);
-
-              //check for collisions with other balls
-              for (int j = i + 1; j < NUM_BALLS; j++) {
-                check_ball_collisions(i, j);
-              }
-
+              check_ball_collisions(i);
             }
-
             k = next_collision();
           }
 
@@ -425,70 +647,38 @@ class BALLS2D: public LIGHT_SKETCH {
           if (k == -1) {
             break;
           }
+          collisions++;
+
+          
+          
 
           total_cnt++;
           //if there was a collision: calculate it and check for more
-          int i = collision_buffer[k].i;
-          int j = collision_buffer[k].j;
-          char flag = collision_buffer[k].flag;
+          int i = k;
+          int j = balls[k].j;
+          char flag = balls[k].flag;
 
 
 
           if (flag == 'B') {
-#ifdef DEBUG2
-            Serial.print("#");
-            Serial.print(total_cnt);
-            Serial.print("BALL");
-            Serial.print(i);
-            Serial.print(",");
-            Serial.print(j);
-            Serial.print(" oldiy:");
-            Serial.print(balls[i].y);
-            Serial.print(" oldix:");
-            Serial.print(balls[i].x);
-            Serial.print(" oldjy:");
-            Serial.print(balls[j].y);
-            Serial.print(" oldjx:");
-            Serial.print(balls[j].x);
-            Serial.print(" oldidisty:");
-            Serial.print(balls[i].disty);
-            Serial.print(" oldidistx:");
-            Serial.print(balls[i].distx);
-            Serial.print(" oldjdisty:");
-            Serial.print(balls[j].disty);
-            Serial.print(" oldjdistx:");
-            Serial.print(balls[j].distx);
-            Serial.print(" oldivy:");
-            Serial.print(balls[i].vy);
-            Serial.print(" oldivx:");
-            Serial.print(balls[i].vx);
-            Serial.print(" oldjvy:");
-            Serial.print(balls[j].vy);
-            Serial.print(" oldjvx:");
-            Serial.print(balls[j].vx);
-#endif
-            balls[i].cnt++;
-            balls[j].cnt++;
-            //wake balls if either is sleeping
-            balls[i].sleeping = false;
-            balls[j].sleeping = false;
             //process the earliest ball collision
             {
-
+              BALL debug_ball_i_before = balls[i];
+              BALL debug_ball_j_before = balls[j];
 
               float dx = balls[j].x - balls[i].x;
               float dy = balls[j].y - balls[i].y;
-              //float dd = (dx * dx) + (dy * dy);
-              //float d = sqrt(dd);
-              float& d = collision_buffer[k].d;
+              // float dd = (dx * dx) + (dy * dy);
+              // float d = sqrt(dd);
+              float d = balls[i].d;
               //figure out how far the balls have overlapped
-
+  
               float ax = dx / d;
               float ay = dy / d;
-              // float vp1 = (balls[i].distx) * ax + (balls[i].disty) * ay;
-              // float vp2 = (balls[j].distx) * ax + (balls[j].disty) * ay;
-              //float dt = (balls[i].r + balls[j].r - d) / (vp1 - vp2);
-              float& dt = collision_buffer[k].dt;
+              //  float vp1 = (balls[i].distx) * ax + (balls[i].disty) * ay;
+              //  float vp2 = (balls[j].distx) * ax + (balls[j].disty) * ay;
+              // float dt = (balls[i].radius + balls[j].radius - d) / (vp1 - vp2);
+              float dt = balls[i].dt;
               //back the two balls up so there is no overlap
 
 
@@ -498,55 +688,25 @@ class BALLS2D: public LIGHT_SKETCH {
               balls[j].y -= balls[j].disty * dt;
 
 
-#ifdef DEBUG2
-              Serial.print(" d:");
-              Serial.print(d);
-              //Serial.print(" d_buffer:");
-              //Serial.print(d2);
-              Serial.print(" ax:");
-              Serial.print(ax);
-              Serial.print(" ay:");
-              Serial.print(ay);
-#endif
               float va1 = (balls[i].vx * ax + balls[i].vy * ay);
               float vb1 = (-balls[i].vx * ay + balls[i].vy * ax);
               float va2 = (balls[j].vx * ax + balls[j].vy * ay);
               float vb2 = (-balls[j].vx * ay + balls[j].vy * ax);
-              float ed = 0.95; //dampen multiple collisions greatly
-              //float ed = 1.0;
-              float vaP1 = va1 + (1.0f + ed) * (va2 - va1) / (1.0f + balls[i].m / balls[j].m);
-              float vaP2 = va2 + (1.0f + ed) * (va1 - va2) / (1.0f + balls[j].m / balls[i].m);
-#ifdef DEBUG2
-              Serial.print(" va1:");
-              Serial.print(va1);
-              Serial.print(" vb1:");
-              Serial.print(vb1);
-              Serial.print(" va2:");
-              Serial.print(va2);
-              Serial.print(" vb2:");
-              Serial.print(vb2);
-              Serial.print(" vaP1:");
-              Serial.print(vaP1);
-              Serial.print(" vaP2:");
-              Serial.print(vaP2);
-#endif
-
-              // float oldvxi = balls[i].vx;
-              // float oldvyi = balls[i].vy;
-              // float oldvxj = balls[j].vx;
-              // float oldvyj = balls[j].vy;
+              float vaP1 = va1 + (1.0f + dampen_ball) * (va2 - va1) / 2;
+              float vaP2 = va2 + (1.0f + dampen_ball) * (va1 - va2) / 2;
 
 
-              balls[i].vx = vaP1 * ax - vb1 * ay;
-              balls[i].vy = vaP1 * ay + vb1 * ax;
-              balls[j].vx = vaP2 * ax - vb2 * ay;
-              balls[j].vy = vaP2 * ay + vb2 * ax;
+              balls[i].vx = ((vaP1 * ax - vb1 * ay)*energy_transfer + balls[i].vx*(100-energy_transfer))/100;
+              balls[i].vy = ((vaP1 * ay + vb1 * ax)*energy_transfer + balls[i].vy*(100-energy_transfer))/100;
+              balls[j].vx = ((vaP2 * ax - vb2 * ay)*energy_transfer + balls[j].vx*(100-energy_transfer))/100;
+              balls[j].vy = ((vaP2 * ay + vb2 * ax)*energy_transfer + balls[j].vy*(100-energy_transfer))/100;
 
 
-              balls[i].distx = balls[i].vx * frame_delta;
-              balls[i].disty = balls[i].vy * frame_delta;
-              balls[j].distx = balls[j].vx * frame_delta;
-              balls[j].disty = balls[j].vy * frame_delta;
+
+              balls[i].distx = balls[i].vx/frame_divisor;
+              balls[i].disty = balls[i].vy/frame_divisor;
+              balls[j].distx = balls[j].vx/frame_divisor;
+              balls[j].disty = balls[j].vy/frame_divisor;
 
 
               //readjust the previous overlap using the post-collision vectors
@@ -555,370 +715,123 @@ class BALLS2D: public LIGHT_SKETCH {
               balls[j].x += balls[j].distx * dt;
               balls[j].y += balls[j].disty * dt;
 
-#ifdef DEBUG2
-              Serial.print(" dt:");
-              Serial.print(dt);
-              //Serial.print(" dt_buffer:");
-              //Serial.print(dt2);
-              Serial.print(" ivy:");
-              Serial.print(balls[i].vy);
-              Serial.print(" ivx:");
-              Serial.print(balls[i].vx);
-              Serial.print(" jvy:");
-              Serial.print(balls[j].vy);
-              Serial.print(" jvx:");
-              Serial.print(balls[j].vx);
-              Serial.print(" idisty:");
-              Serial.print(balls[i].disty);
-              Serial.print(" idistx:");
-              Serial.print(balls[i].distx);
-              Serial.print(" jdisty:");
-              Serial.print(balls[j].disty);
-              Serial.print(" jdistx:");
-              Serial.print(balls[j].distx);
-              Serial.print(" iy:");
-              Serial.print(balls[i].y);
-              Serial.print(" ix: ");
-              Serial.print(balls[i].x);
-              Serial.print(" jy:");
-              Serial.print(balls[j].y);
-              Serial.print(" jx: ");
-              Serial.println(balls[j].x);
-              //            if(d != d2) {
-              //              Serial.println("HEEEEEYYYYYY!!!");
-              //              Serial.println("HEEEEEYYYYYY!!!");
-              //              Serial.println("HEEEEEYYYYYY!!!");
-              //              Serial.println("HEEEEEYYYYYY!!!");
-              //              Serial.println("HEEEEEYYYYYY!!!");
-              //              Serial.println("HEEEEEYYYYYY!!!");
-              //            }
-#endif
+              BALL debug_ball_i_after = balls[i];
+              BALL debug_ball_j_after = balls[j];
+
+              if (abs(debug_ball_i_before.y - debug_ball_i_after.y) > (MATRIX_HEIGHT*256)/4) {
+                int debug = 1;
+              }
+
 
             }
-          }
+          } else if (flag == 't') {
 
-          if (flag == 't') {
-            balls[i].cnt++;
-#ifdef DEBUG2
-            Serial.print("#");
-            Serial.print(total_cnt);
-            Serial.print("WALL_T");
-            Serial.print(i);
-            Serial.print(" oldy:");
-            Serial.print(balls[i].y);
-            Serial.print(" oldx:");
-            Serial.print(balls[i].x);
-            Serial.print(" olddisty:");
-            Serial.print(balls[i].disty);
-            Serial.print(" olddistx:");
-            Serial.print(balls[i].distx);
-            Serial.print(" oldvy:");
-            Serial.print(balls[i].vy);
-            Serial.print(" oldvx:");
-            Serial.print(balls[i].vx);
-#endif
-            float dt = ( balls[i].y + balls[i].r - ((MATRIX_HEIGHT - 1.f) * 256.f) ) / (balls[i].disty);
+            float dt = ( balls[i].y + balls[i].radius - ((MATRIX_HEIGHT-1) * 256.f) ) / (balls[i].disty);
             balls[i].y -= fabsf(balls[i].disty * dt);
             balls[i].vy = -fabsf(balls[i].vy);
-            balls[i].vy *= .95f;
-            balls[i].disty = balls[i].vy * frame_delta;
+            balls[i].vy *= dampen_wall;
+            balls[i].vx *= friction_wall;
+            balls[i].distx *= friction_wall;
+            balls[i].disty = balls[i].vy/frame_divisor;
             balls[i].y += -fabsf(balls[i].disty * dt);
-#ifdef DEBUG2
-            Serial.print(" dt:");
-            Serial.print(dt);
-            Serial.print(" vy:");
-            Serial.print(balls[i].vy);
-            Serial.print(" vx:");
-            Serial.print(balls[i].vx);
-            Serial.print(" disty:");
-            Serial.print(balls[i].disty);
-            Serial.print(" distx:");
-            Serial.print(balls[i].distx);
-            Serial.print(" y:");
-            Serial.print(balls[i].y);
-            Serial.print(" x: ");
-            Serial.println(balls[i].x);
-#endif
 
-          }
-          if (flag == 'b') {
-            balls[i].cnt++;
-#ifdef DEBUG2
-            Serial.print("#");
-            Serial.print(total_cnt);
-            Serial.print("WALL_B");
-            Serial.print(i);
-            Serial.print(" oldy:");
-            Serial.print(balls[i].y);
-            Serial.print(" oldx:");
-            Serial.print(balls[i].x);
-            Serial.print(" olddisty:");
-            Serial.print(balls[i].disty);
-            Serial.print(" olddistx:");
-            Serial.print(balls[i].distx);
-            Serial.print(" oldvy:");
-            Serial.print(balls[i].vy);
-            Serial.print(" oldvx:");
-            Serial.print(balls[i].vx);
-#endif
-            float dt = ( balls[i].y - balls[i].r  + 1.f * 256.f) / (balls[i].disty);
+
+          } else if (flag == 'b') {
+
+            float dt = ( balls[i].y - balls[i].radius) / (balls[i].disty);
             balls[i].y += fabsf(balls[i].disty * dt);
             balls[i].vy = fabsf(balls[i].vy);
-            balls[i].vy *= .95f;
-            balls[i].disty = balls[i].vy * frame_delta;
-            //if (current_variation == 1) {
-            //  balls[i].vy = 1000;
-            //}
+            balls[i].vy *= dampen_wall;
+            balls[i].vx *= friction_wall;
+            balls[i].distx *= friction_wall;
+            balls[i].disty = balls[i].vy/frame_divisor;
             balls[i].y += fabsf(balls[i].disty * dt);
-#ifdef DEBUG2
-            Serial.print(" dt:");
-            Serial.print(dt);
-            Serial.print(" vy:");
-            Serial.print(balls[i].vy);
-            Serial.print(" vx:");
-            Serial.print(balls[i].vx);
-            Serial.print(" disty:");
-            Serial.print(balls[i].disty);
-            Serial.print(" distx:");
-            Serial.print(balls[i].distx);
-            Serial.print(" y:");
-            Serial.print(balls[i].y);
-            Serial.print(" x: ");
-            Serial.println(balls[i].x);
-#endif
 
-          }
-          if (flag == 'l') {
-            balls[i].cnt++;
-#ifdef DEBUG2
-            Serial.print("#");
-            Serial.print(total_cnt);
-            Serial.print("WALL_L");
-            Serial.print(i);
-            Serial.print(" oldy:");
-            Serial.print(balls[i].y);
-            Serial.print(" oldx:");
-            Serial.print(balls[i].x);
-            Serial.print(" olddisty:");
-            Serial.print(balls[i].disty);
-            Serial.print(" olddistx:");
-            Serial.print(balls[i].distx);
-            Serial.print(" oldvy:");
-            Serial.print(balls[i].vy);
-            Serial.print(" oldvx:");
-            Serial.print(balls[i].vx);
-#endif
-            float dt = ( balls[i].x - balls[i].r  + 1.f * 256.f) / (balls[i].distx);
+
+          } else if (flag == 'l') {
+
+            float dt = ( balls[i].x - balls[i].radius) / (balls[i].distx);
             balls[i].x += fabsf(balls[i].distx * dt);
             balls[i].vx = fabsf(balls[i].vx);
-            balls[i].vx *= .95f;
-            balls[i].distx = balls[i].vx * frame_delta;
+            balls[i].vx *= dampen_wall;
+            balls[i].vy *= friction_wall;
+            balls[i].disty *= friction_wall;
+            balls[i].distx = balls[i].vx/frame_divisor;
             balls[i].x += fabsf(balls[i].distx * dt);
-#ifdef DEBUG2
-            Serial.print(" dt:");
-            Serial.print(dt);
-            Serial.print(" vy:");
-            Serial.print(balls[i].vy);
-            Serial.print(" vx:");
-            Serial.print(balls[i].vx);
-            Serial.print(" disty:");
-            Serial.print(balls[i].disty);
-            Serial.print(" distx:");
-            Serial.print(balls[i].distx);
-            Serial.print(" y:");
-            Serial.print(balls[i].y);
-            Serial.print(" x: ");
-            Serial.println(balls[i].x);
-#endif
 
-          }
-          if (flag == 'r') {
-            balls[i].cnt++;
-#ifdef DEBUG2
-            Serial.print("#");
-            Serial.print(total_cnt);
-            Serial.print("WALL_R");
-            Serial.print(i);
-            Serial.print(" oldy:");
-            Serial.print(balls[i].y);
-            Serial.print(" oldx:");
-            Serial.print(balls[i].x);
-            Serial.print(" olddisty:");
-            Serial.print(balls[i].disty);
-            Serial.print(" olddistx:");
-            Serial.print(balls[i].distx);
-            Serial.print(" oldvy:");
-            Serial.print(balls[i].vy);
-            Serial.print(" oldvx:");
-            Serial.print(balls[i].vx);
-#endif
-            float dt = ( balls[i].x + balls[i].r - (MATRIX_WIDTH * 256.f) ) / (balls[i].distx);
+
+          } else if (flag == 'r') {
+            BALL debug_ball_before = balls[i];
+
+            float dt = ( balls[i].x + balls[i].radius - (MATRIX_WIDTH-1) * 256.f ) / (balls[i].distx);
             balls[i].x -= fabsf(balls[i].distx * dt);
             balls[i].vx = -fabsf(balls[i].vx);
-            balls[i].vx *= .95f;
-            balls[i].distx = balls[i].vx * frame_delta;
+            balls[i].vx *= dampen_wall;
+            balls[i].vy *= friction_wall;
+            balls[i].disty *= friction_wall;
+            balls[i].distx = balls[i].vx/frame_divisor;
             balls[i].x += -fabsf(balls[i].distx * dt);
-#ifdef DEBUG2
-            Serial.print(" dt:");
-            Serial.print(dt);
-            Serial.print(" vy:");
-            Serial.print(balls[i].vy);
-            Serial.print(" vx:");
-            Serial.print(balls[i].vx);
-            Serial.print(" disty:");
-            Serial.print(balls[i].disty);
-            Serial.print(" distx:");
-            Serial.print(balls[i].distx);
-            Serial.print(" y:");
-            Serial.print(balls[i].y);
-            Serial.print(" x: ");
-            Serial.println(balls[i].x);
-#endif
-
-
+            
+            BALL debug_ball_after = balls[i];
+            if (abs(debug_ball_before.y - debug_ball_after.y) > (MATRIX_HEIGHT*256)/4) {
+              int debug = 1;
+            }
           }
 
           //recheck collisions for the recalculated balls
+          balls[i].dt = 0;
+          balls[i].unresolved = false;
+          balls[i].grid_update(i);
           if (flag == 'B') {
-            for (int k = 0; k < NUM_BALLS; k++) {
-              if (k != i && k != j) {
-                check_ball_collisions(i, k);
-                check_ball_collisions(j, k);
-              }
-            }
+            balls[j].dt = 0;
+            balls[j].unresolved = false;
+            balls[j].grid_update(j);
+
+            check_ball_collisions(i);
+            check_ball_collisions(j);
             check_wall_collisions(i);
             check_wall_collisions(j);
+
           } else {
-            for (int k = 0; k < NUM_BALLS; k++) {
-              if (k != i) {
-                check_ball_collisions(i, k);
-              }
-            }
+
+            check_ball_collisions(i);
             check_wall_collisions(i);
           }
 
-
-          iterations++;
         }
-        microseconds = micros() - microseconds;
-        LED_black();
-        //write balls to LED buffer
-        for (int i = 0; i < NUM_BALLS; i++) {
-          uint8_t hue = balls[i].h;
-          if (balls[i].sleeping) {
-            hue = 96;
-          }
-#ifdef DEBUG
-          if (millis() > 2000 && millis() - 2000 > debug_time2) {
-            Serial.print("Ball: ");
-            Serial.print(i);
-            Serial.print(" x: ");
-            Serial.print(balls[i].x);
-            Serial.print(" y: ");
-            Serial.print(balls[i].y);
-            Serial.print(" vx: ");
-            Serial.print(balls[i].vx);
-            Serial.print(" vy: ");
-            Serial.print(balls[i].vy);
-            Serial.print(" distx: ");
-            Serial.print(balls[i].distx);
-            Serial.print(" disty: ");
-            Serial.print(balls[i].disty);
-            Serial.print(" collisions: ");
-            Serial.println(balls[i].cnt);
-          }
-#endif
-          uint8_t sat = 255;
-          float draw_x = balls[i].x;
-          float draw_y = balls[i].y;
-          for (int p = 0; p < 5; p++) {
-            if (pulse[p] < 255) {
-              int pulse_dist = abs(balls[i].dist[p] - pulse[p]);
-              if (current_variation == 1 && pulse_dist < 80) {
-                pulse_dist = 80 - pulse_dist;
-                pulse_dist = (pulse_dist * 255) / 80;
-                if (pulse_dist > 128) {
-                  //ease out only
-                  pulse_dist = ease8InOutApprox(pulse_dist);
-                }
-                if (pulse_dist > 230) {
-                  sat = _max(sat - (pulse_dist - 230) * 10, 0);
-                }
-                pulse_dist = (pulse_dist * 80) / 255;
-                //int mag = sqrt( sq(balls[i].x - (MATRIX_WIDTH*256L/2L)) + sq(balls[i].y - (MATRIX_HEIGHT*256L)/2L) );
-
-                draw_x += ((balls[i].x / 256L - MATRIX_WIDTH / 2) / (balls[i].dist[p])) * ((10000 * pulse_dist) / 80);
-                draw_y += ((balls[i].y / 256L - MATRIX_HEIGHT / 2) / (balls[i].dist[p])) * ((10000 * pulse_dist) / 80);
-
-              }
-              if (current_variation == 2 && pulse_dist < 20) {
-                pulse_dist = 20 - pulse_dist;
-                pulse_dist = (pulse_dist * 255) / 20;
-                pulse_dist = ease8InOutApprox(pulse_dist);
-                if (pulse_dist > 230) {
-                  sat = _max(sat - (pulse_dist - 230) * 10, 0);
-                }
-                pulse_dist = (pulse_dist * 20) / 255;
-                //int mag = sqrt( sq(balls[i].x - (MATRIX_WIDTH*256L/2L)) + sq(balls[i].y - (MATRIX_HEIGHT*256L)/2L) );
-
-                int mod_x = ((balls[i].x / 256L - MATRIX_WIDTH / 2) / (balls[i].dist[p])) * ((1500 * pulse_dist) / 20);
-                int mod_y = ((balls[i].y / 256L - MATRIX_HEIGHT / 2) / (balls[i].dist[p])) * ((1500 * pulse_dist) / 20);
-                if (balls[i].dist[p] < 20) {
-                  mod_x = (mod_x * balls[i].dist[p]) / 20;
-                  mod_y = (mod_y * balls[i].dist[p]) / 20;
-                }
-                draw_x += mod_x;
-                draw_y += mod_y;
-
-              }
-            }
-          }
-          //blendXY(led_screen, draw_x, draw_y, hue, sat, 255);
-          draw_circle_fine(draw_x, draw_y, balls[i].r, hue, sat, 255);
-        }
-#ifdef DEBUG
-        if (millis() - 2000 > debug_time2) {
-          debug_time2 = millis();
-          Serial.print(" Total collisions: ");
-          Serial.println(total_cnt);
-          Serial.print(" Total microseconds: ");
-          Serial.println(microseconds);
-          Serial.print(" Microseconds per collision: ");
-          Serial.println(microseconds / (1.f * total_cnt));
-          Serial.print(" Max buffered collisions: ");
-          Serial.println(max_k);
-          max_k = 0;
-        }
-#endif
-
-        //update LEDS
-        LED_show();
-        for (int p = 0; p < 5; p ++) {
-          if (pulse[p] < 255) {
-            if (current_variation == 1) {
-              if (pulse[p] < 128) {
-                pulse[p] += 10;
-              } else {
-                pulse[p] += 5;
-              }
-            }
-            if (current_variation == 2) {
-              pulse[p]++;
-            }
-          }
-        }
-
-
+        
       }
+      
+      //std::cout << "collision count: " << total_cnt << "\n";
+      microseconds = micros() - microseconds;
+      //std::cout << "microseconds: " << microseconds << " collisions: " << collisions << " tpc: " << microseconds/_max(collisions,1) << "\n";
+
+      //write balls to LED buffer
+      CRGB rgb = CHSV(96, 200, 255);
+      for (int i = 0; i < NUM_BALLS2D; i++) {
+        //blendXY(led_screen, balls[i].x, balls[i].y, 0, 0, 255);
+        draw_circle_fine(balls[i].x, balls[i].y, balls[i].radius, rgb, -1, 32);
+         fill_shape(0, rgb);
+         y_buffer->reset();
+         reset_x_buffer();
+      }
+
+      //update LEDS
+      LED_show();
+      LED_black();
+
     }
 
 };
 
 int BALLS2D::gravity = 0;
+int BALLS2D::default_gravity = 80;
 float BALLS2D::gravity_x = 0;
 float BALLS2D::gravity_y = 0;
-float BALLS2D::frame_delta = 0;
-unsigned long BALLS2D::debug_time2 = millis();
+uint BALLS2D::frame_divisor = 1;
+
+int16_t BALLS2D::collision_grid[BALLS2D_GRID][BALLS2D_GRID][BALLS2D_GRID_MAX] = {-1};
+uint16_t BALLS2D::collision_grid_cnt[BALLS2D_GRID][BALLS2D_GRID] = {0};
 
 
 LIGHT_SKETCHES::REGISTER<BALLS2D> balls2d("balls2d");
