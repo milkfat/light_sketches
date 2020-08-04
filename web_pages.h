@@ -1,5 +1,6 @@
 #include "text.h"
 #include "helper_functions.h"
+#include "udp_client.h"
 
 char * generate_html_controls(char * inbuff) {
   char * p = inbuff;
@@ -162,7 +163,7 @@ const char * light_html_tail() {
        </p>
        </form>
            <p id = 'status'>Not connected</p>
-           <p>Clients connected: <span id = 'clients'>
+           <p>Known Clients: <span id = 'clients'>
               </span></p>
            <ul id = 'log'></ul>
          </article>
@@ -176,6 +177,38 @@ const char * light_html_tail() {
 ;
 }
 
+char * generate_client_list(char * inbuff) {
+  char * p = inbuff;
+  *p = '\0';
+  mystrcat(p, "{\"clients\":[");
+  int cnt = 0;
+  for (int i = 0; i < NUM_UDP_CLIENTS; i++) {
+    if (udp_clients[i].active) {
+      if ( cnt ) {
+        mystrcat(p,",");
+      }
+      cnt++;
+      mystrcat(p,"{\"name\":\"");
+      mystrcat(p,udp_clients[i].name);
+      mystrcat(p, "\",\"address\":\"");
+      char str[4];
+      sprintf(str, "%d", ((uint8_t*)(&udp_clients[i].address))[3]);
+      mystrcat(p,str);
+      mystrcat(p, ".");
+      sprintf(str, "%d", ((uint8_t*)(&udp_clients[i].address))[2]);
+      mystrcat(p,str);
+      mystrcat(p, ".");
+      sprintf(str, "%d", ((uint8_t*)(&udp_clients[i].address))[1]);
+      mystrcat(p,str);
+      mystrcat(p, ".");
+      sprintf(str, "%d", ((uint8_t*)(&udp_clients[i].address))[0]);
+      mystrcat(p,str);
+      mystrcat(p,"\"}");
+    }
+  }
+  mystrcat(p, "]}");
+  return inbuff;
+}
 
 
 char * generate_sketch_dropdown(char * inbuff) {

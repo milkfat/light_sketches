@@ -4,6 +4,7 @@
 #define LIGHTS_WEB_SERVER_H
 
 #include "web_pages.h"
+#include "udp_client.h"
 
 class HTTPS_SERVER {
     
@@ -118,7 +119,12 @@ class WSS_SERVER {
       generate_html_controls(buff);
 
       for(auto &a_connection : server.get_connections())
-        a_connection->send(buff);
+        a_connection->send(buff); 
+
+      generate_client_list(buff);
+      
+      for(auto &a_connection : server.get_connections())
+        a_connection->send(buff); 
 
     }
 
@@ -196,6 +202,136 @@ void wss_send() {
 	wss_server.wssHTMLControls();
 }
 
+
+
+
+
+
+class UDP_SERVER
+{
+
+  boost::asio::ip::udp::socket socket_;
+  boost::asio::ip::udp::socket socket2_;
+  boost::asio::ip::udp::endpoint remote_endpoint_;
+  boost::asio::ip::udp::endpoint remote_endpoint2_;
+  boost::system::error_code err_; 
+  boost::system::error_code err2_; 
+  char recv_buffer_[1472];
+  char recv_buffer2_[1472];
+
+public:
+  UDP_SERVER(boost::asio::io_service& io_service)
+    : socket_(io_service, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), 24322))
+    , socket2_(io_service, boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), 24323))
+  {
+    start_receive();
+    start_receive2();
+  }
+
+private:
+  void start_receive()
+  {
+    socket_.async_receive_from(
+        boost::asio::buffer(recv_buffer_), remote_endpoint_,
+        boost::bind(&UDP_SERVER::handle_receive, this,
+          boost::asio::placeholders::error,
+          boost::asio::placeholders::bytes_transferred));
+  }
+
+
+
+    
+  void start_receive2()
+  {
+    socket2_.async_receive_from(
+        boost::asio::buffer(recv_buffer2_), remote_endpoint2_,
+        boost::bind(&UDP_SERVER::handle_receive2, this,
+          boost::asio::placeholders::error,
+          boost::asio::placeholders::bytes_transferred));
+  }
+
+  //handles received UDP packets
+  void handle_receive(const boost::system::error_code& error,
+      std::size_t bytes_transferred)
+  {
+    if (!error || error == boost::asio::error::message_size)
+    {
+      // for (int i = 0; i < bytes_transferred; i++) {
+      //   std::cout << recv_buffer_[i];
+      // }
+      //std::cout << " " << bytes_transferred << " from " << remote_endpoint_ << "\n";
+      if (memcmp("LIGHTSKETCH", recv_buffer_, 11) == 0) {
+        udp_clients.add_client(remote_endpoint_.address().to_v4().to_uint(), remote_endpoint_.port(), &recv_buffer_[11], bytes_transferred-11);
+      }
+      send(recv_buffer_, bytes_transferred);
+      start_receive();
+    }
+  }
+
+  //handles received UDP packets
+  void handle_receive2(const boost::system::error_code& error,
+      std::size_t bytes_transferred)
+  {
+    if (!error || error == boost::asio::error::message_size)
+    {
+      if (image_buffer) {
+        static int current_image_buffer = 0;
+        memcpy(image_buffer[current_image_buffer++], recv_buffer2_, bytes_transferred);
+        if (current_image_buffer == NUM_IMAGE_BUFFERS || bytes_transferred != 1472) {
+          current_image_buffer = 0;
+        }
+      }
+      start_receive2();
+    }
+  }
+  
+
+  //sends a message to all known clients
+  void send(const char* buffer, size_t size/*, const char* ip_address, const uint16_t port*/) {
+    for (int i = 0; i < 10; i++) {
+      socket_.async_send_to(boost::asio::buffer(buffer, size), boost::asio::ip::udp::endpoint(boost::asio::ip::address_v4(udp_clients[i].address), udp_clients[i].port),
+        boost::bind(&UDP_SERVER::handle_send, this));
+    }
+  }
+
+  void handle_send()
+  {
+  }
+
+};
+/*
+				//send RGB data over UDP
+				
+				//buffer for image data and PPM header
+				char my_buffer[8+(NUM_LEDS-1)*3];
+				
+				//PPM container header
+				for (int i = 0; i < 9; i++) {
+					my_buffer[i] = "P6 4 4 1 "[i];
+				}
+
+				//add image data to buffer
+				for (int i = 0; i < NUM_LEDS-1; i++) {
+					int j = 9+i*3;
+					my_buffer[j+0]=leds[(NUM_LEDS-2)-i].r;
+					my_buffer[j+1]=leds[(NUM_LEDS-2)-i].g;
+					my_buffer[j+2]=leds[(NUM_LEDS-2)-i].b;
+				}
+				int buffer_position = 0;
+				int bytes_remaining = sizeof(my_buffer);
+				//send image data over UDP with max frame size of 1472
+				while (bytes_remaining > 1472) {
+					socket.send_to(boost::asio::buffer(&my_buffer[buffer_position], 1472), remote_endpoint, 0, err);
+					buffer_position += 1472;
+					bytes_remaining -= 1472;
+					//std::cout << "Bytes sent: 1472\n";
+				}
+				
+				if (bytes_remaining > 0) {
+					socket.send_to(boost::asio::buffer(&my_buffer[buffer_position], bytes_remaining), remote_endpoint, 0, err);
+					//std::cout << "Bytes sent: " << bytes_remaining << "\n";
+				}
+				*/
 #endif
 
 #endif
