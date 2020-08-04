@@ -105,7 +105,7 @@ try {
         } else if (x == 'clients') {
         x2.innerHTML = '';
         for (y in json_stuff[x]) {
-        x2.innerHTML += '<br />' + json_stuff[x][y][0] + '.' + json_stuff[x][y][1] + '.' + json_stuff[x][y][2] + '.' + json_stuff[x][y][3] + ': ' + json_stuff[x][y][4];
+        x2.innerHTML += '<br />' + json_stuff[x][y].name + '<a href="http://' + json_stuff[x][y].address + '">' + json_stuff[x][y].address + '</a>';
         }
         } else {
         // variable is not a boolean
