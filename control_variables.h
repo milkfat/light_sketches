@@ -227,7 +227,8 @@ class CONTROL_VARIABLES {
         cv[number_of_variables].boo = &b;
         cv[number_of_variables].type = (momentary) ? 9: 8;
         cv[number_of_variables].name = name;
-        cv[number_of_variables].key = (momentary) ? key: '\0';
+        //cv[number_of_variables].key = (momentary) ? key: '\0';
+        cv[number_of_variables].key = key;
         number_of_variables++;
         return 1;
     };
@@ -236,6 +237,10 @@ class CONTROL_VARIABLES {
         for (int i = 0; i < number_of_variables; i++) {
             if (cv[i].type == 9 && cv[i].key == key) {
                 *cv[i].boo = true;
+                return 1;
+            }
+            if (cv[i].type == 8 && cv[i].key == key) {
+                *cv[i].boo = !*cv[i].boo;
                 return 1;
             }
         }
