@@ -424,9 +424,13 @@ bool LIGHT_SKETCHES::need_to_allocate = true;
 //initialize our object to handle light sketches
 
 LIGHT_SKETCHES light_sketches;
+//#include "cube_collision.h"
+//#include "video_stream.h"
+#include "tetris.h"
+#include "tree_grow.h"
 #ifndef DISABLE_DEFAULT_SKETCHES
 #include "balls_squishy.h"
-// #include "balls2d.h"
+#include "balls2d.h"
 //  #include "cinco_de_mayo.h"
 #include "curvy.h"
 #include "fire.h"
@@ -453,9 +457,9 @@ LIGHT_SKETCHES light_sketches;
 #include "text_display.h"
 // //#include "tree_sim.h"
 #include "tunnel.h"
- #include "phosphene.h"
+#include "phosphene.h"
 #include "untitled.h"
- #include "waves.h"
+#include "waves.h"
 #endif
 
 #endif

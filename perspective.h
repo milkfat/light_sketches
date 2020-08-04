@@ -4,7 +4,7 @@
 #include "vector3.h"
 #include "matrix.h"
 
-#define MATRIX_PRECISION 4
+#define MATRIX_PRECISION 16
 
 class PERSPECTIVE {
 
@@ -24,6 +24,10 @@ class PERSPECTIVE {
 
     public:
         VECTOR3 camera_position = VECTOR3(0,0,232*256);
+        VECTOR3 camera_offset = VECTOR3(0,0,0);
+        uint16_t camera_rotate_x = 0;
+        uint16_t camera_rotate_y = 0;
+        uint16_t camera_rotate_z = 0;
         int32_t screen_distance = camera_position.z - 100*256;
         const int32_t screen_width;
         const int32_t screen_height;
@@ -33,19 +37,25 @@ class PERSPECTIVE {
         float rotation_gamma = 0;
         uint8_t light_falloff = 8; //(bitshift value, 1 = near, 16 = far)
 
-        MATRIX matrix = MATRIX(&rotation_alpha, &rotation_beta, &rotation_gamma, &camera_position);
+        MATRIX matrix = MATRIX(&rotation_alpha, &rotation_beta, &rotation_gamma, &camera_position, &camera_offset, &camera_rotate_x, &camera_rotate_y, &camera_rotate_z);
         
         PERSPECTIVE (const uint& width, const uint& height) : screen_width(width), screen_height(height) {}
 
     //take X,Y,Z coordinate
     //modifies X,Y to screen coordinates
 
+    void camera_direction (VECTOR3& dir) {
+        rotate16_x(dir, camera_rotate_x);
+        rotate16_y(dir, camera_rotate_y);
+        //rotate16_z(dir, -camera_rotate_z);
+    }
 
     void camera_move (VECTOR3 v) {
         //matrix.rotate(v);
         //v.x = -v.x;
         //v.y = -v.y;
-        camera_position+=v;
+        camera_direction(v);
+        camera_offset+=v;
     }
 
     inline __attribute__ ((always_inline)) void update() {
@@ -101,8 +111,6 @@ class PERSPECTIVE {
         z/=MATRIX_PRECISION;
         z = _min(z, Cz-1);
         if (z < Cz) {
-            x-=camera_position.x;
-            y-=camera_position.y;
             x/=MATRIX_PRECISION;//half precision to double each axis of our available coordinate space
             y/=MATRIX_PRECISION;
             x = ( x * ((Sz - Cz)) ) / (z-Cz) + ((screen_width * 128)/MATRIX_PRECISION);

@@ -560,28 +560,56 @@ uint8_t draw_character(uint8_t font, uint8_t chr, int32_t chr_x, int32_t chr_y, 
         int8_t letter_xOffset = font_glyphs[font-1][letter][4];  ///< X dist from cursor pos to UL corner
         int8_t letter_yOffset = font_glyphs[font-1][letter][5];  ///< Y dist from cursor pos to UL corner
         //int8_t center_offset = (MATRIX_WIDTH-letter_width)/2;
-        for (int y = 0; y < letter_height; y++) {
-            for (int x = 0;x < letter_width; x++) {
-              uint8_t pixel_bit = bitRead(font_bitmaps[font-1][letter_location+(y*letter_width+x)/8],7-(y*letter_width+x)%8);
-              if (pixel_bit) {
-                int32_t u = (letter_xOffset+x)*(scale); //fixed width
-                //long u = (x)*(scale);
-                int32_t v = (-letter_yOffset-y)*(scale);
-                u += chr_x;
-                v += chr_y;
+        if (scale <= 256) {
+          for (int y = 0; y < letter_height; y++) {
+              for (int x = 0;x < letter_width; x++) {
+                uint8_t pixel_bit = bitRead(font_bitmaps[font-1][letter_location+(y*letter_width+x)/8],7-(y*letter_width+x)%8);
+                if (pixel_bit) {
+                  int32_t u = (letter_xOffset+x)*(scale); //fixed width
+                  //long u = (x)*(scale);
+                  int32_t v = (-letter_yOffset-y)*(scale);
+                  u += chr_x;
+                  v += chr_y;
 
-                if (u >= 0  && u < MATRIX_WIDTH*256 && v >= 0 && v < MATRIX_HEIGHT*256) {
+                  if (u >= 0  && u < MATRIX_WIDTH*256 && v >= 0 && v < MATRIX_HEIGHT*256) {
 
-                  //spherize(u,v);
+                    //spherize(u,v);
 
-                  //draw them on the screen
-                  blendXY(led_screen, u, v, rgb, subtractive, sharpen);
-                  //drawXY_fine(led_screen, u, v, 0, 0, 255 );
+                    //draw them on the screen
+                    blendXY(led_screen, u, v, rgb, subtractive, sharpen);
+                    //drawXY_fine(led_screen, u, v, 0, 0, 255 );
+                  }
+                  
+                  
                 }
-                
-                
               }
-            }
+          }
+        } else {
+          for (int y2 = 0; y2 < (letter_height*scale)/256; y2++) {
+              for (int x2 = 0;x2 < (letter_width*scale)/256; x2++) {
+                int y = (y2*256)/scale;
+                int x = (x2*256)/scale;
+                uint8_t pixel_bit = bitRead(font_bitmaps[font-1][letter_location+(y*letter_width+x)/8],7-(y*letter_width+x)%8);
+                if (pixel_bit) {
+                  int32_t u = letter_xOffset*scale + x2*256; //fixed width
+                  //long u = (x)*(scale);
+                  int32_t v = -(letter_yOffset*scale + y2*256);
+                  u += chr_x;
+                  v += chr_y;
+
+                  if (u >= 0  && u < MATRIX_WIDTH*256 && v >= 0 && v < MATRIX_HEIGHT*256) {
+
+                    //spherize(u,v);
+
+                    //draw them on the screen
+                    blendXY(led_screen, u, v, rgb, subtractive, sharpen);
+                    //drawXY_fine(led_screen, u, v, 0, 0, 255 );
+                  }
+                  
+                  
+                }
+              }
+          }
         }
         return letter_xAdvance;
         //return letter_width+1;

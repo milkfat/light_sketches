@@ -774,8 +774,8 @@ class FIREWORKS_3D: public LIGHT_SKETCH
         //reset();
       }
 
-
       handle_fireworks();
+
 
         //update the display
         if (!do_not_update) 
@@ -792,21 +792,25 @@ class FIREWORKS_3D: public LIGHT_SKETCH
           {
             for (int i = 0; i < NUM_LEDS; i++)
             {
-              if (leds[i].r == leds[i].g && leds[i].r == leds[i].b)
+              if (leds[i].r+leds[i].g+leds[i].b)
               {
-                leds[i].r = 0;
-                leds[i].g = 0;
-                leds[i].b = 0;
-              }
-              else
-              {
-                leds[i].r = (leds[i].r*fade_rate)/255;
-                leds[i].g = (leds[i].g*fade_rate)/255;
-                leds[i].b = (leds[i].b*fade_rate)/255;
+                if (leds[i].r == leds[i].g && leds[i].r == leds[i].b)
+                {
+                  leds[i].r = 0;
+                  leds[i].g = 0;
+                  leds[i].b = 0;
+                }
+                else
+                {
+                  leds[i].r = (leds[i].r*fade_rate)/255;
+                  leds[i].g = (leds[i].g*fade_rate)/255;
+                  leds[i].b = (leds[i].b*fade_rate)/255;
+                }
               }
             }
           }
         }
+
 
     } //loop();
 

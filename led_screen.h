@@ -53,16 +53,17 @@ static inline __attribute__ ((always_inline)) void LED_show() {
       }
     }
   }
-  led_screen.update();
+  led_screen.update(); //update camera perspective
   scale_update();
   #ifdef __INC_FASTSPI_LED2_H 
   //FastLED.show();
-  update_matrix();
+  update_matrix(); //update the physical display
   #else
   update_matrix();
   #endif
   //FastLEDshowESP32();
   update_since_text = 1;
+  led_screen.matrix.update(); //update 3d rotation matrix
 }
 
 

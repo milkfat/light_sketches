@@ -77,5 +77,12 @@ static inline __attribute__ ((always_inline)) void rotate(VECTOR3_CLASS<T>& p, V
     rotate_z(p, r.z);
 }
 
+template <class T, class U>
+static inline __attribute__ ((always_inline)) void reverse_rotate(VECTOR3_CLASS<T>& p, VECTOR3_CLASS<U>& r) {
+    rotate_z(p, -r.z);
+    rotate_y(p, -r.y);
+    rotate_x(p, -r.x);
+}
+
 
 #endif

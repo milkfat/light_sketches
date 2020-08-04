@@ -20,6 +20,12 @@ static inline __attribute__ ((always_inline)) void rotate16_x(VECTOR3& p, const 
     rotate16_x(p.x, p.y, p.z, s, c);
 }
 
+static inline __attribute__ ((always_inline)) void rotate16_x(int32_t& x, int32_t& y, int32_t& z, const uint16_t& ang) {
+    int16_t s = sin16(ang);
+    int16_t c = cos16(ang);
+    rotate16_x(x, y, z, s, c);
+}
+
 
 static inline __attribute__ ((always_inline)) void rotate16_y(int32_t& x, int32_t& y, int32_t& z, int16_t& s, int16_t& c) {
     int32_t temp = ( x*c - z*s ) / 32768;
@@ -75,6 +81,13 @@ static inline __attribute__ ((always_inline)) void rotate16(VECTOR3_CLASS<T>& p,
     rotate16_x(p, r.x);
     rotate16_y(p, r.y);
     rotate16_z(p, r.z);
+}
+
+template <class T, class U>
+static inline __attribute__ ((always_inline)) void reverse_rotate16(VECTOR3_CLASS<T>& p, VECTOR3_CLASS<U>& r) {
+    rotate16_z(p, -r.z);
+    rotate16_y(p, -r.y);
+    rotate16_x(p, -r.x);
 }
 
 

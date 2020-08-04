@@ -9,6 +9,7 @@ class TREE_SIM: public LIGHT_SKETCH {public:
     uint8_t current_effect = 0;
     CRGB rgb0 = CRGB(0, 255, 0);
     CRGB rgb1 = CRGB(0, 0, 255);
+    int led_marker = -1;
 
 
     class SPIRAL {
@@ -71,6 +72,7 @@ class TREE_SIM: public LIGHT_SKETCH {public:
 
         control_variables.add(rgb0, "Color");
         control_variables.add(rgb1, "Color 2");
+        control_variables.add(led_marker, "LED marker", -1, NUM_LEDS);
          
     }
 
@@ -158,6 +160,10 @@ class TREE_SIM: public LIGHT_SKETCH {public:
                     leds[XY(x,y)].b = (_min(grid[y][x],255)*rgb0.b)/255;
                 }
             }
+        }
+
+        if (led_marker >= 0 && led_marker < NUM_LEDS) {
+            leds[led_marker] = CRGB::White;
         }
 
         LED_show();

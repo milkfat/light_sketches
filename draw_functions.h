@@ -389,7 +389,7 @@ void y_buffer_fill(PERSPECTIVE& screen_object, const CRGB& rgb, const int32_t& z
 }
 
 
-void fill_shape(const int& z = 0, CRGB rgb = CRGB(255,0,0)) {
+void fill_shape(const int& z = 0, CRGB rgb = CRGB(255,0,0), uint8_t alpha = 255, bool do_fill = true) {
   //fill in the circle
   uint16_t low_x = _max(x_buffer_min,0);
   uint16_t low_y = _max(y_buffer_min,0);
@@ -413,15 +413,105 @@ void fill_shape(const int& z = 0, CRGB rgb = CRGB(255,0,0)) {
       for (uint16_t x = this_low_x; x <= this_high_x; x++) {
           if (y >= x_buffer[x][0].y && y <= x_buffer[x][1].y) {
               if (y == x_buffer[x][0].y) {
-                drawXY_blend_gamma(led_screen, pos, rgb, x_buffer[x][0].alpha);
+                drawXY_blend_gamma(led_screen, pos, rgb, (x_buffer[x][0].alpha*alpha)/255);
               } else if (y == x_buffer[x][1].y) {
-                drawXY_blend_gamma(led_screen, pos, rgb, x_buffer[x][1].alpha);
+                drawXY_blend_gamma(led_screen, pos, rgb, (x_buffer[x][1].alpha*alpha)/255);
               } else if (x == (*y_buffer)[y][0].x) {
-                drawXY_blend_gamma(led_screen, pos, rgb, low_alpha_x);
+                drawXY_blend_gamma(led_screen, pos, rgb, (low_alpha_x*alpha)/255);
               } else if (x == (*y_buffer)[y][1].x) {
-                drawXY_blend_gamma(led_screen, pos, rgb, high_alpha_x);
-              } else {
-                *led = rgb;
+                drawXY_blend_gamma(led_screen, pos, rgb, (high_alpha_x*alpha)/255);
+              } else if (do_fill) {
+                drawXY_blend_gamma(led_screen, pos, rgb, alpha);
+                //*led = rgb;
+              }
+          }
+          led++;
+          pos++;
+      }
+  }
+  
+}
+
+
+void fill_shape_z(const int& z_in = 0, CRGB rgb = CRGB(255,0,0)) {
+  //fill in the circle
+  uint16_t low_x = _max(x_buffer_min,0);
+  uint16_t low_y = _max(y_buffer_min,0);
+  uint16_t high_x = _min(x_buffer_max,MATRIX_WIDTH-1);
+  uint16_t high_y = _min(y_buffer_max,MATRIX_HEIGHT-1);
+
+  for (uint16_t y = low_y; y <= high_y; y++) {
+      //optimized having to call XY() for every pixel
+      //however this will fail on LED layouts where pixels are not stored in sequential bytes
+      //TODO: fix this to work on any LED layout
+
+      uint16_t this_low_x = _min(_max(low_x,(*y_buffer)[y][0].x), MATRIX_WIDTH-1);
+      uint16_t this_high_x = _max(_min(high_x,(*y_buffer)[y][1].x), 0);
+      uint8_t low_alpha_x = (*y_buffer)[y][0].alpha;
+      uint8_t high_alpha_x = (*y_buffer)[y][1].alpha;
+
+      int pos = XY(this_low_x,y);
+      CRGB * led = &led_screen.screen_buffer[pos];
+      int32_t low_z = (*y_buffer)[y][0].z;
+      int32_t high_z = (*y_buffer)[y][1].z;
+      int32_t dist_z = high_z - low_z;
+      int32_t step_z = 0;
+      VECTOR4_f low_ratio = (*y_buffer)[y][0].ratio;
+      VECTOR4_f high_ratio = (*y_buffer)[y][1].ratio;
+      VECTOR4_f dist_ratio = high_ratio - low_ratio;
+      VECTOR4_f step_ratio = VECTOR4(0,0,0,0);
+      if ((this_high_x - this_low_x) != 0) {
+        step_z = dist_z / (this_high_x - this_low_x);
+        step_ratio = dist_ratio / (this_high_x - this_low_x);
+      }
+      int32_t z = low_z;
+      VECTOR4_f ratio = low_ratio;
+      for (uint16_t x = this_low_x; x <= this_high_x; x++) {
+          z += step_z;
+          ratio += step_ratio;
+
+          // VECTOR4 ratio2 = x_buffer[x][0].ratio;
+          // if ( (x_buffer[x][1].y-x_buffer[x][0].y) != 0 ) {
+          //   ratio2 += ( (x_buffer[x][1].ratio-x_buffer[x][0].ratio) * (y-x_buffer[x][0].y) ) / (x_buffer[x][1].y-x_buffer[x][0].y);
+          // }
+          // VECTOR4 ratio3 = (ratio + ratio2) / 2;
+          // ratio3/=16;
+          // ratio3*=16;
+
+          // VECTOR4 ratio3 = ratio/16;
+          // ratio3*=16;
+
+          VECTOR4 ratio3 = ratio;
+
+          CRGB rgb2 = rgb;
+          // if (ratio3.x >= 0 && ratio3.x < 256 && ratio3.y >= 0 && ratio.y < 256) {
+          //   memcpy(&rgb2, &image_buffer[ratio3.y*256*3+ratio3.x*3], 3);
+          //   // rgb2.r = image_buffer[ratio3.y*256*3+ratio3.x*3];
+          //   // rgb2.g = image_buffer[ratio3.y*256*3+ratio3.x*3+1];
+          //   // rgb2.b = image_buffer[ratio3.y*256*3+ratio3.x*3+2];
+          // }
+
+          //CRGB rgb2 = ratio3.x,ratio3.y,ratio3.z);
+          if (y >= x_buffer[x][0].y && y <= x_buffer[x][1].y) {
+              if(z/16 >= (*z_buffer)[pos]) {
+                  (*z_buffer)[pos] = z/16;
+                  CRGB rgb2 = rgb;
+                  color_scale(rgb2, z_brightness(led_screen, z));
+                  if (y == x_buffer[x][0].y) {
+                    //drawXY_blend_gamma(led_screen, x, y, z, rgb2, x_buffer[x][0].alpha, false);
+                    drawXY_blend_gamma(led_screen, pos, rgb2, x_buffer[x][0].alpha);
+                  } else if (y == x_buffer[x][1].y) {
+                    //drawXY_blend_gamma(led_screen, pos, rgb2, x_buffer[x][1].alpha, false);
+                    drawXY_blend_gamma(led_screen, pos, rgb2, x_buffer[x][1].alpha);
+                  } else if (x == (*y_buffer)[y][0].x) {
+                    //drawXY_blend_gamma(led_screen, x, y, z, rgb2, low_alpha_x, false);
+                    drawXY_blend_gamma(led_screen, pos, rgb2, low_alpha_x);
+                  } else if (x == (*y_buffer)[y][1].x) {
+                    //drawXY_blend_gamma(led_screen, x, y, z, rgb2, high_alpha_x, false);
+                    drawXY_blend_gamma(led_screen, pos, rgb2, high_alpha_x);
+                  } else {
+                    *led = rgb2;
+                  }
               }
           }
           led++;

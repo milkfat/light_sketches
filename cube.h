@@ -1,12 +1,14 @@
 #ifndef LIGHTS_CUBE_H
 #define LIGHTS_CUBE_H
 
-#define NUMBER_OF_CUBES 200
+#define NUMBER_OF_CUBES 500
 
 #include "rotate.h"
 #include "scale.h"
+#include "triangle.h"
+#include "draw_line_fine_new2.h"
 
-static void draw_quad(VECTOR3 a, VECTOR3 b, VECTOR3 c, VECTOR3 d, VECTOR3 orig, VECTOR3 norm_in, CRGB rgb_in = CRGB(255,0,0) ) {
+static void draw_quad(VECTOR3 a, VECTOR3 b, VECTOR3 c, VECTOR3 d, VECTOR3 orig, VECTOR3 norm_in, CRGB rgb_in = CRGB(255,0,0), uint8_t alpha = 255, bool do_fill = true ) {
   
   //optimization:
   //identify clockwise/counterclockwise orientation
@@ -39,50 +41,41 @@ static void draw_quad(VECTOR3 a, VECTOR3 b, VECTOR3 c, VECTOR3 d, VECTOR3 orig, 
     color_scale(rgb, bri);
     y_buffer->reset();
     reset_x_buffer();
-    a.z = z_depth-16;
-    b.z = z_depth-16;
-    c.z = z_depth-16;
-    d.z = z_depth-16;
-    draw_line_fine_new(led_screen, a, b, rgb);
-    draw_line_fine_new(led_screen, b, c, rgb);
-    draw_line_fine_new(led_screen, c, d, rgb);
-    draw_line_fine_new(led_screen, d, a, rgb);
-    
-    //what's this for?
-    // for (int x = 0; x < MATRIX_WIDTH; x++) {
-        
-    //     if (z_buffer != nullptr) {
-    //       if (x_buffer[x][0]-1 >= 0 && x_buffer[x][0]-1 < MATRIX_HEIGHT) {
-    //           (*z_buffer)[x][x_buffer[x][0]-1] += 1;
-    //       }
-
-    //       if (x_buffer[x][1]+1 >= 0 && x_buffer[x][1]+1 < MATRIX_HEIGHT) {
-    //           (*z_buffer)[x][x_buffer[x][1]+1] += 1;
-    //       }
-    //     }
-
-    // }
+    // a.z = z_depth-16;
+    // b.z = z_depth-16;
+    // c.z = z_depth-16;
+    // // d.z = z_depth-16;
+    // draw_line_fine_new(led_screen, a, b, VECTOR4(255,0,0,0), VECTOR4(0,255,0,0));
+    // draw_line_fine_new(led_screen, b, c, VECTOR4(0,255,0,0), VECTOR4(0,0,255,0));
+    // draw_line_fine_new(led_screen, c, d, VECTOR4(0,0,255,0), VECTOR4(0,0,0,255));
+    // draw_line_fine_new(led_screen, d, a, VECTOR4(0,0,0,255), VECTOR4(255,0,0,0));
+    draw_line_fine_new2(led_screen, a, b);
+    draw_line_fine_new2(led_screen, b, c);
+    draw_line_fine_new2(led_screen, c, d);
+    draw_line_fine_new2(led_screen, d, a);
+  
     
     //fill between the pixels of our lines
     
-    fill_shape(z_depth+256, rgb);
+    fill_shape(z_depth+256, rgb, alpha, do_fill);
+    //fill_shape_z(z_depth+256, rgb);
     
-
-    //y_buffer_max = 0;
-    //y_buffer_min = MATRIX_HEIGHT-1;
 
   }
 } //draw_quad()
+
 
 struct CUBE {
     VECTOR3 p = VECTOR3(0,0,0); //position X,Y,Z
     VECTOR3_16 d = VECTOR3(0,0,0); //dimensions X,Y,Z
     VECTOR3_16 r = VECTOR3(0,0,0); //rotation X,Y,Z
-    bool r_fine = false;
     int32_t z = 0;
     CRGB rgb = CRGB(0,0,0);
+    uint8_t alpha = 0;
     int16_t prev = -1;
     int16_t next = -1;
+    bool do_fill = true;
+    bool r_fine = false;
     bool persist = false;
 };
 
@@ -107,7 +100,7 @@ int16_t get_current_cube() {
 
 
 //find cube's z depth and sort it into our buffer (ascending Z order, back-to-front)
-void draw_cube(const VECTOR3& p, const VECTOR3& d = VECTOR3(256,256,256), const VECTOR3& r = VECTOR3(0,0,0), const CHSV& hsv = CHSV(0,0,255), const bool& persist=false, const bool& r_fine = false) {
+void draw_cube(const VECTOR3& p, const VECTOR3& d = VECTOR3(256,256,256), const VECTOR3& r = VECTOR3(0,0,0), const CHSV& hsv = CHSV(0,0,255), const bool& persist=false, const bool& r_fine = false, uint8_t alpha = 255, bool do_fill = true) {
   
   int16_t current_cube = get_current_cube();
   int16_t most_recent_cube = recent_cube;
@@ -117,7 +110,7 @@ void draw_cube(const VECTOR3& p, const VECTOR3& d = VECTOR3(256,256,256), const 
     CUBE* c = &cubes[current_cube];
     
     VECTOR3 newp = p;
-    led_screen.matrix.rotate(newp);
+    led_screen.matrix.rotate_camera(newp);
 
     int x = (newp.x-led_screen.camera_position.x)/256;
     int y = (newp.y-led_screen.camera_position.y)/256;
@@ -130,6 +123,8 @@ void draw_cube(const VECTOR3& p, const VECTOR3& d = VECTOR3(256,256,256), const 
     c->r = r;
     c->r_fine = r_fine;
     hsv2rgb_rainbow(hsv, c->rgb);
+    c->alpha = alpha;
+    c->do_fill = do_fill;
 
     if (first_cube == -1) {
 
@@ -218,7 +213,7 @@ static void draw_cached_cube(const int16_t& cp) {
   for (int i = 0; i < 8; i++) {
     (c->r_fine) ? rotate16(points[i],c->r) : rotate(points[i],c->r);
     points[i]+=c->p;
-    led_screen.matrix.rotate(points[i]);
+    led_screen.matrix.rotate_camera(points[i]);
 
     //correct 3d perspective
     led_screen.perspective(points[i]);
@@ -255,29 +250,41 @@ static void draw_cached_cube(const int16_t& cp) {
   }
 
   VECTOR3 p;
-  led_screen.matrix.rotate(c->p, p);
+  led_screen.matrix.rotate_camera(c->p, p);
   
   //draw faces from back to front
   for (int i = 0; i < 6; i++) {
     uint8_t next_side = cube_face_order[i][1];
     switch (next_side) {
         case 0:
-            draw_quad(points[0],points[4],points[5],points[1],p,normals[0],c->rgb);  //right
+            draw_quad(points[0],points[4],points[5],points[1],p,normals[0],c->rgb,c->alpha,c->do_fill);  //right
+            //draw_triangle_fine(points[0],points[4],points[5],normals[0],normals[0],normals[0], c->rgb, VECTOR3(0,0,0), VECTOR3(0,255,0), VECTOR3(255,255,0));
+            //draw_triangle_fine(points[0],points[5],points[1],normals[0],normals[0],normals[0], c->rgb, VECTOR3(0,0,0), VECTOR3(255,255,0), VECTOR3(255,0,0));
             break;
         case 1:
-            draw_quad(points[2],points[6],points[7],points[3],p,normals[1],c->rgb); //left
+            draw_quad(points[2],points[6],points[7],points[3],p,normals[1],c->rgb,c->alpha,c->do_fill); //left
+            //draw_triangle_fine(points[2],points[6],points[7],normals[0],normals[0],normals[0], c->rgb, VECTOR3(0,0,0), VECTOR3(0,255,0), VECTOR3(255,255,0));
+            //draw_triangle_fine(points[2],points[7],points[3],normals[0],normals[0],normals[0], c->rgb, VECTOR3(0,0,0), VECTOR3(255,255,0), VECTOR3(255,0,0));
             break;
         case 2:
-            draw_quad(points[0],points[1],points[2],points[3],p,normals[2],c->rgb);  //top
+            draw_quad(points[0],points[1],points[2],points[3],p,normals[2],c->rgb,c->alpha,c->do_fill);  //top
+            //draw_triangle_fine(points[0],points[1],points[2],normals[0],normals[0],normals[0], c->rgb, VECTOR3(0,0,0), VECTOR3(0,255,0), VECTOR3(255,255,0));
+            //draw_triangle_fine(points[0],points[2],points[3],normals[0],normals[0],normals[0], c->rgb, VECTOR3(0,0,0), VECTOR3(255,255,0), VECTOR3(255,0,0));
             break;
         case 3:
-            draw_quad(points[7],points[6],points[5],points[4],p,normals[3],c->rgb); //bottom
+            draw_quad(points[7],points[6],points[5],points[4],p,normals[3],c->rgb,c->alpha,c->do_fill); //bottom
+            //draw_triangle_fine(points[7],points[6],points[5],normals[0],normals[0],normals[0], c->rgb, VECTOR3(0,0,0), VECTOR3(0,255,0), VECTOR3(255,255,0));
+            //draw_triangle_fine(points[7],points[5],points[4],normals[0],normals[0],normals[0], c->rgb, VECTOR3(0,0,0), VECTOR3(255,255,0), VECTOR3(255,0,0));
             break;
         case 4:
-            draw_quad(points[0],points[3],points[7],points[4],p,normals[4],c->rgb);  //front
+            draw_quad(points[0],points[3],points[7],points[4],p,normals[4],c->rgb,c->alpha,c->do_fill);  //front
+            //draw_triangle_fine(points[0],points[3],points[7],normals[0],normals[0],normals[0], c->rgb, VECTOR3(0,0,0), VECTOR3(0,255,0), VECTOR3(255,255,0));
+            //draw_triangle_fine(points[0],points[7],points[4],normals[0],normals[0],normals[0], c->rgb, VECTOR3(0,0,0), VECTOR3(255,255,0), VECTOR3(255,0,0));
             break;
         case 5:
-            draw_quad(points[1],points[5],points[6],points[2],p,normals[5],c->rgb); //back
+            draw_quad(points[1],points[5],points[6],points[2],p,normals[5],c->rgb,c->alpha,c->do_fill); //back
+            //draw_triangle_fine(points[1],points[5],points[6],normals[0],normals[0],normals[0], CRGB(0,0,0), VECTOR3(0,0,0), VECTOR3(0,255,0), VECTOR3(255,255,0));
+            //draw_triangle_fine(points[1],points[6],points[2],normals[0],normals[0],normals[0], CRGB(0,0,0), VECTOR3(0,0,0), VECTOR3(255,255,0), VECTOR3(255,0,0));
             break;
         default:
             break;

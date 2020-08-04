@@ -2,6 +2,7 @@
 #define LIGHTS_DRAW_VARIABLES_H
 
 #include "vector3.h"
+#include "vector4.h"
 
 
 //CRGB leds[NUM_LEDS+1];
@@ -16,6 +17,23 @@ CRGB * temp_canvas; //object for teh drawing
 uint8_t * led_mask;
 //uint8_t led_mask2[NUM_LEDS];
 uint8_t * led_mask2;
+
+#define NUM_IMAGE_BUFFERS ((MATRIX_WIDTH*MATRIX_HEIGHT*3)/1472 + 1)
+uint8_t (* image_buffer)[1472] = nullptr;
+
+class IMAGE_BUFFER {
+    //we're buffering enough UDP packets to store RGB data for the entire screen
+    //max UDP packet size is 1472
+    uint8_t buffer[NUM_IMAGE_BUFFERS][1472];
+
+  public:
+    IMAGE_BUFFER () {
+        image_buffer = &buffer[0];
+    }
+    ~IMAGE_BUFFER () {
+        image_buffer = nullptr;
+    }
+};
 
 
 //various functions shared amongst lighting sketches
@@ -72,7 +90,7 @@ struct Y_BUF {
       }; 
       VECTOR3 position;
     };
-    VECTOR3_8 ratio;
+    VECTOR4 ratio;
     uint8_t alpha = 255;
 
     Y_BUF() {

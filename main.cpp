@@ -1,10 +1,12 @@
 /*
 
 TO DO:
+	Client/Peer system, chips find eachother over WiFi
+	
 	Make window size dynamic on PC
 
-	Fix draw_fine_line() flickering with z-depth -- done maybe
-	Fix fill_shape() to remove distortion in the upper right/z-depth -- done I think
+	fill_shape() to add interpolation
+	fill_shape() to support z buffer
 
 	Refactor fonts
 	3d fonts
@@ -14,14 +16,15 @@ TO DO:
 	3d travel through perlin noise?
 	3d falling coins
 
+	random block assembly sketch, kind of like dominoes
+
+	tree sketch
 
 	phone competitive game where you control the camera to follow a dot
 	  dot starts slow and slowly accelerates
 	  you lose once the dot leaves the screen
 
 	different phone control games?
-
-	tetris -- got a working game
 
 	new clock styles/effects
 
@@ -34,7 +37,7 @@ TO DO:
 
 
 // #define WINDOW_WIDTH 1840
-// #define WINDOW_HEIGHT 1360
+// #define WINDOW_HEIGHT 13606
 // #define MATRIX_WIDTH 360
 // #define MATRIX_HEIGHT 250
 
@@ -42,12 +45,12 @@ TO DO:
 
 
 #ifdef NATIVE_RES_WINDOW
-#define MATRIX_WIDTH 400
-#define MATRIX_HEIGHT 800
+#define MATRIX_WIDTH 1280	
+#define MATRIX_HEIGHT 960
 #define WINDOW_WIDTH MATRIX_WIDTH
 #define WINDOW_HEIGHT MATRIX_HEIGHT
 #else
-#define MATRIX_WIDTH 128
+#define MATRIX_WIDTH 32
 #define MATRIX_HEIGHT 128
 #define WINDOW_WIDTH ((MATRIX_WIDTH)*5)
 #define WINDOW_HEIGHT ((MATRIX_HEIGHT)*5)
@@ -59,11 +62,12 @@ TO DO:
 #include <iostream>
 #include <string>
 #include <memory>
+
 uint8_t debug_flag = 0;
 int32_t max_iterations = 0;
 int32_t iteration_cnt = 0;
 int32_t iteration_calls = 1;
-//graphics/audio/keyboard/mouse/joystick library
+//graphics/audio/keyboard/mouse/joystick library6
 //https://www.libsdl.org/index.php
 //SDL2-2.0.9
 #include <SDL2/SDL.h>
@@ -78,6 +82,13 @@ int32_t iteration_calls = 1;
 #include <boost/asio.hpp>
  
 SDL_Window* window = NULL;
+
+SDL_Renderer *renderer = NULL;
+
+SDL_Texture *bitmapTex = NULL;
+
+SDL_Surface *bitmapSurface = NULL;
+
 SDL_Surface *screen = NULL; // even with SDL2, we can still bring ancient code back
 
 //functions from the FastLED library
@@ -164,27 +175,25 @@ SDL_bool done = SDL_FALSE;
 #include "main_helpers.h"
 
 void log_camera_coordinates() {
-	std::cout << "camera: " << (int32_t)led_screen.camera_position.x << " " << (int32_t)led_screen.camera_position.y << " " << (int32_t)led_screen.camera_position.z << "\n";
+	std::cout << "camera: " << (int32_t)led_screen.camera_offset.x << " " << (int32_t)led_screen.camera_offset.y << " " << (int32_t)led_screen.camera_offset.z << " rotation: " << (int32_t)led_screen.camera_rotate_x << " " << (int32_t)led_screen.camera_rotate_y << " " << (int32_t)led_screen.camera_rotate_z << "\n";;
 }
 //this function is called whenever the screen needs to be updated
 void update_matrix() {
 
-    uint32_t start_time = micros();
-    uint32_t debug_before = micros();
 
 	//draw stuff
   
 	//tree_thing();
 #ifdef NATIVE_RES_WINDOW
-	uint32_t * pixel = (uint32_t*)screen->pixels;
+	uint32_t * pixel = (uint32_t*)bitmapSurface->pixels;
 	uint8_t * pixel_location = (uint8_t*)&leds[led_screen.XY(0,SCREEN_HEIGHT-1)].r;
     for (int i = 0; i < SCREEN_HEIGHT*SCREEN_WIDTH; i++) {
 			//memcpy(pixel++, pixel_location+=3,3);
-			*pixel++ = pixel_location[2] | pixel_location[1] << 8 | pixel_location[0] << 16;
+			*pixel++ = pixel_location[2] << 16 | pixel_location[1] << 8 | pixel_location[0];
 			pixel_location+=3;
     }
 #else
-	uint32_t * pixel = (uint32_t*)screen->pixels;
+	uint32_t * pixel = (uint32_t*)bitmapSurface->pixels;
 	uint8_t * pixel_location = (uint8_t*)&leds[led_screen.XY(0,SCREEN_HEIGHT-1)].r;
     for (int y = 0; y < SCREEN_HEIGHT; y++) {
     	for (int x = 0; x < SCREEN_WIDTH; x++) {
@@ -196,29 +205,37 @@ void update_matrix() {
 			pixel++;
 			pixel_location+=3;
 		}
-		memcpy(pixel, pixel-(screen->pitch)/4, WINDOW_WIDTH*4);
-		pixel+=(screen->pitch)/4;
-		memcpy(pixel, pixel-(screen->pitch)/4, WINDOW_WIDTH*4);
-		pixel+=(screen->pitch)/4;
-		memcpy(pixel, pixel-(screen->pitch)/4, WINDOW_WIDTH*4);
-		pixel+=(screen->pitch)/4;
-		pixel+=(screen->pitch)/4;
+		memcpy(pixel, pixel-(bitmapSurface->pitch)/4, WINDOW_WIDTH*4);
+		pixel+=(bitmapSurface->pitch)/4;
+		memcpy(pixel, pixel-(bitmapSurface->pitch)/4, WINDOW_WIDTH*4);
+		pixel+=(bitmapSurface->pitch)/4;
+		memcpy(pixel, pixel-(bitmapSurface->pitch)/4, WINDOW_WIDTH*4);
+		pixel+=(bitmapSurface->pitch)/4;
+		pixel+=(bitmapSurface->pitch)/4;
 		//pixel+=2;
     }
 #endif
 
 
 
+    uint32_t start_time = micros();
+    uint32_t debug_before = micros();
 
-	SDL_UpdateWindowSurface(window);
+    //bitmapTex = SDL_CreateTextureFromSurface(renderer, bitmapSurface);
+	//SDL_RenderClear(renderer);
+    SDL_UpdateTexture(bitmapTex, NULL, bitmapSurface->pixels, bitmapSurface->pitch);
+	SDL_RenderCopy(renderer, bitmapTex, NULL, NULL);
+	SDL_RenderPresent(renderer);
+	//SDL_UpdateWindowSurface(window);
 
+	debug_count0++;
+	debug_micros0 += micros() - debug_before;
+	
 	SDL_Event event;
 	poll_inputs(event);
 
 
 	
-	debug_count0++;
-	debug_micros0 += micros() - debug_before;
 }
 
 
@@ -272,6 +289,8 @@ int main(int argc, char **argv){
 	// 	std::cout << "MSB: " << i << " " << msb(i) << "\n";
 	// }
 
+	std::cout << "Y_BUF size: " << sizeof(Y_BUF) << "\n";
+
    https_server.start();
    wss_server.start(); 
 
@@ -290,26 +309,36 @@ int main(int argc, char **argv){
 
 
 	//initialize socket for UDP transmission
+	// boost::asio::io_service io_service;
+	// boost::asio::ip::udp::socket socket(io_service); 
+	// boost::asio::ip::udp::endpoint remote_endpoint;
+	// socket.open(boost::asio::ip::udp::v4());
+	// remote_endpoint = boost::asio::ip::udp::endpoint(boost::asio::ip::address::from_string("192.168.4.101"), 1236);
+	// boost::system::error_code err;
+	
+	//create io service
 	boost::asio::io_service io_service;
-	boost::asio::ip::udp::socket socket(io_service); 
-	boost::asio::ip::udp::endpoint remote_endpoint;
-	socket.open(boost::asio::ip::udp::v4());
-	remote_endpoint = boost::asio::ip::udp::endpoint(boost::asio::ip::address::from_string("192.168.4.101"), 1236);
-	boost::system::error_code err;
-
-
-//	light_sketches.loop();	
+	
+	//start UDP server
+	UDP_SERVER server(io_service);	
+	std::thread thread_object([&io_service]() { io_service.run(); });
+	
 	//initialize our graphics window and do stuff
 	if (SDL_Init(SDL_INIT_VIDEO) == 0) {
 
     // create the window like normal
     window = SDL_CreateWindow("SDL2 Example", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, WINDOW_WIDTH, WINDOW_HEIGHT, 0);
 
+    bitmapSurface = SDL_CreateRGBSurface(0,WINDOW_WIDTH,WINDOW_HEIGHT,32,0,0,0,0);
+
+    renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+
+	bitmapTex = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING, bitmapSurface->w, bitmapSurface->h);
     // but instead of creating a renderer, we can draw directly to the screen
-    screen = SDL_GetWindowSurface(window);
+    //screen = SDL_GetWindowSurface(window);
 
 	{
-		uint32_t * pixel = (uint32_t*)screen->pixels;
+		uint32_t * pixel = (uint32_t*)bitmapSurface->pixels;
 		for (int i = 0; i < WINDOW_WIDTH*WINDOW_HEIGHT; i++) {
 			*pixel++ = 0x00202020;
 		}
@@ -358,6 +387,9 @@ int main(int argc, char **argv){
 					//std::cout << (debug_micros1_avg/(debug_micros0_avg+1.f)) << " " << debug_micros1_avg << "` " << debug_micros0_avg << "\n";
 					//std::cout << "avg iterations: " << (iteration_cnt/iteration_calls) << "\n";
 					std::cout << "Draw time: " << debug_micros0_avg << " Sketch time: " << (debug_micros1_avg-debug_micros0_avg) << " Text time: " << debug_micros2_avg << " FPS: " << fps << "\n";
+					// char buff[500];
+					// generate_client_list(buff);
+					// std::cout << buff << "\n";
 					fps = 0;
 					//std::cout << "avg iterations: " << (iteration_cnt/iteration_calls) << "\n";
 					max_iterations = 0;
@@ -373,22 +405,26 @@ int main(int argc, char **argv){
 				debug_micros1 += micros() - time_before;
 				debug_count1++;
 				bool button_pushed = false;
-				if (button_up) {led_screen.camera_move(VECTOR3(0,-512*button_mult,0));button_pushed=true;}
-				if (button_down) {led_screen.camera_move(VECTOR3(0,512*button_mult,0));button_pushed=true;}
-				//if (button_forward) {led_screen.camera_move(VECTOR3(0,0,-512*button_mult));button_pushed=true;}
-				//if (button_reverse) {led_screen.camera_move(VECTOR3(0,0,512*button_mult));button_pushed=true;}
-				//if (button_left) {led_screen.camera_move(VECTOR3(512*button_mult,0,0));button_pushed=true;}
-				//if (button_right) {led_screen.camera_move(VECTOR3(-512*button_mult,0,0));button_pushed=true;}
+				if (button_up) {led_screen.camera_move(VECTOR3(0,512*button_mult,0));button_pushed=true;}
+				if (button_down) {led_screen.camera_move(VECTOR3(0,-512*button_mult,0));button_pushed=true;}
+				if (button_forward) {led_screen.camera_move(VECTOR3(0,0,-512*button_mult));button_pushed=true;}
+				if (button_reverse) {led_screen.camera_move(VECTOR3(0,0,512*button_mult));button_pushed=true;}
+				if (button_left) {led_screen.camera_move(VECTOR3(-512*button_mult,0,0));button_pushed=true;}
+				if (button_right) {led_screen.camera_move(VECTOR3(512*button_mult,0,0));button_pushed=true;}
 				button_up_pressed = button_forward;
 				button_down_pressed = button_reverse;
 				button_left_pressed = button_left;
 				button_right_pressed = button_right;
-				if (button_ra0) {led_screen.rotation_alpha+=button_mult;button_pushed=true;}
-				if (button_ra1) {led_screen.rotation_alpha-=button_mult;button_pushed=true;}
-				if (button_rb0) {led_screen.rotation_beta+=button_mult;button_pushed=true;}
-				if (button_rb1) {led_screen.rotation_beta-=button_mult;button_pushed=true;}
-				if (button_rg0) {led_screen.rotation_gamma+=button_mult;button_pushed=true;}
-				if (button_rg1) {led_screen.rotation_gamma-=button_mult;button_pushed=true;}
+				if (button_ra0) {led_screen.camera_rotate_y+=button_mult*75;button_pushed=true;}
+				if (button_ra1) {led_screen.camera_rotate_y-=button_mult*75;button_pushed=true;}
+				if (button_rb1) {led_screen.camera_rotate_x-=button_mult*75;button_pushed=true;}
+				if (button_rb0) {led_screen.camera_rotate_x+=button_mult*75;button_pushed=true;}
+				// if (button_ra0) {led_screen.rotation_alpha+=button_mult;button_pushed=true;}
+				// if (button_ra1) {led_screen.rotation_alpha-=button_mult;button_pushed=true;}
+				// if (button_rb1) {led_screen.rotation_beta+=button_mult;button_pushed=true;}
+				// if (button_rb0) {led_screen.rotation_beta-=button_mult;button_pushed=true;}
+				if (button_rg0) {led_screen.camera_rotate_z-=button_mult*100;button_pushed=true;}
+				if (button_rg1) {led_screen.camera_rotate_z+=button_mult*100;button_pushed=true;}
 				if (button_pushed) log_camera_coordinates();
 				
 				uint32_t time_before2 = micros();
@@ -458,7 +494,9 @@ int main(int argc, char **argv){
 			
             }
         }
-
+		SDL_FreeSurface(bitmapSurface);
+		SDL_DestroyTexture(bitmapTex);
+		SDL_DestroyRenderer(renderer);
         if (window) {
             SDL_DestroyWindow(window);
         }
@@ -467,9 +505,14 @@ int main(int argc, char **argv){
   	https_server.stop();
 	wss_server.stop();
 	
-	socket.close();
+	//socket.close();
 
     SDL_Quit();
+
+	//stop UDP server
+	io_service.stop();
+	//wait for thread to finish
+	thread_object.join();
 
     return 0; 
 }

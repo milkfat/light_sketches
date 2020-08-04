@@ -1,6 +1,8 @@
 #ifndef LIGHTS_VECTOR3_H
 #define LIGHTS_VECTOR3_H
 
+#include "vector4.h"
+
 template <class T>
 struct VECTOR3_CLASS {
   T x;
@@ -112,6 +114,14 @@ struct VECTOR3_CLASS {
   //conversion from other types
   template <class U>
   inline VECTOR3_CLASS<T>(const VECTOR3_CLASS<U>& n) {
+      x = n.x;
+      y = n.y;
+      z = n.z;
+  }
+
+  //conversion from other types
+  template <class U>
+  inline VECTOR3_CLASS<T>(const VECTOR4_CLASS<U>& n) {
       x = n.x;
       y = n.y;
       z = n.z;

@@ -44,17 +44,21 @@ void poll_inputs(SDL_Event& event) {
                         case SDLK_o: button_rg0 = true; break;
                         case SDLK_u: button_rg1 = true; break;
 
-                        case SDLK_d: pc_screen.rotation_alpha+=mult; break;
-                        case SDLK_a: pc_screen.rotation_alpha-=mult; break;
-                        case SDLK_w: pc_screen.rotation_beta+=mult; break;
-                        case SDLK_s: pc_screen.rotation_beta-=mult; break;
-                        case SDLK_e: pc_screen.rotation_gamma+=mult; break;
+                        //case SDLK_d: pc_screen.rotation_alpha+=mult; break;
+                        //case SDLK_a: pc_screen.rotation_alpha-=mult; break;
+                        //case SDLK_w: pc_screen.rotation_beta+=mult; break;
+                        //case SDLK_s: pc_screen.rotation_beta-=mult; break;
+                        //case SDLK_e: pc_screen.rotation_gamma+=mult; break;
 
                         case SDLK_t: typing_mode=true; SDL_StartTextInput(); break;
-                        case SDLK_UP:  button_forward = true; break;
-                        case SDLK_DOWN: button_reverse = true; break;
-                        case SDLK_LEFT:  button_left = true; break;
-                        case SDLK_RIGHT: button_right = true; break;
+                        // case SDLK_UP:  button_forward = true; break;
+                        // case SDLK_DOWN: button_reverse = true; break;
+                        // case SDLK_LEFT:  button_left = true; break;
+                        // case SDLK_RIGHT: button_right = true; break;
+                        case SDLK_w:  button_forward = true; break;
+                        case SDLK_s: button_reverse = true; break;
+                        case SDLK_a:  button_left = true; break;
+                        case SDLK_d: button_right = true; break;
                         case SDLK_MINUS:  button_up = true; break;
                         case SDLK_LEFTBRACKET:  button_down = true; break;
                         case SDLK_p:    led_screen.screen_distance-=256; std::cout << "screen: " << (int32_t)led_screen.screen_distance << "\n"; break;
@@ -74,14 +78,14 @@ void poll_inputs(SDL_Event& event) {
                     case SDLK_o: button_rg0 = false; break;
                     case SDLK_u: button_rg1 = false; break;
 
-                    case SDLK_UP: button_forward = false; break;
-                    case SDLK_DOWN: button_reverse = false; break;
+                    case SDLK_w: button_forward = false; break;
+                    case SDLK_s: button_reverse = false; break;
                     case SDLK_MINUS: button_up = false; break;
                     case SDLK_LEFTBRACKET: button_down = false; break;
                     case SDLK_f: button2_down=false; break;
                     case SDLK_g: button1_down=false; break;
-                    case SDLK_LEFT:  button_left = false; break;
-                    case SDLK_RIGHT: button_right = false; break;
+                    case SDLK_a:  button_left = false; break;
+                    case SDLK_d: button_right = false; break;
                 }
 			    break;
         }

@@ -54,7 +54,7 @@ struct MEASURE_TIME {
 void MEASUREMENTS::print() {
     static int cnt = 0;
     cnt++;
-    if (cnt%600 == 0) {
+    if (cnt%60 == 0) {
       for(int j = 0; j < num_objects; j++) {
         if(objects[j]->samples != 0 ) {
           #ifdef ARDUINO
@@ -63,8 +63,6 @@ void MEASUREMENTS::print() {
           #else
           std::cout << objects[j]->name << (objects[j]->time_accum / objects[j]->samples) << "\n";
           #endif
-          objects[j]->samples = 0;
-          objects[j]->time_accum = 0;
         }
       }
     }

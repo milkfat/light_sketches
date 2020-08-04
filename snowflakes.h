@@ -78,7 +78,7 @@ class SNOWFLAKES: public LIGHT_SKETCH {
                     p.y = r*256;
                     led_screen.reverse_perspective(p);
                     p.x += offset;
-                    flake->vx = random(64,8);
+                    flake->vx = random(8,64);
                     flake->vx *= -1;
                 } else {
                     //snowflakes originate at left of screen
@@ -89,7 +89,7 @@ class SNOWFLAKES: public LIGHT_SKETCH {
                     p.y = r*256;
                     led_screen.reverse_perspective(p);
                     p.x -= offset;
-                    flake->vx = random(64,8);
+                    flake->vx = random(8,64);
                 }
             }
             flake->x = p.x;
@@ -142,6 +142,7 @@ class SNOWFLAKES: public LIGHT_SKETCH {
         control_variables.add(num_snowflakes, "Number of flakes", 0, 255);
         control_variables.add(led_screen.camera_position.z, "Camera Z", 0, 1024*256);
         control_variables.add(led_screen.screen_distance, "Screen Z", 0, 1024*256);
+        control_variables.add(led_screen.light_falloff, "Light Distance:", 1, 16);
     }
 
     void reset() {
@@ -246,6 +247,7 @@ class SNOWFLAKES: public LIGHT_SKETCH {
         flake->y+=flake->vy;
         flake->z+=flake->vz;
 
+        //hmm, some sort of wind?
         flake->x+=(inoise8(flake->x/500, flake->y/500, flake->z/1000+1000+snow_noise_position)-128)*3;
         flake->y+=(inoise8(flake->x/500, flake->y/1000+snow_noise_position*.8f, flake->z/500)-32);
         flake->z+=(inoise8(flake->x/1000+1000+snow_noise_position*1.2f, flake->y/500, flake->z/500)-128)*3;
@@ -272,6 +274,7 @@ class SNOWFLAKES: public LIGHT_SKETCH {
         //combine magnitude with vy to find the desired velocity
         int vx_wind = (x_magnitude*abs(flake->vy))/256;
         int vz_wind = (z_magnitude*abs(flake->vy))/256;
+
 
         //adjust our current velocity toward our desired velocity (by a fraction)
         flake->vx+= (vx_wind-flake->vx)/20;
@@ -443,8 +446,8 @@ class SNOWFLAKES: public LIGHT_SKETCH {
                 led_screen.matrix.rotate(p0);
                 led_screen.matrix.rotate(p1);
                 //add 3D perspective
-                led_screen.perspective(p0);
-                led_screen.perspective(p1);
+                led_screen.perspective_lp(p0.x,p0.y,p0.z);
+                led_screen.perspective_lp(p1.x,p1.y,p1.z);
 
                 //finally draw the line
                 draw_line_fine(led_screen, p0, p1, rgb);

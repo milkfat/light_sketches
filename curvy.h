@@ -13,7 +13,7 @@
 #endif
 
 
-#define NUM_FISH 100
+#define NUM_FISH 50
 #define NUM_JELLIES 1
 
 class CURVY: public LIGHT_SKETCH {
@@ -85,20 +85,20 @@ class CURVY: public LIGHT_SKETCH {
       int16_t next; //doubly linked list, Z-sorted
 
       void new_target() {
-          target_z = random(-100*256, -50*256);
-          target_z = random(0*256, 0*256);
-          int low_x = (MATRIX_WIDTH*256*15)/32;
-          int low_y = (MATRIX_HEIGHT*256*15)/32;
-          int high_x = (MATRIX_WIDTH*256*17)/32;
-          int high_y = (MATRIX_HEIGHT*256*17)/32;
+          target_z = random(-400*256, 50*256);
+          //target_z = random(0*256, 0*256);
+          int low_x = -MATRIX_WIDTH*128;
+          int low_y = 0;
+          int high_x = (MATRIX_WIDTH*384);
+          int high_y = (MATRIX_HEIGHT*384);
           //std::cout << low_y << " " << high_y << " " << target_z << " = ";
           led_screen.reverse_perspective(low_x,low_y,target_z);
           led_screen.reverse_perspective(high_x,high_y,target_z);
 
           //std::cout << low_y << " " << high_y << " " << target_z << " result: ";
-          target_x = 0;
+          target_x = random(low_x, high_x);
           //target_x = 0;
-          target_y = 0;
+          target_y = random(low_y, high_y);
           //std::cout << target_y << "\n";
           //target_z = 0;
           add_speed = random(200)+100;
@@ -179,14 +179,14 @@ class CURVY: public LIGHT_SKETCH {
 
       //fish
       for (int i = 0; i < NUM_FISH; i++) {
-        fishies[i].x = random(0*256) - 0*256;
+        fishies[i].x = random(100*256) - 50*256;
         fishies[i].y = random(400*256) - 200*256;
-        fishies[i].y = random(0*256) - 0*256;
+        //fishies[i].y = random(0*256) - 0*256;
         fishies[i].z = random(200*256) - 100*256;
-        fishies[i].z = random(0*256) - 0*256;
+        //fishies[i].z = random(0*256) - 0*256;
         fishies[i].wiggle = i*1024;
         fishies[i].az = random(256);
-        fishies[i].ay = random(256);
+        //fishies[i].ay = random(256);
         fishies[i].speed = random(10)+3;
         fishies[i].age = millis();
         fishies[i].hue = random(256);
@@ -218,14 +218,14 @@ class CURVY: public LIGHT_SKETCH {
 
         
         
-        //handle_jellies();
+        handle_jellies();
         
         handle_fish();
         
-        //handle_bubbles();
+        handle_bubbles();
 
-        //draw_grass();
-        //draw_water();
+        draw_grass();
+        draw_water();
 
 
       }
@@ -1098,14 +1098,14 @@ void draw_jelly(JELLY& jelly) {
             //uint8_t caustics = inoise8(((x-MATRIX_WIDTH/2)*((y+16)))/6,(y*(y+8))/6,z*2);
 
             //CRGB rgb = CHSV(142, 255, 255);
-            *led++ = inoise8((x<<2)+z,y<<2,z);
+            *led++ = inoise8(x/4+z,y/4,z);
           }
         }
       }
 //static uint32_t ttt[NUM_LEDS+1][6];
       for (uint32_t i = 0; i < NUM_LEDS; i++) {
           //nblend(leds[i], temp_led[i], 127);
-          color_blend_linear16(leds[i], 0, gamma16_decode(210), 65535, gamma16_decode(temp_led[i])>>5);
+          color_blend_linear16(leds[i], 0, gamma16_decode(210), 65535, gamma16_decode(temp_led[i])/32);
           //color_blend_linear16(leds[i], 0, (gamma16_decode(temp_led[i])*8)/10, gamma16_decode(temp_led[i]), 2048);
           // ttt[i][0] = temp_led[i];
           // ttt[i][1] = (gamma16_decode(temp_led[i])*2048 + gamma16_decode(0)*(65535-2048) ) >> 16;

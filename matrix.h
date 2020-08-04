@@ -2,6 +2,7 @@
 #define LIGHTS_MATRIX_H
 
 #include "math_helpers.h"
+#include "rotate16.h"
 
 //A class for performing 3D rotation
 
@@ -11,15 +12,23 @@ class MATRIX {
     float * rotation_beta;
     float * rotation_gamma;
     VECTOR3 * camera_position;
+    VECTOR3 * camera_offset;
+    uint16_t * camera_rotate_x;
+    uint16_t * camera_rotate_y;
+    uint16_t * camera_rotate_z;
 
     //3D ROTATION MATRIX VARIABLES
     public:
     
-    MATRIX(float * a, float * b, float * g, VECTOR3 * c) {
+    MATRIX(float * a, float * b, float * g, VECTOR3 * c, VECTOR3 * co, uint16_t * crx, uint16_t * cry, uint16_t * crz) {
         rotation_alpha = a;
         rotation_beta = b;
         rotation_gamma = g;
         camera_position = c;
+        camera_offset = co;
+        camera_rotate_x = crx;
+        camera_rotate_y = cry;
+        camera_rotate_z = crz;
         update();
     }
 
@@ -44,36 +53,36 @@ class MATRIX {
 
     uint32_t update_time = 0;
 
+  public:
+
     void update() {
-        if (millis() - 16 > update_time) {
-            update_time = millis();
 
-            //construct ZXY rotation matrix
+        //construct ZXY rotation matrix
 
-            //find our angles in radians
-            alpha = ((*rotation_alpha) * PI) / 180.f; //Z
-            beta = ((*rotation_beta) * PI) / 180.f; //X;
-            gamma = ((*rotation_gamma) * PI) / 180.f; //Y
+        //find our angles in radians
+        alpha = ((*rotation_alpha) * PI) / 180.f; //Z
+        beta = ((*rotation_beta) * PI) / 180.f; //X;
+        gamma = ((*rotation_gamma) * PI) / 180.f; //Y
 
-            //store sin/cos in variables
-            cZ = cos( alpha );
-            cX = cos( beta );
-            cY = cos( gamma );
-            sZ = sin( alpha );
-            sX = sin( beta );
-            sY = sin( gamma );
+        //store sin/cos in variables
+        cZ = cos( alpha );
+        cX = cos( beta );
+        cY = cos( gamma );
+        sZ = sin( alpha );
+        sX = sin( beta );
+        sY = sin( gamma );
 
-            //create our rotation matrix
-            matrix[0][0] = cZ * cY - sZ * sX * sY;
-            matrix[0][1] = - cX * sZ;
-            matrix[0][2] = cY * sZ * sX + cZ * sY;
-            matrix[1][0] = cY * sZ + cZ * sX * sY;
-            matrix[1][1] = cZ * cX;
-            matrix[1][2] = sZ * sY - cZ * cY * sX;
-            matrix[2][0] = - cX * sY;
-            matrix[2][1] = sX;
-            matrix[2][2] = cX * cY;
-        }
+        //create our rotation matrix
+        matrix[0][0] = cZ * cY - sZ * sX * sY;
+        matrix[0][1] = - cX * sZ;
+        matrix[0][2] = cY * sZ * sX + cZ * sY;
+        matrix[1][0] = cY * sZ + cZ * sX * sY;
+        matrix[1][1] = cZ * cX;
+        matrix[1][2] = sZ * sY - cZ * cY * sX;
+        matrix[2][0] = - cX * sY;
+        matrix[2][1] = sX;
+        matrix[2][2] = cX * cY;
+    
     }
 
     public:
@@ -81,7 +90,6 @@ class MATRIX {
         void rotate (int32_t& in_x, int32_t& in_y, int32_t& in_z, int32_t& out_x, int32_t& out_y, int32_t& out_z) {
         
             //update the matrix if necessary
-            update();
             out_x = in_x * matrix[0][0] + in_y * matrix[0][1] + in_z * matrix[0][2];
             out_z = -(in_x * matrix[1][0] + in_y * matrix[1][1] + in_z * matrix[1][2]);
             out_y = in_x * matrix[2][0] + in_y * matrix[2][1] + in_z * matrix[2][2];
@@ -90,14 +98,29 @@ class MATRIX {
 
         void rotate_camera (int32_t in_x, int32_t in_y, int32_t in_z, int32_t& out_x, int32_t& out_y, int32_t& out_z) {
         
-            //update the matrix if necessary
-            update();
+            // //update the matrix if necessary
+            in_x -= camera_offset->x;
+            in_y -= camera_offset->y;
+            in_z -= camera_offset->z;
             in_x -= camera_position->x;
             in_y -= camera_position->y;
             in_z -= camera_position->z;
-            out_x = in_x * matrix[0][0] + in_y * matrix[0][1] + in_z * matrix[0][2];
-            out_z = -(in_x * matrix[1][0] + in_y * matrix[1][1] + in_z * matrix[1][2]);
-            out_y = in_x * matrix[2][0] + in_y * matrix[2][1] + in_z * matrix[2][2];
+            in_x /= 16;
+            in_y /= 16;
+            in_z /= 16;
+            // out_x = in_x * matrix[0][0] + in_y * matrix[0][1] + in_z * matrix[0][2];
+            // out_z = -(in_x * matrix[1][0] + in_y * matrix[1][1] + in_z * matrix[1][2]);
+            // out_y = in_x * matrix[2][0] + in_y * matrix[2][1] + in_z * matrix[2][2];
+
+            rotate16_y(in_x, in_y, in_z, -(*camera_rotate_y));
+            rotate16_x(in_x, in_y, in_z, -(*camera_rotate_x));
+            //rotate16_z(in_x, in_y, in_z, *camera_rotate_z);
+            in_x *= 16;
+            in_y *= 16;
+            in_z *= 16;
+            out_x = in_x;
+            out_y = in_y;
+            out_z = in_z;
             out_x += camera_position->x;
             out_y += camera_position->y;
             out_z += camera_position->z;

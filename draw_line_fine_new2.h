@@ -1,14 +1,10 @@
-#ifndef LIGHTS_DRAW_LINE_NEW_H
-#define LIGHTS_DRAW_LINE_NEW_H
+#ifndef LIGHTS_DRAW_LINE_NEW2_H
+#define LIGHTS_DRAW_LINE_NEW2_H
 
 #include "draw_line.h"
 
-static void draw_line_fine_new(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b, VECTOR4_f a_ratio = VECTOR4(255,0,0,0), VECTOR4_f b_ratio = VECTOR4(0,255,0,0)) {
-  
-  // LINE_PIXEL pixel_buffer[(uint)sqrt((abs(x1_led-x2_led)+1)*(abs(x1_led-x2_led)+1) + (abs(y1_led-y2_led+1)+1)*(abs(y1_led-y2_led)+1))*2];
-  // uint16_t current_pixel = 0;
-  
-
+static void draw_line_fine_new2(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b) {
+ 
   //add one pixel to compensate for rounding errors between -1 and 0
   a+=256;
   b+=256;
@@ -31,9 +27,6 @@ static void draw_line_fine_new(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b,
       VECTOR3 temp = a;
       a = b;
       b = temp;
-      VECTOR4 temp2 = a_ratio;
-      a_ratio = b_ratio;
-      b_ratio = temp2;
     }
   } else {
     //calculate vertically
@@ -42,9 +35,6 @@ static void draw_line_fine_new(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b,
       VECTOR3 temp = a;
       a = b;
       b = temp;
-      VECTOR4 temp2 = a_ratio;
-      a_ratio = b_ratio;
-      b_ratio = temp2;
     }
   }
 
@@ -62,7 +52,6 @@ static void draw_line_fine_new(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b,
   
   int32_t x_dist = b.x - a.x;
   int32_t y_dist = b.y - a.y;
-  int32_t z_dist = b.z - a.z;
   //save the coordinate extremes
   int32_t x_low = x1_led;
   int32_t y_low = y1_led;
@@ -74,22 +63,12 @@ static void draw_line_fine_new(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b,
   x2_led = _min(x2_led,MATRIX_WIDTH+1);
   y2_led = _min(y2_led,MATRIX_HEIGHT+1);
 
-  VECTOR4 b_dumb = b;
   if (abs(a.x - b.x) > abs(a.y - b.y)) {
     //calculate horizontally
 
     //calculate starting coordinates;
     float y_step = (y_dist*256.f)/x_dist;
     float y_start = a.y + ((x1_led*256 - a.x)*y_step)/256.f;
-    float z_step= (z_dist*256.f)/x_dist;
-    float z_start = a.z + ((x1_led*256 - a.x)*z_step)/256.f;
-    float z_travel = ((x1_led*256 - a.x)*z_step)/256.f;
-    
-    // int32_t y_step = (y_dist*256)/x_dist;
-    // int32_t y_start = y1 + ((x1_led*256 - x1)*y_step)/256;
-    // int32_t z_step= (z_dist*256)/x_dist;
-    // int32_t z_start = z1 + ((x1_led*256 - x1)*z_step)/256;
-
 
     //record the off-screen portion to the y_buffer
     if (x1_led != x_low) {
@@ -100,8 +79,6 @@ static void draw_line_fine_new(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b,
         y_buffer_min = _min(y_buffer_min, y);
         y_buffer_max = _max(y_buffer_max, y);
         (*y_buffer)[y][0].x = -1;
-        (*y_buffer)[y][0].z = z_start; //hmm???
-        (*y_buffer)[y][0].ratio = a_ratio;
       }
     }
 
@@ -109,16 +86,11 @@ static void draw_line_fine_new(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b,
     for (int i = (x1_led); i <= (x2_led); i++) {
       
         int y = y_start;
-        int z = z_start;
         int Ly = y/256;
         int Hy = Ly+1;
         uint progress = abs(y - Hy*256);
         uint8_t b = _min( _max(progress, 0), 255);
         uint8_t s = line_sharpen;
-        float mult = b_dumb.z-a.z;
-        float prog = (z_start-a.z)/(b_dumb.z-a.z);
-        float position = (prog-prog*(1-prog));
-        uint16_t travel = (z_travel*256)/z_dist;
         
         while (s--) {
             b = ease8InOutApprox(b);
@@ -163,16 +135,12 @@ static void draw_line_fine_new(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b,
             if (i == (*y_buffer)[Hy][0].x) {
                 (*y_buffer)[Hy][0].alpha = _max((*y_buffer)[Hy][0].alpha, b2);
             } else if (i < (*y_buffer)[Hy][0].x) {
-                (*y_buffer)[Hy][0].ratio = (a_ratio*(256-travel) + b_ratio*travel)/256;;
-                (*y_buffer)[Hy][0].z = z_start;
                 (*y_buffer)[Hy][0].x = i;
                 (*y_buffer)[Hy][0].alpha = b2;
             }
             if (i == (*y_buffer)[Hy][1].x) {
                 (*y_buffer)[Hy][1].alpha = _max((*y_buffer)[Hy][1].alpha, b2);
             } else if (i > (*y_buffer)[Hy][1].x) {
-                (*y_buffer)[Hy][1].ratio = (a_ratio*(256-travel) + b_ratio*travel)/256;;
-                (*y_buffer)[Hy][1].z = z_start;
                 (*y_buffer)[Hy][1].x = i;
                 (*y_buffer)[Hy][1].alpha = b2;
             }
@@ -184,16 +152,12 @@ static void draw_line_fine_new(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b,
             if (i == (*y_buffer)[Ly][0].x) {
                 (*y_buffer)[Ly][0].alpha = _max((*y_buffer)[Ly][0].alpha, b);
             } else if (i < (*y_buffer)[Ly][0].x) {
-                (*y_buffer)[Ly][0].ratio = (a_ratio*(256-travel) + b_ratio*travel)/256;
-                (*y_buffer)[Ly][0].z = z_start;
                 (*y_buffer)[Ly][0].x = i;
                 (*y_buffer)[Ly][0].alpha = b;
             }
             if (i == (*y_buffer)[Ly][1].x) {
                 (*y_buffer)[Ly][1].alpha = _max((*y_buffer)[Ly][1].alpha, b);
             } else if (i > (*y_buffer)[Ly][1].x) {
-                (*y_buffer)[Ly][1].ratio = (a_ratio*(256-travel) + b_ratio*travel)/256;
-                (*y_buffer)[Ly][1].z = z_start;
                 (*y_buffer)[Ly][1].x = i;
                 (*y_buffer)[Ly][1].alpha = b;
             }
@@ -202,8 +166,6 @@ static void draw_line_fine_new(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b,
       
         i++;
         y_start += y_step;
-        z_start += z_step;
-        z_travel += z_step;
     }
 
 
@@ -215,8 +177,6 @@ static void draw_line_fine_new(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b,
       for (int y = start_led; y <= end_led; y++) {
         y_buffer_min = _min(y_buffer_min, y);
         y_buffer_max = _max(y_buffer_max, y);
-        (*y_buffer)[y][1].z = z_start; //hmm???
-        (*y_buffer)[y][1].ratio = b_ratio;
         (*y_buffer)[y][1].x = MATRIX_WIDTH;
       }
     }
@@ -226,13 +186,6 @@ static void draw_line_fine_new(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b,
 
     float x_step = (x_dist*256.f)/y_dist;
     float x_start = a.x + ((y1_led*256-a.y)*x_step)/256.f;
-    float z_step  = (z_dist*256.f)/y_dist;
-    float z_start = a.z + ((y1_led*256-a.y)*z_step)/256.f;
-    float z_travel = 0;
-    // int32_t x_step = (x_dist*256)/y_dist;
-    // int32_t x_start = x1 + ((y1_led*256-y1)*x_step)/256;
-    // int32_t z_step  = (z_dist*256)/y_dist;
-    // int32_t z_start = z1 + ((y1_led*256-y1)*z_step)/256;
 
 
     //record the off-screen portion to the y_buffer
@@ -250,16 +203,11 @@ static void draw_line_fine_new(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b,
     for (int i = (y1_led); i <= (y2_led); i++) {
 
       int x = x_start;
-      int z = z_start;
       int Lx = x/256;
       int Hx = Lx+1;
       uint progress = abs(x - Hx*256);
       uint8_t b = _min( _max(progress, 0), 255);
       uint8_t s = line_sharpen;
-      float mult = b_dumb.z-a.z;
-      float prog = (z_start-a.z)/(b_dumb.z-a.z);
-      float position = (prog-prog*(1-prog));
-      uint16_t travel = (z_travel*256)/z_dist;
       while (s--) {
         b = ease8InOutApprox(b);
       }
@@ -287,16 +235,12 @@ static void draw_line_fine_new(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b,
         if (Lx == (*y_buffer)[i][0].x) {
             (*y_buffer)[i][0].alpha = _max((*y_buffer)[i][0].alpha, b);
         } else if (Lx < (*y_buffer)[i][0].x) {
-            (*y_buffer)[i][0].ratio = (a_ratio*(256-travel) + b_ratio*travel)/256;;
-            (*y_buffer)[i][0].z = z_start;
             (*y_buffer)[i][0].x = Lx;
             (*y_buffer)[i][0].alpha = b;
         }
         if (Hx == (*y_buffer)[i][1].x) {
             (*y_buffer)[i][1].alpha = _max((*y_buffer)[i][1].alpha, b2);
         } else if (Hx > (*y_buffer)[i][1].x) {
-            (*y_buffer)[i][1].ratio = (a_ratio*(256-travel) + b_ratio*travel)/256;;
-            (*y_buffer)[i][1].z = z_start;
             (*y_buffer)[i][1].x = Hx;
             (*y_buffer)[i][1].alpha = b2;
         }
@@ -340,8 +284,6 @@ static void draw_line_fine_new(PERSPECTIVE& screen_object, VECTOR3 a, VECTOR3 b,
       //add the pixel we subtracted to compensate for rounding errors between -1 and 0
       i++;
       x_start += x_step;
-      z_start += z_step;
-      z_travel += z_step;
     }
 
     //record the off-screen portion to the y_buffer

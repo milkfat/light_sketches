@@ -1,6 +1,10 @@
 #ifndef LIGHTS_GROWCIRCLE_H
 #define LIGHTS_GROWCIRCLE_H
 
+#include "AsyncUDP.h"
+
+#include <Wifi.h>
+
 //GROWING CIRCLE THING
 
 class GROWCIRCLE: public LIGHT_SKETCH {
@@ -10,6 +14,7 @@ class GROWCIRCLE: public LIGHT_SKETCH {
   private:
 #define MAX_LIGHT 40
 
+    AsyncUDP audp;
     class CIRCLE_THING {
       public:
         uint8_t dists[NUM_LEDS]; //distance of this LED from the origination
@@ -30,8 +35,9 @@ class GROWCIRCLE: public LIGHT_SKETCH {
         bool processed = false;
 
     };
-#define SPARKLE_AMOUNT 5
-#define NUM_CIRCLES_GROWCIRCLE 1
+#define MAX_SPARKLE_AMOUNT 20
+    uint8_t sparkle_amount = 5;
+#define NUM_CIRCLES_GROWCIRCLE 2
     CIRCLE_THING circles[NUM_CIRCLES_GROWCIRCLE];
     uint8_t next_circle = 0;
     uint16_t next_order = 0;
@@ -40,14 +46,22 @@ class GROWCIRCLE: public LIGHT_SKETCH {
     uint8_t counter = 0; //counts 0-255,0-255,0-255,etc.
     uint8_t band_width = 10; //speed_multiplier * 10 is pretty good, lower = thinner, higher = fatter
     uint8_t flasher_zone = 50;
-    uint16_t sparkle[SPARKLE_AMOUNT] = {0};
+    uint16_t sparkle[MAX_SPARKLE_AMOUNT] = {0};
     uint8_t fps = 0;
 
     uint8_t hues[NUM_LEDS]; //current hue of this LED
     uint8_t sats[NUM_LEDS]; //current saturation of this LED
     uint8_t levels[NUM_LEDS]; //current brightness of this LED
-    char level_deltas[NUM_LEDS]; //rate of change in brightness for this LED
+    int8_t level_deltas[NUM_LEDS]; //rate of change in brightness for this LED
     uint8_t flashers[NUM_LEDS]; //state of flashing for this LED
+
+    uint8_t network_hue;
+    int32_t network_x;
+    int32_t network_y;
+    int32_t network_z;
+    bool network_packet_received = false;
+    bool network_listen = false;
+
 
 
     //lines of LEDS with the x,y coordinates for each end
@@ -70,6 +84,23 @@ class GROWCIRCLE: public LIGHT_SKETCH {
     }
 
     void setup() {
+
+      control_variables.add(sparkle_amount,"Sparkle Amount", 0, MAX_SPARKLE_AMOUNT);
+      control_variables.add(network_listen,"Network Listen");
+
+      if (audp.listen(24321)) {
+
+            audp.onPacket([&](AsyncUDPPacket packet) {
+              if (packet.length() == 13) {
+                memcpy(&network_hue, &packet.data()[0], 1);
+                memcpy(&network_x, &packet.data()[1], 4);
+                memcpy(&network_y, &packet.data()[5], 4);
+                memcpy(&network_z, &packet.data()[9], 4);
+                network_packet_received = true;
+              }
+            });
+
+        }
 
 
       //initial light levels
@@ -101,7 +132,7 @@ class GROWCIRCLE: public LIGHT_SKETCH {
 
       for (uint8_t c = 0; c < NUM_CIRCLES_GROWCIRCLE; c++) {
         //draw a new expanding circle starting at a random point outside the string
-        if ( (circles[c].done == 1 && c == 0) || circles[c].done == 2) {
+        if ( (network_listen && network_packet_received && c == 0) || (!network_listen && circles[c].done == 1 && c == 0) || circles[c].done == 2) {
           //give this circle a higher priority than previous circles
           circles[c].order = next_order;
           next_order++;
@@ -115,8 +146,30 @@ class GROWCIRCLE: public LIGHT_SKETCH {
             circles[c].next_hue = random(0, 256);
           }
           uint8_t r = random(0, 4);
-          int x1 = random(-MATRIX_WIDTH, (MATRIX_WIDTH * 2));
-          int y1 = random((MATRIX_HEIGHT / 4), (MATRIX_HEIGHT * 3 / 4));
+          int32_t x1 = random(-MATRIX_WIDTH, (MATRIX_WIDTH * 2));
+          int32_t y1 = random((MATRIX_HEIGHT / 4), (MATRIX_HEIGHT * 3 / 4));
+          x1 = random(-50,50);
+          y1 = random(-50,50);
+          int32_t z1 = random(-50,50);
+
+          if (!network_listen) {
+            uint8_t udp_data[13];
+            memcpy(&udp_data[0], &circles[c].next_hue, 1);
+            memcpy(&udp_data[1], &x1, 4);
+            memcpy(&udp_data[5], &y1, 4);
+            memcpy(&udp_data[9], &z1, 4);
+            audp.writeTo(udp_data, 13, IPAddress(192,168,17,8), 24321);
+            audp.writeTo(udp_data, 13, IPAddress(192,168,17,22), 24321);
+            audp.writeTo(udp_data, 13, IPAddress(192,168,17,34), 24321);
+            //audp.broadcast(udp_data, 9);
+          } else {
+            circles[c].next_hue = network_hue;
+            x1 = network_x;
+            y1 = network_y;
+            z1 = network_z;
+            network_packet_received = false;
+          }
+
           if (circles[c].done == 2) {
             x1 = circles[c].x;
             y1 = circles[c].y;
@@ -129,6 +182,7 @@ class GROWCIRCLE: public LIGHT_SKETCH {
           for (int x2 = 0; x2 < MATRIX_WIDTH; x2++) {
             for (int y2 = 0; y2 < MATRIX_HEIGHT; y2++) {
               circles[c].dists[XY(x2, y2)] = sqrt(sq((x2 - x1) * 1L) + sq((y2 - y1) * 1L));
+              circles[c].dists[XY(x2, y2)] = sqrt(sq(tree_coords[XY(x2, y2)].x/128 - x1) + sq(tree_coords[XY(x2, y2)].y/128 - y1) + sq(tree_coords[XY(x2, y2)].z/128 - z1));
             }
           }
 
@@ -219,24 +273,15 @@ class GROWCIRCLE: public LIGHT_SKETCH {
 
               }
 
-
-
-              //give the LEDS some differences in brightness
+              //reset to random levels after circle passes
               if (counter % 2 == 1) {
                 if (distance == -1) {
                   levels[i] = random(low_bri, high_bri + 1);
-                } else {
-                  levels[i] = _max(levels[i] + level_deltas[i], 0);
-                }
-                if (levels[i] <= low_bri && level_deltas[i] < 0) {
-                  level_deltas[i] = random(1, 5);
-
-                } else if (levels[i] >= high_bri && level_deltas[i] > 0) {
-                  level_deltas[i] = random(1, 5);
-                  level_deltas[i] *= -1;
                 }
               }
+
             }
+
 
             //move the circle "out" one step
             if ( circles[c].current_width < band_width ) {
@@ -246,6 +291,21 @@ class GROWCIRCLE: public LIGHT_SKETCH {
               circles[c].stp0+=128;
               circles[c].stp = circles[c].stp0/256;
             }
+          }
+        }
+
+        for (int i = 0; i < NUM_LEDS; i++) {
+          //give the LEDS some differences in brightness
+          if (counter % 2 == 1) {
+            levels[i] = _max(levels[i] + level_deltas[i], 0);
+          }
+
+          if (levels[i] <= circles[0].next_level_min && level_deltas[i] < 0) {
+            level_deltas[i] = random(1, 5);
+
+          } else if (levels[i] >= circles[0].next_level_max && level_deltas[i] > 0) {
+            level_deltas[i] = random(1, 5);
+            level_deltas[i] *= -1;
           }
         }
 
@@ -273,7 +333,7 @@ class GROWCIRCLE: public LIGHT_SKETCH {
           }
         }
 
-        for (int i = 0; i < SPARKLE_AMOUNT; i++) {
+        for (int i = 0; i < _min(sparkle_amount,MAX_SPARKLE_AMOUNT); i++) {
           levels[sparkle[i]] = _min(levels[sparkle[i]] + 64, 255);
           if (levels[sparkle[i]] == 255) {
             level_deltas[sparkle[i]] = -16;

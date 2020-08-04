@@ -19,10 +19,10 @@ class FLIGHT: public LIGHT_SKETCH {
     }
 
     void setup() {
-        z_buffer = &_z_buffer;
         led_screen.light_falloff = 10;
-        led_screen.camera_position.z = 29865;
-        led_screen.screen_distance = 126794;
+        led_screen.camera_position.z = 68244;
+        led_screen.screen_distance = 524288;
+        default_size = 38400;
         control_variables.add(led_screen.camera_position.z, "Camera Z:", 0, 2048*256);
         control_variables.add(led_screen.screen_distance, "Screen Z:", 0, 2048*256);
         control_variables.add(default_size, "cube length", 1, 150*256);

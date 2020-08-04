@@ -9,10 +9,10 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
     #define ROPE_SEGMENT_LENGTH (3*256)
     #define NUM_ROPE_EFFECTS 1
     #define MAX_NUM_ROPES 50
-    #define BALLS_PER_COLUMN (MATRIX_HEIGHT/30)
-    #define BALLS_PER_ROW (MATRIX_WIDTH/30)
+    #define BALLS_PER_COLUMN (MATRIX_HEIGHT/10)
+    #define BALLS_PER_ROW (MATRIX_WIDTH/10)
     #define NUM_BALLS (BALLS_PER_COLUMN * BALLS_PER_ROW)
-    #define MAX_BALL_RADIUS (13*256)
+    #define MAX_BALL_RADIUS (4*256)
     
     bool draw_balls = 1;
     uint8_t num_joints = 10;
@@ -58,7 +58,8 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
     void reset_rope(int j) {
         JOINT * rope = ropes[j].joints;
 
-        const uint32_t x_variance = MATRIX_WIDTH*256 - (num_joints * ROPE_SEGMENT_LENGTH);
+        //const uint32_t x_variance = MATRIX_WIDTH*256 - (num_joints * ROPE_SEGMENT_LENGTH);
+        const uint32_t x_variance = MATRIX_WIDTH*256;
         int r = random(x_variance*2)-x_variance;
         int r2 = random(10*256);
         for (int i = 0; i < num_joints; i++) {
@@ -93,14 +94,6 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
 
   public:
     void reset() {
-        setup();
-    }
-
-    void setup() {
-        control_variables.add(num_ropes,"Number of Ropes",1,MAX_NUM_ROPES);
-        control_variables.add(num_joints,"Number of Joints",1,MAX_NUM_JOINTS);
-        control_variables.add(draw_balls,"Draw Balls");
-        control_variables.add(gravity,"Gravity",1,50);
         for (int i = 0; i < NUM_BALLS; i++) {
             reset_ball(i);
             balls[i].p.x = -MAX_BALL_RADIUS + (i%BALLS_PER_ROW) * ((MATRIX_WIDTH*256+MAX_BALL_RADIUS*2+MAX_BALL_RADIUS/2)/(BALLS_PER_ROW));
@@ -110,6 +103,14 @@ class ROPE_PHYSICS: public LIGHT_SKETCH {
         for (int j = 0; j < MAX_NUM_ROPES; j++) {
             reset_rope(j);
         }
+    }
+
+    void setup() {
+        control_variables.add(num_ropes,"Number of Ropes",1,MAX_NUM_ROPES);
+        control_variables.add(num_joints,"Number of Joints",1,MAX_NUM_JOINTS);
+        control_variables.add(draw_balls,"Draw Balls");
+        control_variables.add(gravity,"Gravity",1,50);
+        reset();
     }
 
     void next_effect() {

@@ -315,7 +315,7 @@
 
 
 //draw a triangle and calculate x,y,z as well as the ratio of a-b-c for each pixel
-    bool draw_triangle_fine(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& norm_a, VECTOR3& norm_b, VECTOR3& norm_c, const CRGB& rgb_in = CRGB(255,255,255)) {
+    bool draw_triangle_fine(VECTOR3& a, VECTOR3& b, VECTOR3& c, VECTOR3& norm_a, VECTOR3& norm_b, VECTOR3& norm_c, const CRGB& rgb_in = CRGB(255,255,255), VECTOR3 a_ratio = VECTOR3(255,0,0), VECTOR3 b_ratio = VECTOR3(0,255,0) , VECTOR3 c_ratio = VECTOR3(0,0,255)) {
       bool on_screen = false;
       bool orientation = ((float)(b.y-a.y))*(c.x-b.x) - ((float)(c.y-b.y))*(b.x-a.x) < 0;
 
@@ -334,10 +334,6 @@
             rotate_x(norm,16);
             rotate_y(norm,10);
 
-            VECTOR3 a_ratio = VECTOR3(255,0,0);
-            VECTOR3 b_ratio = VECTOR3(0,255,0);
-            VECTOR3 c_ratio = VECTOR3(0,0,255);
-
             //shading according to surface normal
             uint8_t bri = _min(_max((norm.z*7)/8,0)+32,255);
 
@@ -348,9 +344,9 @@
             a.z = z_depth-16;
             b.z = z_depth-16;
             c.z = z_depth-16;
-            draw_line_fine_new(led_screen, a, b, rgb, a_ratio, b_ratio);
-            draw_line_fine_new(led_screen, b, c, rgb, b_ratio, c_ratio);
-            draw_line_fine_new(led_screen, c, a, rgb, c_ratio, a_ratio);
+            draw_line_fine_new(led_screen, a, b, a_ratio, b_ratio);
+            draw_line_fine_new(led_screen, b, c, b_ratio, c_ratio);
+            draw_line_fine_new(led_screen, c, a, c_ratio, a_ratio);
             if (!on_screen) {
                 if ((a.x >= 0 && a.x < MATRIX_WIDTH*256 && a.y >= 0 && a.y < MATRIX_HEIGHT*256)
                     || (b.x >= 0 && b.x < MATRIX_WIDTH*256 && b.y >= 0 && b.y < MATRIX_HEIGHT*256)
