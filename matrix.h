@@ -114,7 +114,7 @@ class MATRIX {
 
             rotate16_y(in_x, in_y, in_z, -(*camera_rotate_y));
             rotate16_x(in_x, in_y, in_z, -(*camera_rotate_x));
-            //rotate16_z(in_x, in_y, in_z, *camera_rotate_z);
+            rotate16_z(in_x, in_y, in_z, -(*camera_rotate_z));
             in_x *= 16;
             in_y *= 16;
             in_z *= 16;
