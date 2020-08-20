@@ -80,6 +80,19 @@ int32_t y_buffer_max = 0;
 int32_t y_buffer_min = MATRIX_HEIGHT-1;
 
 
+struct SHAPE_TO_FILL {
+  int state = 1;
+  bool ready = 0;
+  bool processed = 1;
+  bool stop = 0;
+  uint16_t low_x;
+  uint16_t high_x;
+  uint16_t low_y;
+  uint16_t high_y;
+  int z;
+  CRGB rgb;
+};
+SHAPE_TO_FILL shape_to_fill;
 
 struct Y_BUF {
     union {
@@ -97,11 +110,22 @@ struct Y_BUF {
     }
 };
 
+#ifdef ENABLE_MULTITHREAD
+std::mutex mutex_;
+std::condition_variable condVar; 
+#endif
+
 class Y_BUF2 {
   Y_BUF buf[MATRIX_HEIGHT][2];
 
  public:
   void reset() {
+#ifdef ENABLE_MULTITHREAD
+      if (!shape_to_fill.processed) {
+        std::unique_lock<std::mutex> lck(mutex_);
+        condVar.wait(lck, []{ return shape_to_fill.processed; });
+      }
+#endif
       y_buffer_min = MATRIX_HEIGHT-1;
       y_buffer_max = 0;
       for (int y = 0; y < MATRIX_HEIGHT; y++) {

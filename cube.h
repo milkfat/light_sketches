@@ -31,14 +31,15 @@ static void draw_quad(VECTOR3 a, VECTOR3 b, VECTOR3 c, VECTOR3 d, VECTOR3 orig, 
 
     int32_t z_depth = orig.z+norm.z; 
 
-    rotate_x(norm,24);
-    rotate_y(norm,16);
+    rotate_x(norm,26);
+    rotate_y(norm,40);
 
     //shading according to surface normal
     uint8_t bri = _min(_max((norm.z*7)/8,0)+32,255);
 
     CRGB rgb = rgb_in;
     color_scale(rgb, bri);
+    
     y_buffer->reset();
     reset_x_buffer();
     // a.z = z_depth-16;
@@ -209,18 +210,21 @@ static void draw_cached_cube(const int16_t& cp) {
     VECTOR3(-c->d.x,-c->d.y,c->d.z)  //bottom left  front
 
   };
-
+  bool screen_test = false;
   for (int i = 0; i < 8; i++) {
     (c->r_fine) ? rotate16(points[i],c->r) : rotate(points[i],c->r);
     points[i]+=c->p;
     led_screen.matrix.rotate_camera(points[i]);
 
     //correct 3d perspective
-    led_screen.perspective(points[i]);
+    screen_test = led_screen.perspective(points[i]) || screen_test;
 
     //don't draw cube if any part is behind the camera
     //if (points[i].z > led_screen.camera_position.z) return;
 
+  }
+  if (!screen_test) {
+    return;
   }
 
   int16_t cube_face_order[6][2]={{1000,0},{1000,0},{1000,0},{1000,0},{1000,0},{1000,0}};

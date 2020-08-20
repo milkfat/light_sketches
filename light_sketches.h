@@ -61,6 +61,10 @@ class REGISTER_BASE {
 
 //the main object for handling all light sketches
 class LIGHT_SKETCHES {
+  public:
+    ~LIGHT_SKETCHES () {
+      light_sketches[current_light_sketch]->destroy();
+    }
   private:
     //a LIGHT_SKETCH pointer to the currently active light sketch
     //we will later allocate the necessary amount of memory to initialize our largest sketch
@@ -361,9 +365,9 @@ class LIGHT_SKETCHES {
     template <class T>
     class REGISTER: public REGISTER_BASE {
       private:
-        char sketch_name[20];
-        T * sketch = nullptr;
+        char sketch_name[30];
       public:
+        T * sketch = nullptr;
         REGISTER (char const * name) {
           strcpy(sketch_name, name);
           light_sketches[number_of_light_sketches] = this;
@@ -424,11 +428,14 @@ bool LIGHT_SKETCHES::need_to_allocate = true;
 //initialize our object to handle light sketches
 
 LIGHT_SKETCHES light_sketches;
+#ifndef DISABLE_DEFAULT_SKETCHES
 //#include "cube_collision.h"
 //#include "video_stream.h"
-#include "tetris.h"
+#include "rollercoaster.h"
+//#include "raytrace.h"
 #include "tree_grow.h"
-#ifndef DISABLE_DEFAULT_SKETCHES
+#include "leas_lights.h"
+#include "tetris.h"
 #include "balls_squishy.h"
 #include "balls2d.h"
 //  #include "cinco_de_mayo.h"

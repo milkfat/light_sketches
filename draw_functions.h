@@ -411,19 +411,20 @@ void fill_shape(const int& z = 0, CRGB rgb = CRGB(255,0,0), uint8_t alpha = 255,
       CRGB * led = &led_screen.screen_buffer[pos];
       
       for (uint16_t x = this_low_x; x <= this_high_x; x++) {
-          if (y >= x_buffer[x][0].y && y <= x_buffer[x][1].y) {
+          if (y >= x_buffer[x][0].y && y <= x_buffer[x][1].y && z/16 >= (*z_buffer)[pos]) {
+              (*z_buffer)[pos] = z/16;
               if (y == x_buffer[x][0].y) {
-                drawXY_blend_gamma(led_screen, pos, rgb, (x_buffer[x][0].alpha*alpha)/255);
+                  drawXY_blend_gamma(led_screen, pos, rgb, (x_buffer[x][0].alpha*alpha)/255);
               } else if (y == x_buffer[x][1].y) {
-                drawXY_blend_gamma(led_screen, pos, rgb, (x_buffer[x][1].alpha*alpha)/255);
+                  drawXY_blend_gamma(led_screen, pos, rgb, (x_buffer[x][1].alpha*alpha)/255);
               } else if (x == (*y_buffer)[y][0].x) {
-                drawXY_blend_gamma(led_screen, pos, rgb, (low_alpha_x*alpha)/255);
+                  drawXY_blend_gamma(led_screen, pos, rgb, (low_alpha_x*alpha)/255);
               } else if (x == (*y_buffer)[y][1].x) {
-                drawXY_blend_gamma(led_screen, pos, rgb, (high_alpha_x*alpha)/255);
+                  drawXY_blend_gamma(led_screen, pos, rgb, (high_alpha_x*alpha)/255);
               } else if (do_fill) {
-                drawXY_blend_gamma(led_screen, pos, rgb, alpha);
-                //*led = rgb;
+                  drawXY_blend_gamma(led_screen, pos, rgb, alpha);
               }
+              //*led = rgb;
           }
           led++;
           pos++;
@@ -431,6 +432,125 @@ void fill_shape(const int& z = 0, CRGB rgb = CRGB(255,0,0), uint8_t alpha = 255,
   }
   
 }
+
+void fill_thing() {
+    for (uint16_t y = shape_to_fill.low_y; y <= shape_to_fill.high_y; y++) {
+        //optimized having to call XY() for every pixel
+        //however this will fail on LED layouts where pixels are not stored in sequential bytes
+        //TODO: fix this to work on any LED layout
+
+        uint16_t this_low_x = _min(_max(shape_to_fill.low_x,(*y_buffer)[y][0].x), MATRIX_WIDTH-1);
+        uint16_t this_high_x = _max(_min(shape_to_fill.high_x,(*y_buffer)[y][1].x), 0);
+
+        int pos = XY(this_low_x,y);
+        CRGB * led = &led_screen.screen_buffer[pos];
+        
+        for (uint16_t x = this_low_x; x <= this_high_x; x++) {
+            if (y >= x_buffer[x][0].y && y <= x_buffer[x][1].y && shape_to_fill.z/16 >= (*z_buffer)[pos]) {
+                (*z_buffer)[pos] = shape_to_fill.z/16;
+                *led = shape_to_fill.rgb;
+            }
+            led++;
+            pos++;
+        }
+    }
+}
+
+#ifdef ENABLE_MULTITHREAD
+
+void fill_thing_worker() {
+
+    while (!shape_to_fill.stop) {
+        if (shape_to_fill.stop) {
+          return;
+        }
+        std::unique_lock<std::mutex> lck(mutex_);
+        condVar.wait(lck, []{ return shape_to_fill.ready; });
+
+        fill_thing();
+
+        shape_to_fill.ready = false;
+        shape_to_fill.processed = true;
+
+        lck.unlock();
+        condVar.notify_one();
+    }
+
+}
+
+std::thread _worker_thread(fill_thing_worker);
+
+void worker_thread_stop() {
+  shape_to_fill.stop = 1;
+  shape_to_fill.ready = 1;
+  shape_to_fill.processed = 1;
+  condVar.notify_one();
+  if (_worker_thread.joinable()) {
+      _worker_thread.join();
+  }
+}
+
+void fill_shape_no_antialias(const int& z = 0, CRGB rgb = CRGB(255,0,0)) {
+  //fill in the circle
+  uint16_t low_x = _max(x_buffer_min,0);
+  uint16_t low_y = _max(y_buffer_min,0);
+  uint16_t high_x = _min(x_buffer_max,MATRIX_WIDTH-1);
+  uint16_t high_y = _min(y_buffer_max,MATRIX_HEIGHT-1);
+  color_scale(rgb, z_brightness(led_screen, z));
+  
+  {
+    std::lock_guard<std::mutex> lck(mutex_);
+    shape_to_fill.processed = false;
+    shape_to_fill.low_x = low_x;
+    shape_to_fill.high_x = high_x;
+    shape_to_fill.low_y = low_y;
+    shape_to_fill.high_y = high_y;
+    shape_to_fill.z = z;
+    shape_to_fill.rgb = rgb;
+    shape_to_fill.ready = true;
+  }
+
+  condVar.notify_one();   
+  
+}
+
+#endif
+
+
+void fill_shape_no_antialias(const int& z = 0, CRGB rgb = CRGB(255,0,0)) {
+  //fill in the circle
+  uint16_t low_x = _max(x_buffer_min,0);
+  uint16_t low_y = _max(y_buffer_min,0);
+  uint16_t high_x = _min(x_buffer_max,MATRIX_WIDTH-1);
+  uint16_t high_y = _min(y_buffer_max,MATRIX_HEIGHT-1);
+  color_scale(rgb, z_brightness(led_screen, z));
+  
+
+
+  for (uint16_t y = low_y; y <= high_y; y++) {
+        //optimized having to call XY() for every pixel
+        //however this will fail on LED layouts where pixels are not stored in sequential bytes
+        //TODO: fix this to work on any LED layout
+
+        uint16_t this_low_x = _min(_max(low_x,(*y_buffer)[y][0].x), MATRIX_WIDTH-1);
+        uint16_t this_high_x = _max(_min(high_x,(*y_buffer)[y][1].x), 0);
+
+        int pos = XY(this_low_x,y);
+        CRGB * led = &led_screen.screen_buffer[pos];
+        
+        for (uint16_t x = this_low_x; x <= this_high_x; x++) {
+            if (y >= x_buffer[x][0].y && y <= x_buffer[x][1].y && shape_to_fill.z/16 >= (*z_buffer)[pos]) {
+                (*z_buffer)[pos] = z/16;
+                *led = rgb;
+            }
+            led++;
+            pos++;
+        }
+    }
+
+
+}
+
 
 
 void fill_shape_z(const int& z_in = 0, CRGB rgb = CRGB(255,0,0)) {

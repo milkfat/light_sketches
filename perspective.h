@@ -45,9 +45,9 @@ class PERSPECTIVE {
     //modifies X,Y to screen coordinates
 
     void camera_direction (VECTOR3& dir) {
+        rotate16_z(dir, camera_rotate_z);
         rotate16_x(dir, camera_rotate_x);
         rotate16_y(dir, camera_rotate_y);
-        //rotate16_z(dir, -camera_rotate_z);
     }
 
     void camera_move (VECTOR3 v) {
@@ -97,8 +97,6 @@ class PERSPECTIVE {
     inline __attribute__ ((always_inline)) bool perspective_hp(int32_t& x, int32_t& y, int32_t& z) {
         z = _min(z, Cz0-1);
         if (z < Cz0) {
-            x-=camera_position.x;
-            y-=camera_position.y;
             x = ( x * ((Sz0 - Cz0)) ) / (z-Cz0) + ((screen_width * 128));
             y = ( y * ((Sz0 - Cz0)) ) / (z-Cz0) + ((screen_height * 128));
             return true;
@@ -107,17 +105,30 @@ class PERSPECTIVE {
     }
 
     inline __attribute__ ((always_inline)) bool perspective_mp(int32_t& x, int32_t& y, int32_t& z) {
-        
         z/=MATRIX_PRECISION;
-        z = _min(z, Cz-1);
-        if (z < Cz) {
+        if (z-Cz == 0) {
+            z -= 1;
+        }
+        if (z-Cz != 0) {
             x/=MATRIX_PRECISION;//half precision to double each axis of our available coordinate space
             y/=MATRIX_PRECISION;
-            x = ( x * ((Sz - Cz)) ) / (z-Cz) + ((screen_width * 128)/MATRIX_PRECISION);
-            y = ( y * ((Sz - Cz)) ) / (z-Cz) + ((screen_height * 128)/MATRIX_PRECISION);
+            x = ( x * ((Sz - Cz)) ) / (z-Cz);
+            y = ( y * ((Sz - Cz)) ) / (z-Cz);
+            if (z > Cz) {
+                x = -x;
+                y = -y;
+            }
             x*=MATRIX_PRECISION;
             y*=MATRIX_PRECISION;
             z*=MATRIX_PRECISION;
+            x+=screen_width * 128;
+            y+=screen_height * 128;
+            if (z > Cz) {
+                return false;
+            }
+            if ( (x < 0 || x > MATRIX_WIDTH*256) ) {
+                return false;
+            }
             return true;
         }
         z*=MATRIX_PRECISION;
@@ -128,8 +139,6 @@ class PERSPECTIVE {
         z/=MATRIX_PRECISION*16;
         z = _min(z, Cz2-1);
         if (z < Cz2) {
-            x-=camera_position.x;
-            y-=camera_position.y;
             x/=MATRIX_PRECISION*16;//half precision to double each axis of our available coordinate space
             y/=MATRIX_PRECISION*16;
             x = ( x * ((Sz2 - Cz2)) ) / (z-Cz2) + ((screen_width * 128)/(MATRIX_PRECISION*16));

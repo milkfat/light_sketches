@@ -1,6 +1,8 @@
 #ifndef LIGHTS_TRIANGLE_H
 #define LIGHTS_TRIANGLE_H
 
+#include "draw_line_fine_new2.h"
+
     //return a unit vector representing the surface normal of triangle a,b,c
     static VECTOR3 inline __attribute__((always_inline)) normal(const VECTOR3& a, const VECTOR3& b, const VECTOR3& c) {
         VECTOR3 norm;
@@ -321,8 +323,6 @@
 
         if ( orientation ) {
 
-            y_buffer->reset();
-            reset_x_buffer();
             VECTOR3 norm = norm_a+norm_b+norm_c;
             norm /= 3;
 
@@ -331,22 +331,27 @@
 
             int32_t z_depth = mid.z+norm.z; 
 
-            rotate_x(norm,16);
-            rotate_y(norm,10);
+            rotate_x(norm,26);
+            rotate_y(norm,40);
 
             //shading according to surface normal
             uint8_t bri = _min(_max((norm.z*7)/8,0)+32,255);
 
             CRGB rgb = rgb_in;
             color_scale(rgb, bri);
+            
             y_buffer->reset();
             reset_x_buffer();
+
             a.z = z_depth-16;
             b.z = z_depth-16;
             c.z = z_depth-16;
-            draw_line_fine_new(led_screen, a, b, a_ratio, b_ratio);
-            draw_line_fine_new(led_screen, b, c, b_ratio, c_ratio);
-            draw_line_fine_new(led_screen, c, a, c_ratio, a_ratio);
+            // draw_line_fine_new(led_screen, a, b, a_ratio, b_ratio);
+            // draw_line_fine_new(led_screen, b, c, b_ratio, c_ratio);
+            // draw_line_fine_new(led_screen, c, a, c_ratio, a_ratio);
+            draw_line_fine_new2(led_screen, a, b);
+            draw_line_fine_new2(led_screen, b, c);
+            draw_line_fine_new2(led_screen, c, a);
             if (!on_screen) {
                 if ((a.x >= 0 && a.x < MATRIX_WIDTH*256 && a.y >= 0 && a.y < MATRIX_HEIGHT*256)
                     || (b.x >= 0 && b.x < MATRIX_WIDTH*256 && b.y >= 0 && b.y < MATRIX_HEIGHT*256)
@@ -356,7 +361,7 @@
                 }
             }
 
-            fill_shape(z_depth, rgb);
+            fill_shape_no_antialias(z_depth, rgb);
         }
       return on_screen;
     } //void draw_triangle_fine()

@@ -1,18 +1,20 @@
 /*
 
 TO DO:
-	Client/Peer system, chips find eachother over WiFi
+	*in progress* Client/Peer system, chips find eachother over WiFi
 	
-	Make window size dynamic on PC
+	*done* Make window size dynamic on PC
 
-	fill_shape() to add interpolation
-	fill_shape() to support z buffer
+	*done* fill_shape() to add interpolation
+	*done* fill_shape() to support z buffer
+	make fill_shape() better
+
 
 	Refactor fonts
 	3d fonts
 	vector fonts
 	
-	3d travel through grid (flight.h) -- got a nice start
+	*in progress/mostly done* 3d travel through grid (flight.h) -- got a nice start
 	3d travel through perlin noise?
 	3d falling coins
 
@@ -35,25 +37,30 @@ TO DO:
 	  other fun things
 */
 
-
-// #define WINDOW_WIDTH 1840
-// #define WINDOW_HEIGHT 13606
-// #define MATRIX_WIDTH 360
-// #define MATRIX_HEIGHT 250
-
 #define NATIVE_RES_WINDOW
+//#define LEAS_ROOM
 
 
 #ifdef NATIVE_RES_WINDOW
-#define MATRIX_WIDTH 1280	
-#define MATRIX_HEIGHT 960
-#define WINDOW_WIDTH MATRIX_WIDTH
-#define WINDOW_HEIGHT MATRIX_HEIGHT
-#else
-#define MATRIX_WIDTH 32
-#define MATRIX_HEIGHT 128
-#define WINDOW_WIDTH ((MATRIX_WIDTH)*5)
-#define WINDOW_HEIGHT ((MATRIX_HEIGHT)*5)
+	//native resolution
+	#define MATRIX_WIDTH 1280	
+	#define MATRIX_HEIGHT 960
+	#define WINDOW_WIDTH MATRIX_WIDTH
+	#define WINDOW_HEIGHT MATRIX_HEIGHT
+#else 
+	#ifdef LEAS_ROOM
+		//Lea's room simulation
+		#define MATRIX_WIDTH 32
+		#define MATRIX_HEIGHT 32
+		#define WINDOW_WIDTH 980
+		#define WINDOW_HEIGHT 980
+	#else
+		//led matrix "simulation"
+		#define MATRIX_WIDTH 256
+		#define MATRIX_HEIGHT 196
+		#define WINDOW_WIDTH ((MATRIX_WIDTH)*5)
+		#define WINDOW_HEIGHT ((MATRIX_HEIGHT)*5)
+	#endif
 #endif
      
 #define SCREEN_WIDTH MATRIX_WIDTH
@@ -152,6 +159,7 @@ void tree_thing() {
     }        
 
 }
+
 #include "text.h"
 
 #include <server_https.hpp>
@@ -178,25 +186,65 @@ void log_camera_coordinates() {
 	std::cout << "camera: " << (int32_t)led_screen.camera_offset.x << " " << (int32_t)led_screen.camera_offset.y << " " << (int32_t)led_screen.camera_offset.z << " rotation: " << (int32_t)led_screen.camera_rotate_x << " " << (int32_t)led_screen.camera_rotate_y << " " << (int32_t)led_screen.camera_rotate_z << "\n";;
 }
 //this function is called whenever the screen needs to be updated
-void update_matrix() {
+CRGB alt_led_buffer[NUM_LEDS]; //alternate buffer necessary for multi-threading
+CRGB* active_buffer;
+int led_buffer_available = 0;
 
+void update_matrix_func() {
 
 	//draw stuff
-  
+
 	//tree_thing();
-#ifdef NATIVE_RES_WINDOW
 	uint32_t * pixel = (uint32_t*)bitmapSurface->pixels;
-	uint8_t * pixel_location = (uint8_t*)&leds[led_screen.XY(0,SCREEN_HEIGHT-1)].r;
-    for (int i = 0; i < SCREEN_HEIGHT*SCREEN_WIDTH; i++) {
+	uint8_t * pixel_location = (uint8_t*)&active_buffer[led_screen.XY(0,SCREEN_HEIGHT-1)].r;
+#ifdef NATIVE_RES_WINDOW
+
+	//draw screen at native resolution
+	for (int i = 0; i < SCREEN_HEIGHT*SCREEN_WIDTH; i++) {
 			//memcpy(pixel++, pixel_location+=3,3);
 			*pixel++ = pixel_location[2] << 16 | pixel_location[1] << 8 | pixel_location[0];
 			pixel_location+=3;
-    }
+	}
+
 #else
-	uint32_t * pixel = (uint32_t*)bitmapSurface->pixels;
-	uint8_t * pixel_location = (uint8_t*)&leds[led_screen.XY(0,SCREEN_HEIGHT-1)].r;
-    for (int y = 0; y < SCREEN_HEIGHT; y++) {
-    	for (int x = 0; x < SCREEN_WIDTH; x++) {
+#ifdef LEAS_ROOM
+	pixel += 10;
+	pixel += (10*(bitmapSurface->pitch))/4;
+	for (int i = 0; i < 762; i++) {
+		uint8_t * active_pixel_location = pixel_location + (i/6)*3;
+		uint32_t * active_pixel = pixel;
+		for (int y = 0; y < 4; y++) {
+			//draw one line of an LED pixel
+			for (int x = 0; x < 4; x++) {
+				*active_pixel++ = active_pixel_location[0] | active_pixel_location[1] << 8 | active_pixel_location[2] << 16;
+			}
+			//avance to the next line
+			active_pixel+=(bitmapSurface->pitch)/4 - 4;
+		}
+
+		//advance to the next pixel
+		if (i < 191) {
+			pixel += 5;
+		} else if (i < 191+150) {
+			pixel += (5 * (bitmapSurface->pitch)/4);
+		} else if (i < 191+150+40) {
+			pixel -= 5;
+		} else if (i < 191+150+40+40) {
+			pixel += (5 * (bitmapSurface->pitch)/4);
+		} else if (i < 191+150+40+40+151) {
+			pixel -= 5;
+		} else {
+			pixel -= (5 * (bitmapSurface->pitch)/4);
+		} 
+	}
+
+#else
+
+	//draw led pixel simulation
+	for (int y = 0; y < SCREEN_HEIGHT; y++) {
+		
+		//write one line of pixels
+		for (int x = 0; x < SCREEN_WIDTH; x++) {
 			//memcpy(pixel++, pixel_location+=3,3);
 			*pixel++ = pixel_location[2] | pixel_location[1] << 8 | pixel_location[0] << 16;
 			*pixel++ = pixel_location[2] | pixel_location[1] << 8 | pixel_location[0] << 16;
@@ -205,41 +253,71 @@ void update_matrix() {
 			pixel++;
 			pixel_location+=3;
 		}
-		memcpy(pixel, pixel-(bitmapSurface->pitch)/4, WINDOW_WIDTH*4);
-		pixel+=(bitmapSurface->pitch)/4;
-		memcpy(pixel, pixel-(bitmapSurface->pitch)/4, WINDOW_WIDTH*4);
-		pixel+=(bitmapSurface->pitch)/4;
-		memcpy(pixel, pixel-(bitmapSurface->pitch)/4, WINDOW_WIDTH*4);
-		pixel+=(bitmapSurface->pitch)/4;
+		
+		//copy the line of pixels down to the next few lines
+		for (int i = 0; i < 3; i++) {
+			memcpy(pixel, pixel-(bitmapSurface->pitch)/4, WINDOW_WIDTH*4);
+			pixel+=(bitmapSurface->pitch)/4;
+		}
+
+		//advance to the next line of pixels
 		pixel+=(bitmapSurface->pitch)/4;
 		//pixel+=2;
-    }
+	}
+
+#endif
 #endif
 
 
 
-    uint32_t start_time = micros();
-    uint32_t debug_before = micros();
-
-    //bitmapTex = SDL_CreateTextureFromSurface(renderer, bitmapSurface);
+	uint32_t start_time = micros();
+	uint32_t debug_before = micros();
+	//bitmapTex = SDL_CreateTextureFromSurface(renderer, bitmapSurface);
 	//SDL_RenderClear(renderer);
-    SDL_UpdateTexture(bitmapTex, NULL, bitmapSurface->pixels, bitmapSurface->pitch);
+	SDL_UpdateTexture(bitmapTex, NULL, bitmapSurface->pixels, bitmapSurface->pitch);
 	SDL_RenderCopy(renderer, bitmapTex, NULL, NULL);
 	SDL_RenderPresent(renderer);
 	//SDL_UpdateWindowSurface(window);
 
 	debug_count0++;
 	debug_micros0 += micros() - debug_before;
-	
-	SDL_Event event;
-	poll_inputs(event);
+	led_buffer_available = 0;
 
-
-	
 }
+void update_matrix() {
+	active_buffer = leds;
+	update_matrix_func();
+}
+/*
+std::thread _update_matrix_thread;
+void update_matrix() {
+	if (_update_matrix_thread.joinable()) {
+		_update_matrix_thread.join();
+	}
 
+#ifdef DOUBLE_BUFFER
+	if ( leds == main_led_buffer) {
+		active_buffer = main_led_buffer;
+		leds = alt_led_buffer;
+		led_screen.screen_buffer = leds;
+	} else {
+		active_buffer = alt_led_buffer;
+		leds = main_led_buffer;
+		led_screen.screen_buffer = leds;
+	}
+#else
+	active_buffer = main_led_buffer;
+	leds = main_led_buffer;
+	led_screen.screen_buffer = leds;
+#endif
+
+	led_buffer_available = 1;
+	_update_matrix_thread = std::thread(update_matrix_func);
+}
+*/
 
 int main(int argc, char **argv){
+	srand(time(nullptr));
 
 	pc_screen.screen_buffer = screen_buffer;
 
@@ -321,7 +399,7 @@ int main(int argc, char **argv){
 	
 	//start UDP server
 	UDP_SERVER server(io_service);	
-	std::thread thread_object([&io_service]() { io_service.run(); });
+	std::thread network_io_object([&io_service]() { io_service.run(); });
 	
 	//initialize our graphics window and do stuff
 	if (SDL_Init(SDL_INIT_VIDEO) == 0) {
@@ -347,7 +425,7 @@ int main(int argc, char **argv){
         if (window) {
 
 			while (millis() < 1000) {};
-			light_sketches.loop();	
+			light_sketches.loop ();	
 			while (millis() < 1000) {};
 
 			// for (uint32_t l = 0; l < 65536; l++) {
@@ -402,6 +480,10 @@ int main(int argc, char **argv){
 				
 				uint32_t time_before = micros();
 				light_sketches.loop();
+
+				SDL_Event event;
+				poll_inputs(event);
+
 				debug_micros1 += micros() - time_before;
 				debug_count1++;
 				bool button_pushed = false;
@@ -427,10 +509,10 @@ int main(int argc, char **argv){
 				if (button_rg1) {led_screen.camera_rotate_z+=button_mult*100;button_pushed=true;}
 				if (button_pushed) log_camera_coordinates();
 				
-				uint32_t time_before2 = micros();
-				handle_text();
-				debug_micros2 += micros() - time_before2;
-				debug_count2++;
+				// uint32_t time_before2 = micros();
+				// handle_text();
+				// debug_micros2 += micros() - time_before2;
+				// debug_count2++;
 
 				if (spacebar) {
 					spacebar = false; 
@@ -502,6 +584,16 @@ int main(int argc, char **argv){
         }
     }
 
+	led_buffer_available = -1;
+
+#ifdef ENABLE_MULTITHREAD
+	worker_thread_stop();
+
+	if ( _update_matrix_thread.joinable() ) {
+		_update_matrix_thread.join();
+	}
+#endif
+
   	https_server.stop();
 	wss_server.stop();
 	
@@ -512,7 +604,7 @@ int main(int argc, char **argv){
 	//stop UDP server
 	io_service.stop();
 	//wait for thread to finish
-	thread_object.join();
+	network_io_object.join();
 
     return 0; 
 }
