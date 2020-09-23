@@ -3,7 +3,7 @@
 
 #include "EEPROM.h"
 
-#define NUM_LEAS_LIGHTS_DEFAULT_EFFECTS 2
+#define NUM_LEAS_LIGHTS_DEFAULT_EFFECTS 3
 
 void _lld_re_c_handle();
 void _lld_re_d_handle();
@@ -12,8 +12,8 @@ void _lld_button_handle();
 class LEAS_LIGHTS_DEFAULT: public LIGHT_SKETCH {
 
   public:
-    LEAS_LIGHTS_DEFAULT () {setup();}
-    ~LEAS_LIGHTS_DEFAULT () {disableInterrupts();}
+    LEAS_LIGHTS_DEFAULT () {setup(); minimum_frame_delay = 4;}
+    ~LEAS_LIGHTS_DEFAULT () {disableInterrupts(); minimum_frame_delay = DEFAULT_MINIMUM_FRAME_DELAY;}
 
     volatile uint8_t re_buff[32];
     volatile uint8_t re_buff_r = 0;
@@ -34,6 +34,8 @@ class LEAS_LIGHTS_DEFAULT: public LIGHT_SKETCH {
     uint8_t re_val = 0;
     uint8_t re_val_mem = 20;
     uint8_t re_function = 0;
+
+    uint8_t hue_change_spd = 10;
 
     uint32_t EEPROM_time = 0;
     uint8_t hue_last = 0;
@@ -148,7 +150,103 @@ class LEAS_LIGHTS_DEFAULT: public LIGHT_SKETCH {
     void loop() {
         LED_show();
         handle_buttons();
+
+        static uint8_t hue_change_cnt = 0;
+        if (current_effect) {
+          if (hue_change_cnt >= hue_change_spd) {
+            re_hue++;
+            hue_change_cnt = 0;
+          }
+          hue_change_cnt++;
+        }
+
         handle_lights();
+        handle_rf_codes();
+    }
+
+    void handle_rf_codes() {
+        static uint32_t power_toggle_time = 0;
+        static uint32_t next_effect_time = 0;
+        while ( rf_code_available() ) {
+          //Serial.println("GOT CODE");
+            int mod = 5;
+            RF_CODE * rf = rf_code_get();
+
+            switch (rf->code) {
+                case 9560813:
+                  re_hue = 160;
+                  re_sat = 255;
+                  //Serial.println("B");
+                  break;
+                case 9560814:
+                  re_hue = 96;
+                  re_sat = 255;
+                  //Serial.println("G");
+                  break;
+                case 9560815:
+                  re_hue = 0;
+                  re_sat = 255;
+                  //Serial.println("R");
+                  break;
+                case 9560816:
+                  re_hue-=5;
+                  //Serial.println("DEL_DIY");
+                  break;
+                case 9560817:
+                  re_hue = 235;
+                  re_sat = 64;
+                  //Serial.println("W");
+                  break;
+                case 9560818:
+                  brightness_down(mod);
+                  //Serial.println("DIY-");
+                  break;
+                case 9560819:
+                  re_hue+=5;
+                  //Serial.println("ADD_DIY");
+                  break;
+                case 9560820:
+                  saturation_down();
+                  //Serial.println("MODE-");
+                  break;
+                case 9560821:
+                  brightness_up(mod);
+                  //Serial.println("DIY+");
+                  break;
+                case 9560822:
+                  hue_change_spd++;
+                  hue_change_spd = _min(hue_change_spd, 254);
+                  //Serial.println("SPEED+");
+                  break;
+                case 9560823:
+                  if (millis() > next_effect_time) {
+                    next_effect_time = millis()+500;
+                    next_effect();
+                  }
+                  //Serial.println("MENU_AUTO");
+                  break;
+                case 9560824:
+                  hue_change_spd--;
+                  hue_change_spd = _max(hue_change_spd, 1);
+                  //Serial.println("SPEED-");
+                  break;
+                case 9560826:
+                  saturation_up();
+                  //Serial.println("MODE+");
+                  break;
+                case 9560830:
+                  if (millis() > power_toggle_time) {
+                    power_toggle_time = millis()+500;
+                    power_toggle();
+                  }
+                  //Serial.println("POWER");
+                  break;
+                default:
+                  break;
+            }
+
+        }
+
     }
 
     void handle_lights() {
@@ -163,19 +261,23 @@ class LEAS_LIGHTS_DEFAULT: public LIGHT_SKETCH {
         if (EEPROM_countdown_to_write > 0) {
             EEPROM_countdown_to_write--;
             if (EEPROM_countdown_to_write == 0) {
-            EEPROM.write(0, re_hue);
-            EEPROM.write(1, re_sat);
-            EEPROM.write(2, re_val);
-            EEPROM.write(3, re_val_mem);
-            EEPROM.commit();
+              EEPROM.write(0, re_hue);
+              EEPROM.write(1, re_sat);
+              EEPROM.write(2, re_val);
+              EEPROM.write(3, re_val_mem);
+              EEPROM.commit();
             }
         }
 
         LED_black();
         
         for (int i = start_led; i < end_led; i++) {
-
+          
             CRGB rgb = CHSV(re_hue, re_sat, 255);
+
+            if (current_effect == 2) {
+              rgb = CHSV(re_hue+i*2, re_sat, 255);
+            }
 
             uint16_t bri16 = gamma16_decode(re_val);
         
@@ -294,17 +396,9 @@ class LEAS_LIGHTS_DEFAULT: public LIGHT_SKETCH {
         
         handle_input();
 
-        
         if (button_short_clicks == 1 && button_long_clicks == 0) {
-        re_function = RE_BRIGHTNESS;
-        if (re_val > 0) {
-            re_val_mem = re_val;
-            re_val = 0;
-            //Serial.println("OFF!");
-        } else {
-            re_val=re_val_mem;
-            //Serial.println("ON!");
-        }
+            re_function = RE_BRIGHTNESS;
+            power_toggle();
         }
         
         if (button_short_clicks == 2 && button_long_clicks == 0) {
@@ -323,46 +417,43 @@ class LEAS_LIGHTS_DEFAULT: public LIGHT_SKETCH {
           re_function = RE_END_LED;
         }
         
-        static uint32_t led_time = 0;
+    }
 
-        
-        if (millis() >= led_time) {
-        
-            led_time = millis() + 8;
-            
-            if ( re_hue != hue_last || re_sat != sat_last || re_val != val_last ) {
-                hue_last = re_hue;
-                sat_last = re_sat;
-                val_last = re_val;
-                EEPROM_countdown_to_write = 1000;
-            }
-
-            if (EEPROM_countdown_to_write > 0) {
-                EEPROM_countdown_to_write--;
-                if (EEPROM_countdown_to_write == 0) {
-                  EEPROM.write(0, re_hue);
-                  EEPROM.write(1, re_sat);
-                  EEPROM.write(2, re_val);
-                  EEPROM.write(3, re_val_mem);
-                  EEPROM.commit();
-                }
-            }
+    void power_toggle() {
+        if (re_val > 0) {
+            re_val_mem = re_val;
+            re_val = 0;
+            //Serial.println("OFF!");
+        } else {
+            re_val=re_val_mem;
+            //Serial.println("ON!");
         }
     }
 
+    void brightness_up(int mod = 5) {
+      if (re_val >= 15) {
+        mod = 5;
+      }
+      if (re_val+mod > 255) {
+        re_val=255;
+      } else {
+        re_val+=mod;
+      }
+    }
+    
+    void saturation_up() {
+        if ((int)re_sat+5 > 255) {
+            re_sat=255;
+        } else {
+            re_sat+=5;
+        }
+    }
 
     void re_up() {
       int mod = 5;
       switch (re_function) {
         case RE_BRIGHTNESS:
-          if (re_val >= 15) {
-            mod = 5;
-          }
-          if (re_val+mod > 255) {
-            re_val=255;
-          } else {
-            re_val+=mod;
-          }
+          brightness_up(mod);
           break;
         case RE_HUE:
           if (re_hue >= 15) {
@@ -393,18 +484,30 @@ class LEAS_LIGHTS_DEFAULT: public LIGHT_SKETCH {
       }
     }
 
+    void brightness_down(int mod = 5) {
+        if (re_val > 15) {
+            mod = 5;
+        }
+        if ((int)re_val-mod < 0) {
+            re_val=0;
+        } else {
+            re_val-=mod;
+        }
+    }
+
+    void saturation_down() {
+        if ((int)re_sat-5 < 0) {
+            re_sat=0;
+        } else {
+            re_sat-=5;
+        }
+    }
+
     void re_down() {
       int mod = 5;
       switch (re_function) {
         case RE_BRIGHTNESS:
-          if (re_val > 15) {
-            mod = 5;
-          }
-          if ((int)re_val-mod < 0) {
-            re_val=0;
-          } else {
-            re_val-=mod;
-          }
+          brightness_down(mod);
           break;
         case RE_HUE:
           if (re_hue > 15) {

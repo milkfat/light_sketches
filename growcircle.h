@@ -158,9 +158,11 @@ class GROWCIRCLE: public LIGHT_SKETCH {
             memcpy(&udp_data[1], &x1, 4);
             memcpy(&udp_data[5], &y1, 4);
             memcpy(&udp_data[9], &z1, 4);
-            audp.writeTo(udp_data, 13, IPAddress(192,168,17,8), 24321);
-            audp.writeTo(udp_data, 13, IPAddress(192,168,17,22), 24321);
-            audp.writeTo(udp_data, 13, IPAddress(192,168,17,34), 24321);
+            for (int i = 0; i < NUM_UDP_CLIENTS; i++) {
+              if (udp_clients[i].active) {
+                audp.writeTo(udp_data, 13, IPAddress(udp_clients[i].addr0(),udp_clients[i].addr1(),udp_clients[i].addr2(),udp_clients[i].addr3()), 24321);
+              }
+            }
             //audp.broadcast(udp_data, 9);
           } else {
             circles[c].next_hue = network_hue;

@@ -70,6 +70,12 @@ class PERSPECTIVE {
 
     void reset_camera () {
         camera_position = VECTOR3(0,0,232*256);
+        camera_offset = VECTOR3(0,0,0);
+
+        camera_rotate_x = 0;
+        camera_rotate_y = 0;
+        camera_rotate_z = 0;
+        
         screen_distance = 100*256;
         rotation_alpha = 0;
         rotation_beta = 90;
@@ -120,12 +126,12 @@ class PERSPECTIVE {
             }
             x*=MATRIX_PRECISION;
             y*=MATRIX_PRECISION;
-            z*=MATRIX_PRECISION;
             x+=screen_width * 128;
             y+=screen_height * 128;
             if (z > Cz) {
                 return false;
             }
+            z*=MATRIX_PRECISION;
             if ( (x < 0 || x > MATRIX_WIDTH*256) ) {
                 return false;
             }

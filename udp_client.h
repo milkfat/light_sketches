@@ -10,6 +10,39 @@ struct UDP_CLIENT {
     uint32_t last_seen;
     char name[16];
 
+    uint8_t addr0 () {
+        #ifdef ARDUINO
+        return ((uint8_t*)(&address))[0];
+        #else
+        //Boost libraries store bytes in reverse order
+        return ((uint8_t*)(&address))[3];
+        #endif
+    }
+    uint8_t addr1 () {
+        #ifdef ARDUINO
+        return ((uint8_t*)(&address))[1];
+        #else
+        //Boost libraries store bytes in reverse order
+        return ((uint8_t*)(&address))[2];
+        #endif
+    }
+    uint8_t addr2 () {
+        #ifdef ARDUINO
+        return ((uint8_t*)(&address))[2];
+        #else
+        //Boost libraries store bytes in reverse order
+        return ((uint8_t*)(&address))[1];
+        #endif
+    }
+    uint8_t addr3 () {
+        #ifdef ARDUINO
+        return ((uint8_t*)(&address))[3];
+        #else
+        //Boost libraries store bytes in reverse order
+        return ((uint8_t*)(&address))[0];
+        #endif
+    }
+
   };
 
 class UDP_CLIENTS {

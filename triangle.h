@@ -326,13 +326,18 @@
             VECTOR3 norm = norm_a+norm_b+norm_c;
             norm /= 3;
 
-            VECTOR3 mid = a+b+c;
-            mid /= 3;
+            int32_t z_depth = a.z+b.z+c.z;
+            z_depth /= 3;
 
-            int32_t z_depth = mid.z+norm.z; 
+            //z_depth += norm.z; 
+            // midpoint -= led_screen.camera_position;
+            // midpoint /= 128;
+            // int32_t z_depth = sqrt(midpoint.x*midpoint.x+midpoint.y*midpoint.y+midpoint.z*midpoint.z); 
+            // z_depth = -z_depth;
+            // z_depth *= 128;
 
-            rotate_x(norm,26);
-            rotate_y(norm,40);
+            rotate_x(norm,light_rotation_x);
+            rotate_y(norm,light_rotation_y);
 
             //shading according to surface normal
             uint8_t bri = _min(_max((norm.z*7)/8,0)+32,255);

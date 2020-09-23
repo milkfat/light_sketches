@@ -433,6 +433,8 @@ void fill_shape(const int& z = 0, CRGB rgb = CRGB(255,0,0), uint8_t alpha = 255,
   
 }
 
+#ifdef ENABLE_MULTITHREAD
+
 void fill_thing() {
     for (uint16_t y = shape_to_fill.low_y; y <= shape_to_fill.high_y; y++) {
         //optimized having to call XY() for every pixel
@@ -455,8 +457,6 @@ void fill_thing() {
         }
     }
 }
-
-#ifdef ENABLE_MULTITHREAD
 
 void fill_thing_worker() {
 
@@ -539,7 +539,7 @@ void fill_shape_no_antialias(const int& z = 0, CRGB rgb = CRGB(255,0,0)) {
         CRGB * led = &led_screen.screen_buffer[pos];
         
         for (uint16_t x = this_low_x; x <= this_high_x; x++) {
-            if (y >= x_buffer[x][0].y && y <= x_buffer[x][1].y && shape_to_fill.z/16 >= (*z_buffer)[pos]) {
+            if (y >= x_buffer[x][0].y && y <= x_buffer[x][1].y && z/16 >= (*z_buffer)[pos]) {
                 (*z_buffer)[pos] = z/16;
                 *led = rgb;
             }

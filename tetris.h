@@ -313,6 +313,8 @@ class TETRIS: public LIGHT_SKETCH {
     }
 
     void setup() {
+        light_rotation_x = 24;
+        light_rotation_y = 10;
         control_variables.add(button_rotate_status,"Rotate", 1, 38);
         control_variables.add(button_left_status,"Left", 1, 37);
         control_variables.add(button_right_status,"Right", 1, 39);
@@ -324,7 +326,7 @@ class TETRIS: public LIGHT_SKETCH {
         control_variables.add(gravity, "Gravity:", -30000, 30000);
         control_variables.add(cube_repel, "Cube Repel:", 1, 200);
         
-        led_screen.camera_position.z=700*256;
+        led_screen.camera_position.z=200*256;
         led_screen.screen_distance=566*256;
 
         tetris_size = VECTOR3(TETRIS_SIZE/2-tetris_spacing,TETRIS_SIZE/2-tetris_spacing,TETRIS_SIZE/2-tetris_spacing);
@@ -410,7 +412,8 @@ class TETRIS: public LIGHT_SKETCH {
         led_screen.perspective(p);
         draw_characters(5, buffer, p.x, p.y, CRGB(255,255,255), MATRIX_HEIGHT, 0);  
         }
-
+        
+        handle_text();
         LED_show();
         LED_black();
 

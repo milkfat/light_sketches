@@ -77,6 +77,8 @@ class ROLLER_COASTER: public LIGHT_SKETCH {
         control_variables.add(led_screen.camera_position.z, "Camera Z", 0, 256*256*256);
         control_variables.add(led_screen.screen_distance, "Screen Z", 0, 256*256*50);
         control_variables.add(led_screen.light_falloff, "Light Distance:", 1, 16);   
+        control_variables.add(light_rotation_x, "Light Rotation X:", 0, 255);     
+        control_variables.add(light_rotation_y, "Light Rotation Y:", 0, 255);   
     }
 
     void next_effect() {
@@ -86,7 +88,7 @@ class ROLLER_COASTER: public LIGHT_SKETCH {
 
     #define NUM_LANDSCAPE 3840
 
-    int landscape_distance = 800;
+    int landscape_distance = 1600;
     int landscape_segment_width = 50;
     int landscape_segment_height = 50;
     int landscape_width = 24;
@@ -151,15 +153,21 @@ class ROLLER_COASTER: public LIGHT_SKETCH {
     void draw() {
         //draw landscape
         for (int i0 = current_landscape-landscape_width*2+NUM_LANDSCAPE*2; i0 > current_landscape-landscape_width*2 + NUM_LANDSCAPE; i0 -= landscape_width) {
-            int i = i0 % NUM_LANDSCAPE;
-            VECTOR3 points_a[landscape_width];
-            VECTOR3 points_b[landscape_width];
-            VECTOR3 normals_a[landscape_width];
-            VECTOR3 normals_b[landscape_width];
-            bool tests_a[landscape_width];
-            bool tests_b[landscape_width];
 
+            int i = i0 % NUM_LANDSCAPE;
+            
             if ( landscape_points[i%NUM_LANDSCAPE].active && landscape_points[(i+landscape_width)%NUM_LANDSCAPE].active ) {
+
+                VECTOR3 points_a[landscape_width];
+                VECTOR3 points_b[landscape_width];
+                VECTOR3 normals_a[landscape_width];
+                VECTOR3 normals_b[landscape_width];
+                bool tests_a[landscape_width];
+                bool tests_b[landscape_width];
+                uint8_t x_locations_a[landscape_width];
+                uint8_t x_locations_b[landscape_width];
+                uint8_t y_locations_a[landscape_width];
+                uint8_t y_locations_b[landscape_width];
 
                 CRGB rgb = CRGB(24,72,12);
 
@@ -173,18 +181,65 @@ class ROLLER_COASTER: public LIGHT_SKETCH {
                 for (int j = 0; j < landscape_width; j++) {
                     led_screen.matrix.rotate_camera(points_a[j]);
                     led_screen.matrix.rotate_camera(points_b[j]);
+
+
+                    VECTOR3 dist_a = points_a[j];
+                    VECTOR3 dist_b = points_b[j];
+                    dist_a -= led_screen.camera_position;
+                    dist_b -= led_screen.camera_position;
+                    dist_a /= 128;
+                    dist_b /= 128;
+                    int32_t z_depth_a = sqrt(dist_a.x*dist_a.x+dist_a.y*dist_a.y+dist_a.z*dist_a.z); 
+                    int32_t z_depth_b = sqrt(dist_b.x*dist_b.x+dist_b.y*dist_b.y+dist_b.z*dist_b.z);
+                    z_depth_a = -z_depth_a;
+                    z_depth_b = -z_depth_b;
+                    z_depth_a *= 128;
+                    z_depth_b *= 128;
+
+
                     tests_a[j] = led_screen.perspective(points_a[j]);
                     tests_b[j] = led_screen.perspective(points_b[j]);
+
+                    points_a[j].z = z_depth_a;
+                    points_b[j].z = z_depth_b;
+
+                    x_locations_a[j] = 0;
+                    x_locations_b[j] = 0;
+                    if (points_a[j].x < 0) {
+                        x_locations_a[j] = 1;
+                    } else if ( points_a[j].x > MATRIX_WIDTH*256 ) {
+                        x_locations_a[j] = 2;
+                    }
+                    if (points_b[j].x < 0) {
+                        x_locations_b[j] = 1;
+                    } else if ( points_b[j].x > MATRIX_WIDTH*256 ) {
+                        x_locations_b[j] = 2;
+                    }
+
+                    y_locations_a[j] = 0;
+                    y_locations_b[j] = 0;
+                    if (points_a[j].y < 0) {
+                        y_locations_a[j] = 1;
+                    } else if ( points_a[j].y > MATRIX_HEIGHT*256 ) {
+                        y_locations_a[j] = 2;
+                    }
+                    if (points_b[j].y < 0) {
+                        y_locations_b[j] = 1;
+                    } else if ( points_b[j].y > MATRIX_HEIGHT*256 ) {
+                        y_locations_b[j] = 2;
+                    }
                 }
 
-                VECTOR3 norm2 = VECTOR3(0,256,0);
-
                 for (int j = 0; j < landscape_width-1; j++) {
-                    if (tests_a[j] || tests_a[j+1] || tests_b[j]) {
+                    if ( (tests_a[j] || tests_a[j+1] || tests_b[j]) ||
+                         ( (x_locations_a[j] != x_locations_a[j+1] || x_locations_a[j] != x_locations_b[j]) && 
+                           (y_locations_a[j] != y_locations_a[j+1] || y_locations_a[j] != y_locations_b[j]) ) ) {
                         draw_triangle_fine(points_a[j], points_a[j+1], points_b[j], normals_a[j], normals_a[j+1], normals_b[j], rgb);
                     }
 
-                    if (tests_a[j+1] || tests_b[j+1] || tests_b[j]) {
+                    if ( (tests_a[j+1] || tests_b[j+1] || tests_b[j]) ||
+                         ( (x_locations_a[j+1] != x_locations_b[j+1] || x_locations_a[j+1] != x_locations_b[j]) && 
+                           (y_locations_a[j+1] != y_locations_b[j+1] || y_locations_a[j+1] != y_locations_b[j]) ) ) {
                         draw_triangle_fine(points_a[j+1], points_b[j+1], points_b[j], normals_a[j+1], normals_b[j+1], normals_b[j], rgb);
                     }
                 }
@@ -213,7 +268,7 @@ class ROLLER_COASTER: public LIGHT_SKETCH {
         for (int i = 0; i < NUM_ROLLER_COASTER_CUBES; i++) {
             if (cubes[i].active) {
 
-                if (i+1 != current_cube) {
+                if ( ((i+1)%NUM_ROLLER_COASTER_CUBES) != current_cube ) {
 
                     CRGB rgb = CRGB(64,64,64);
 
@@ -240,8 +295,8 @@ class ROLLER_COASTER: public LIGHT_SKETCH {
                         led_screen.matrix.rotate_camera(b0);
                         led_screen.matrix.rotate_camera(a1);
                         led_screen.matrix.rotate_camera(b1);
-                        rotate_x(norm,26);
-                        rotate_y(norm,40);
+                        rotate_x(norm,light_rotation_x);
+                        rotate_y(norm,light_rotation_y);
 
                         bool test = false;
 
@@ -293,8 +348,8 @@ class ROLLER_COASTER: public LIGHT_SKETCH {
                         led_screen.matrix.rotate_camera(b0);
                         led_screen.matrix.rotate_camera(a1);
                         led_screen.matrix.rotate_camera(b1);
-                        rotate_x(norm,56);
-                        rotate_y(norm,10);
+                        rotate_x(norm,light_rotation_x);
+                        rotate_y(norm,light_rotation_y);
 
                         bool test = false;
 
@@ -335,6 +390,14 @@ class ROLLER_COASTER: public LIGHT_SKETCH {
         //interpolate camera rotation
         VECTOR3 a_rotation = cubes[(active_tie+1)%NUM_ROLLER_COASTER_CUBES].r;
         VECTOR3 b_rotation = cubes[(active_tie+2)%NUM_ROLLER_COASTER_CUBES].r;
+
+        if(b_rotation.z - a_rotation.z > 32767) {
+            a_rotation.z += 65536;
+        }
+        if(a_rotation.z - b_rotation.z > 32767) {
+            b_rotation.z += 65536;
+        }
+
         a_rotation*=a_ratio;
         b_rotation*=b_ratio;
         VECTOR3 rotation = (a_rotation+b_rotation)/(a_ratio+b_ratio);
@@ -352,16 +415,20 @@ class ROLLER_COASTER: public LIGHT_SKETCH {
         led_screen.camera_offset = target_camera_offset;
         led_screen.camera_rotate_x = rotation.x*3/4;
         led_screen.camera_rotate_y = rotation.y*3/4;
-        led_screen.camera_rotate_z = rotation.z/2;
+        led_screen.camera_rotate_z = rotation.z;//2;
     }//update_camera()
     
-   void generate_track() {
+    int spiral_rotation = 0;
+
+    void generate_track() {
        //generate track
         if (distance_traveled > 16*179) {
             distance_traveled -= 16*179;
+            static int tick_count_prev2 = 0;
             static int tick_count_prev = 0;
             static int tick_count_now = 0;
             static int tick_count_next = 0;
+            tick_count_prev2 = tick_count_prev;
             tick_count_prev = tick_count_now;
             tick_count_now = tick_count_next;
             tick_count_next += 16 * inoise8(tick_count, tick_count, random_seed);
@@ -374,9 +441,10 @@ class ROLLER_COASTER: public LIGHT_SKETCH {
             cubes[current_cube].r = VECTOR3(0,0,0);
 
             track_y = _min(track_y, cubes[current_cube].p.y);
-            track_x += cubes[current_cube].p.x;
-            x_samples++;
+            // track_x += cubes[current_cube].p.x;
+            // x_samples++;
 
+            int prev_y2 = -15*256 + (inoise16(0,tick_count_prev2,random_seed)-32768)*3;
 
             int prev_x = (inoise16(tick_count_prev,0,random_seed)-32768)*3;
             int prev_y = -15*256 + (inoise16(0,tick_count_prev,random_seed)-32768)*3;
@@ -385,10 +453,21 @@ class ROLLER_COASTER: public LIGHT_SKETCH {
             int next_y = -15*256 + (inoise16(0,tick_count_next,random_seed)-32768)*3;
 
 
+            track_y = _min(track_y, next_y);
+            track_y = _min(track_y, prev_y);
+            track_y = _min(track_y, prev_y2);
+
+            track_x = (prev_x + cubes[current_cube].p.x + next_x) / 3;
+            x_samples = 1;
+
+
             cubes[current_cube].r.x = (atan2(next_y - prev_y, (-600*256+16*179) - (-600*256-16*179))*65536)/(2*PI);
             cubes[current_cube].r.y = (atan2(next_x - prev_x, (-600*256+16*179) - (-600*256-16*179))*65536)/(2*PI);
             cubes[current_cube].r.z = (cubes[(NUM_ROLLER_COASTER_CUBES + current_cube - 1)%NUM_ROLLER_COASTER_CUBES].r.y - cubes[current_cube].r.y)*2;
 
+            // spiral_rotation += 2048;
+            // spiral_rotation %= 65536;
+            // cubes[current_cube].r.z += spiral_rotation;
 
 
             cubes[current_cube].active = true;
@@ -403,31 +482,47 @@ class ROLLER_COASTER: public LIGHT_SKETCH {
     void generate_landscape() {
         //generate landscape
         if (landscape_traveled > landscape_segment_height*256) {
+            //keep track of our distance traveled
             landscape_traveled -= landscape_segment_height*256;
+
+            //the x coordinate of our track
             int x = track_x/x_samples;
-            int inner_y = -30;
+
+
+            //x coordinate of our landscape point
             int lx = (-landscape_segment_width*landscape_width*256)/2+(landscape_segment_width*256)/2;
+
+            //height noise
             static int noise_y = 0;
             noise_y++;
+
             for (int i = 0; i < landscape_width; i++) {
+
+                //y coordinate of our landscape point
                 int ly = ((inoise8(i*LANDSCAPE_SCALE, noise_y*LANDSCAPE_SCALE, 0)-128)*LANDSCAPE_HEIGHT)/256; //random height
 
+                //calculate the surface normal for this point
                 VECTOR3 a = VECTOR3(i*LANDSCAPE_SCALE, inoise8(i*LANDSCAPE_SCALE, noise_y*LANDSCAPE_SCALE, 0)-128, 0);
                 VECTOR3 b = VECTOR3(i*LANDSCAPE_SCALE, inoise8(i*LANDSCAPE_SCALE, (noise_y-1)*LANDSCAPE_SCALE, 0)-128, landscape_segment_height*256);
                 VECTOR3 c = VECTOR3((i-1)*LANDSCAPE_SCALE, inoise8((i-1)*LANDSCAPE_SCALE, noise_y*LANDSCAPE_SCALE, 0)-128, 0);
 
                 landscape_points[current_landscape].n = normal(a,c,b);
 
-                if ( track_y < (50+ly+inner_y)*256 && abs(lx-x) < 240*256) {
-                    int dist = 240*256 - abs(lx-x);
+                int offset_y = 0;
+                
+                //adjust landscape to avoid collisions with track
+                if ( track_y < (50+ly)*256 && abs(lx-x) < 340*256) {
+                    int dist = 340*256 - abs(lx-x);
                     dist /= 256;
-                    int offset = (track_y - (50+ly+inner_y)*256);
-                    offset = (offset * dist) / 240;
-                    inner_y += offset / 256;
+                    int offset = (track_y - (50+ly)*256);
+                    offset_y = (offset * dist) / 340;
                 }
 
-                landscape_points[current_landscape].p = VECTOR3(random(landscape_variation)+lx + x,(ly+inner_y)*256,-landscape_distance*256);
+                //store this point
+                landscape_points[current_landscape].p = VECTOR3(random(landscape_variation)+lx,ly*256 + offset_y,-landscape_distance*256);
                 landscape_points[current_landscape].active = true;
+
+                //increment some variables
                 current_landscape++;
                 current_landscape %= NUM_LANDSCAPE;
                 lx+=landscape_segment_width*256;

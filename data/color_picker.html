@@ -1,0 +1,486 @@
+<!DOCTYPE html><html>
+   <head>
+      <title>COLOR PICKER!</title>
+      <style>
+         html body {position: fixed;width:100%;height: 100%;margin: 0;border: 0;overflow:hidden;display: block;background-color: black}
+         p {display: none;}
+      </style>
+   </head>
+   <body>
+    <canvas id='myCanvas' style='position:absolute; left:0px; top:0px;'></canvas>
+    <canvas id='myCanvas2' style='position:absolute; left:0px; top:0px;'></canvas>
+      <p id = 'status'>Not connected</p>
+      <p>Users connected: <span id = 'connected'>0
+         </span>
+      </p>
+      <ul id = 'log'></ul>
+      <script>
+      		
+      	 var buffer = new ArrayBuffer(3072);
+      	 var paneldata = new Uint8ClampedArray(buffer);
+      	 
+      	 
+        window.addEventListener("load", onLoad, false);
+         
+         
+        var canvas = document.getElementById('myCanvas');
+         var context = canvas.getContext('2d');
+         var canvas2 = document.getElementById('myCanvas2');
+         var context2 = canvas2.getContext('2d');
+         var ctx = context;
+         var ctx2 = context2;
+         
+         function fullScreen() {
+		  // Kind of painful, but this is how it works for now
+		  if (document.documentElement.requestFullscreen) {
+			document.documentElement.requestFullscreen();
+		  } else if (document.documentElement.mozRequestFullScreen) {
+			document.documentElement.mozRequestFullScreen();
+		  } else if (document.documentElement.webkitRequestFullscreen) {
+			document.documentElement.webkitRequestFullscreen();
+		  } else if (document.documentElement.msRequestFullscreen) {
+			document.documentElement.msRequestFullscreen();
+		  }
+		}
+
+		function smolScreen() {
+		  if (document.exitFullscreen) {
+			document.exitFullscreen();
+		  } else if (document.webkitExitFullscreen) {
+			document.webkitExitFullscreen();
+		  } else if (document.mozCancelFullScreen) {
+			document.mozCancelFullScreen();
+		  } else if (document.msExitFullscreen) {
+			document.msExitFullscreen();
+		  }
+		}
+
+		function lock(orientation) {
+		  fullScreen();
+		  locOrientation = screen.lockOrientation || screen.mozLockOrientation || screen.msLockOrientation || screen.orientation.lock;
+		  locOrientation('landscape');
+		}
+         
+         
+         function onLoad() {
+            window.addEventListener('resize', resizeCanvas, false);
+            resizeCanvas();
+         }
+         
+         function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            canvas2.width = window.innerWidth;
+            canvas2.height = window.innerHeight;
+            //context.fillStyle = 'rgba(0,0,0,0)';
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            context2.clearRect(0, 0, canvas2.width, canvas2.height);
+            drawGradient();
+         }
+
+         var brightness = 1;
+         //draw color picker
+         function drawGradient() {
+          //context.fillStyle = 'rgba(0,0,0,0)';
+          //context.fillRect(0, 0, canvas.width, canvas.height);
+          context.clearRect(canvas.width*3/20-4, canvas.height/10-4, canvas.width*8/10+8, canvas.height*8/10+8);
+          for (i = 0; i < 360; i++) {
+            var my_gradient = ctx.createLinearGradient(canvas.width*3/20, 0, canvas.width*3/20 + canvas.width*8/10, 0);
+            my_gradient.addColorStop(0, 'hsla(' + i + ',0%,100%,' + brightness + ')');
+            my_gradient.addColorStop(1, 'hsla(' + i + ',100%,50%,' + brightness + ')');
+            ctx.fillStyle = my_gradient;
+            ctx.fillRect(canvas.width*3/20, canvas.height/10+((canvas.height*8/10)/360)*i, canvas.width*8/10, ((canvas.height*8/10)/360)*2);
+          }
+            console.log('Gradient drawn');
+
+         }
+
+        //  function drawButtons() {
+        //   context.fillStyle = 'blue';
+        //   var button = getButton();
+        //   context.fillRect(button.l, button.t, button.w, button.h);
+        //   context.font = '16pt Calibri';
+        //   context.fillStyle = 'black';
+        //   context.fillText(button.text, button.l+20, button.t+20);
+        //  }
+         
+         //check for button presses
+         var colorPicker = 0;
+         var brightnessPicker = 0;
+
+         function handleNewCursor(x, y) {
+
+            if (x > canvas.width*3/20 && x < Math.floor(canvas.width*3/20 + canvas.width*8/10) && y > canvas.height/10 && y < Math.floor(canvas.height/10 + canvas.height*8/10) ) {
+              colorPicker = 1;
+              console.log('NEW CLICK!');
+            } else {
+              colorPicker = 0;
+            }
+
+            if (x > Math.round(canvas.width/40) && x < Math.round(canvas.width/40)*5 && y > canvas.height/10 && y < Math.floor(canvas.height/10 + canvas.height*8/10) ) {
+              brightnessPicker = 1;
+            } else {
+              brightnessPicker = 0;
+            }
+
+            handleExistingCursor(x, y);
+
+         }
+        
+         var old_x = 0;
+         var old_y = 0;
+        
+         function handleExistingCursor(x, y) {
+          
+          if (brightnessPicker == 1) {
+            // drawGradient();
+            var min_x = Math.round(canvas.width/20);
+            var max_x = min_x + Math.round(canvas.width/20) - 1;
+            var min_y = Math.round(canvas.height/10);
+            var max_y = min_y + Math.round(canvas.height*8/10) - 1;
+
+            brightness = (max_y-y-min_y)/(max_y-min_y);
+
+            x = Math.min(x, max_x);
+            x = Math.max(x, min_x);
+            y = Math.min(y, max_y);
+            y = Math.max(y, min_y);
+
+            //draw indicator
+            context.clearRect(0, Math.round(canvas.height/10)-10, Math.round(canvas.width/20), Math.round(canvas.height*8/10)+20);
+            context.clearRect(Math.round(canvas.width*2/20), Math.round(canvas.height/10)-10, Math.round(canvas.width/20), Math.round(canvas.height*8/10)+20);
+            context.fillStyle = 'rgb(127,127,127)';
+
+            context.beginPath();
+            context.moveTo(Math.round(canvas.width/20), Math.min(max_y, Math.max(min_y, (max_y - min_y)*(1-brightness))));
+            context.lineTo(Math.round(canvas.width/40), Math.min(max_y, Math.max(min_y, (max_y - min_y)*(1-brightness))) - 10);
+            context.lineTo(Math.round(canvas.width/40), Math.min(max_y, Math.max(min_y, (max_y - min_y)*(1-brightness))) + 10);
+            context.fill();
+
+            context.beginPath();
+            context.moveTo(Math.round(canvas.width*2/20), Math.min(max_y, Math.max(min_y, (max_y - min_y)*(1-brightness))));
+            context.lineTo(Math.round(canvas.width*5/40), Math.min(max_y, Math.max(min_y, (max_y - min_y)*(1-brightness))) - 10);
+            context.lineTo(Math.round(canvas.width*5/40), Math.min(max_y, Math.max(min_y, (max_y - min_y)*(1-brightness))) + 10);
+            context.fill();
+
+            // context.fillRect(Math.round(canvas.width/40), Math.min(max_y, Math.max(min_y, (max_y - min_y)*(1-brightness))) - 10, Math.round(canvas.width/40), 20);
+            // context.fillRect(Math.round(canvas.width*2/20), Math.min(max_y, Math.max(min_y, (max_y - min_y)*(1-brightness))) - 10, Math.round(canvas.width/40), 20);
+
+          }
+
+          //draw brightness picker
+          
+          if (colorPicker == 1) {
+
+
+            var min_x = canvas.width*3/20 + 1;
+            var max_x = Math.floor(canvas.width*3/20 + canvas.width*8/10) - 1;
+            var min_y = canvas.height/10 + 1;
+            var max_y = Math.floor(canvas.height/10 + canvas.height*8/10) - 1;
+
+            x = Math.min(x, max_x);
+            x = Math.max(x, min_x);
+            y = Math.min(y, max_y);
+            y = Math.max(y, min_y);
+            
+            ctx2.clearRect(old_x - 15, old_y - 15, 30, 30);
+            ctx2.strokeStyle = 'rgb(0,0,0)';
+            ctx2.beginPath();
+            ctx2.arc(x, y, 10, 0, 2 * Math.PI);
+            ctx2.stroke();
+            ctx2.strokeStyle = 'rgb(64,64,64)';
+            ctx2.beginPath();
+            ctx2.arc(x, y, 11, 0, 2 * Math.PI);
+            ctx2.stroke();
+            ctx2.strokeStyle = 'rgb(128,128,128)';
+            ctx2.beginPath();
+            ctx2.arc(x, y, 12, 0, 2 * Math.PI);
+            ctx2.stroke();
+            ctx2.strokeStyle = 'rgb(192,192,192)';
+            ctx2.beginPath();
+            ctx2.arc(x, y, 13, 0, 2 * Math.PI);
+            ctx2.stroke();
+            ctx2.strokeStyle = 'rgb(255,255,255)';
+            ctx2.beginPath();
+            ctx2.arc(x, y, 14, 0, 2 * Math.PI);
+            ctx2.stroke();
+            old_x = x;
+            old_y = y;
+
+            var sat = ((x - min_x) / (max_x - min_x)) * 100;
+            var hue = ((y - min_y) / (max_y - min_y)) * 360;
+
+            //var pixelData = context.getImageData(x, y, 1, 1).data; 
+            //context.fillStyle = 'rgba(' + pixelData[0] + ',' + pixelData[1] + ',' + pixelData[2] + ',' + pixelData[3] + ')';
+            
+            //context.fillStyle = 'hsl(' + hue + ',' + sat + '%,50%)';
+
+            //var my_gradient = context.createLinearGradient(0, 0, 0, canvas.height);
+            // my_gradient.addColorStop(0, 'hsl(' + hue + ',' + sat + '%,50%)');
+            // my_gradient.addColorStop(1, 'hsl(' + hue + ',' + sat + '%,0%)');
+            // context.fillStyle = my_gradient;
+
+            var pixelData = context.getImageData(x, y, 1, 1).data; 
+            var my_gradient = context.createLinearGradient(0, canvas.height/10, 0, canvas.height*9/10);
+
+            for (i = 0; i < 100; i++) {
+              my_gradient.addColorStop(i/100, 'rgba(' + pixelData[0] + ',' + pixelData[1] + ',' + pixelData[2] + ',' + Math.pow((100-i)/100, 1) + ')');
+            }
+            
+            context.fillStyle = 'rgb(0,0,0)';
+            context.fillRect(Math.round(canvas.width/20), Math.round(canvas.height/10), Math.round(canvas.width/20), Math.round(canvas.height*8/10));
+            
+            context.fillStyle = my_gradient;
+            context.fillRect(Math.round(canvas.width/20), Math.round(canvas.height/10), Math.round(canvas.width/20), Math.round(canvas.height*8/10));
+
+          }
+
+          if (colorPicker == 1 || brightnessPicker == 1) {
+            //draw the indicated color
+            var pixelData = context.getImageData(Math.round(canvas.width*3/40), Math.max(Math.round(canvas.height/10), (Math.round(canvas.height*9/10) - Math.round(canvas.height/10))*(1-brightness)), 1, 1).data; 
+            context.clearRect(Math.round(canvas.width/50), Math.round(canvas.height/50), Math.round(canvas.width*8/50), Math.round(canvas.height*3/50));
+            context.fillStyle = 'rgb(' + pixelData[0] + ',' + pixelData[1] + ',' + pixelData[2] + ')';
+            context.fillRect(Math.round(canvas.width/50), Math.round(canvas.height/50), Math.round(canvas.width*8/50), Math.round(canvas.height*3/50));
+            
+          }
+            
+         }
+         
+         //functions to adjust canvas coordinates to LED coordinates
+         function adjust_x(x) {
+          return Math.round((x-canvas.width*3/5)/( (canvas.width/5)/8 ));
+         }
+         
+         function adjust_y(y) {
+           return Math.round( ( (canvas.height*7)/8 - y) / ( (canvas.height*6/8)/128 ));
+         }
+         
+         function getMousePos(canvas, evt) {
+          var rect = canvas.getBoundingClientRect();
+          return {
+            x: evt.clientX - rect.left,
+            y: evt.clientY - rect.top
+          };
+         }
+         
+         function getTouchPos(canvas, touch) {
+          return {
+            x: touch.pageX - canvas.offsetLeft,
+            y: touch.pageY - canvas.offsetTop,
+            f: touch.force
+          };
+         }
+         
+         //objects to track mouse/touch positions
+         var cursorTracker = {};
+         var cursorUpdates = [];
+         var mousedown = 0;
+         
+         //create variable to track how many cursor positions are currently in our JSON transmission
+         var positionCnt = 0;
+         //variable to store our JSON message
+         var jsonBuffer ={'l':[],'e':[]};
+
+         canvas2.addEventListener('mousedown', emousedown, false);
+         canvas2.addEventListener('mouseup', emouseup, false);
+         canvas2.addEventListener('mousemove', emousemove, false);
+         canvas2.addEventListener('touchmove', etouchmove, false);
+         canvas2.addEventListener('touchend', etouchend, false);
+         canvas2.addEventListener('touchstart', etouchstart, false);
+         canvas2.addEventListener('touchforcechange', etouchmove, false);
+         
+         var absolute;
+         
+	     
+         var time_then = new Date().getTime() + 0;
+         
+         
+         
+         
+         
+         //function to calculate, track, and send any cursor changes to the server
+         
+         function emousedown (evt) {
+           evt.preventDefault();
+           
+           //add any new mouse clicks to our tracking object
+		   
+            var cp = getMousePos(canvas2, evt);
+            cursorTracker.mouse = {};
+            cursorTracker.mouse.newx = cp.x;
+            cursorTracker.mouse.newy = cp.y;
+            cursorTracker.mouse.newf = 0;
+            cursorTracker.mouse.oldf = 0;
+            mousedown = 1;
+            cursorUpdates.push('mouse'); 
+            handleNewCursor(cp.x, cp.y);
+            //remove the mouse from our cursorLift object
+             for (i = 0; i < cursorLifts.length; i++) {
+              if (cursorLifts[i][0] == 255) {
+                cursorLifts.splice(i,1);
+                i--;
+              } 
+            }
+         }
+         
+         var cursorLifts = [];
+         
+         function emouseup (evt) {
+           evt.preventDefault(); 
+           //remove any released clicks from tracking object
+            delete cursorTracker['mouse'];
+            mousedown = 0;
+            cursorLifts.push([255,0]);
+            //jsonBuffer.e.push(255);
+            positionCnt++;
+         }
+         
+         function emousemove (evt) {
+           evt.preventDefault(); 
+           //record the current mouse position
+          if (evt.buttons == 1) {
+            var cp = getMousePos(canvas2, evt);
+            cursorTracker.mouse.newx = cp.x;
+            cursorTracker.mouse.newy = cp.y;
+            cursorTracker.mouse.newf = 1;
+            cursorTracker.mouse.newf = 1;
+            cursorUpdates.push('mouse');
+            handleExistingCursor(cp.x, cp.y);
+           }
+         }
+         
+         function etouchstart (evt) {
+           evt.preventDefault();
+           
+           //add any new touches to our tracking object
+            for(i=0;i<evt.changedTouches.length;i++) {
+              var touchId = evt.changedTouches[i].identifier;
+              var tp = getTouchPos(canvas,evt.changedTouches[i]);
+              cursorTracker[touchId] = {};
+              cursorTracker[touchId].newx = tp.x;
+              cursorTracker[touchId].newy = tp.y;
+              cursorTracker[touchId].newy = tp.y;
+              cursorTracker[touchId].newf = tp.f;
+              cursorTracker[touchId].oldf = tp.f;
+              cursorUpdates.push(evt.changedTouches[i].identifier);
+			        //checkButtons(tp.x, tp.y);
+              handleNewCursor(tp.x, tp.y);
+            }
+          
+           
+         }
+         
+         
+         function etouchend (evt) {
+           evt.preventDefault();
+           //remove any released touches from tracking object
+            for(i=0;i<evt.changedTouches.length;i++) {
+              delete cursorTracker[evt.changedTouches[i].identifier];
+              cursorLifts.push([Math.abs(evt.changedTouches[i].identifier%255), 0]);
+              //jsonBuffer.e.push(evt.changedTouches[i].identifier%255);
+              positionCnt++;
+              }
+          
+         }
+         
+         
+         function etouchmove (evt) {
+           evt.preventDefault();
+          //record any changed touches
+            for (i = 0;i < evt.changedTouches.length; i++) {
+              var tp = getTouchPos(canvas,evt.changedTouches[i]);
+              if(cursorTracker[evt.changedTouches[i].identifier]) {
+                cursorTracker[evt.changedTouches[i].identifier].newx = tp.x;
+                cursorTracker[evt.changedTouches[i].identifier].newy = tp.y;
+                cursorTracker[evt.changedTouches[i].identifier].newf = tp.f;
+                cursorUpdates.push(evt.changedTouches[i].identifier);
+                handleExistingCursor(tp.x, tp.y);
+              }
+            }
+         }
+         
+         
+         
+         setInterval(monitorCursors, 15);
+         
+         function monitorCursors () {  
+		  
+		 	  //process mouse ups/touch ends... send multiple times to lessen the chance of loss
+		 	  for (i = 0; i < cursorLifts.length; i++) {
+		 	    jsonBuffer.e.push(cursorLifts[i][0]);
+		 	    cursorLifts[i][1]++;
+		 	    positionCnt++;
+		 	    if(cursorLifts[i][1] > 5) {
+		 	      cursorLifts.splice(i,1);
+		 	      i--;
+		 	    }
+		 	  }
+		  
+		 
+			  //process cursor positions and add them to our JSON transmission
+			  for (i = 0; i < cursorUpdates.length; i++) {
+		 
+				var cursor = cursorTracker[cursorUpdates[i]];
+				var id = cursorUpdates[i];
+				if(id == 'mouse') {
+				  id = 255;
+			    } else {
+			      id %= 255;
+			      id = Math.abs(id);
+			    }
+			  
+				//adjust cursor coordinates to our LED coordinates
+				if ( !cursor ) {break;}
+		 		var force_update = false;
+		 		
+				var newx = adjust_x(cursor.newx);
+				var newy = adjust_y(cursor.newy);
+				var newf = Math.round(cursor.newf*255);
+
+				var oldx = newx;
+				var oldy = newy;
+				var oldf = newf;
+		 		if(cursor.oldx) {
+					oldx = adjust_x(cursor.oldx);
+					oldy = adjust_y(cursor.oldy);
+				    oldf = Math.round(cursor.oldf*255);
+				} else {
+					force_update = true;
+				}
+				if ( !(newx == oldx && newy == oldy && newf == oldf) || force_update ) {
+		 
+				  //add any drags to the position transmission
+			  
+				  positionCnt++;
+		 
+				  
+				  //record the new positions in our tracking object
+				  cursor.oldx = cursor.newx;
+				  cursor.oldy = cursor.newy;
+				  cursor.oldf = cursor.newf;
+			  
+				}
+			  }
+          
+          
+
+                   
+          //send JSON transmission if there have been any position changes
+          //limit transmissions to 60 per second
+          if (positionCnt > 0 ) {
+            var imageData = context.getImageData(20, 0, 8, 128);
+            for (i = 0; i < 1024; i++) {
+              var j = i*3; //sending RGB
+              var k = i*4; //reading RGBA
+              //multiply RGB values by the alpha channel value
+              paneldata[j] = (imageData.data[k]*imageData.data[k+3])/255;
+              paneldata[j+1] = (imageData.data[k+1]*imageData.data[k+3])/255;
+              paneldata[j+2] = (imageData.data[k+2]*imageData.data[k+3])/255;
+            }
+            positionCnt = 0;
+          }
+          cursorUpdates = [];
+         };
+      </script>
+   </body>
+</html>

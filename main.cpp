@@ -125,6 +125,8 @@ bool button_rb1 = false;
 bool button_rg0 = false;
 bool button_rg1 = false;
 
+uint32_t minimum_frame_delay = 16;
+
 void update_matrix();
 
 //load all the magical light sketches
@@ -187,7 +189,7 @@ void log_camera_coordinates() {
 }
 //this function is called whenever the screen needs to be updated
 CRGB alt_led_buffer[NUM_LEDS]; //alternate buffer necessary for multi-threading
-CRGB* active_buffer;
+CRGB* active_buffer = alt_led_buffer;
 int led_buffer_available = 0;
 
 void update_matrix_func() {
@@ -284,11 +286,11 @@ void update_matrix_func() {
 	led_buffer_available = 0;
 
 }
-void update_matrix() {
-	active_buffer = leds;
-	update_matrix_func();
-}
-/*
+// void update_matrix() {
+// 	active_buffer = leds;
+// 	update_matrix_func();
+// }
+
 std::thread _update_matrix_thread;
 void update_matrix() {
 	if (_update_matrix_thread.joinable()) {
@@ -306,15 +308,14 @@ void update_matrix() {
 		led_screen.screen_buffer = leds;
 	}
 #else
-	active_buffer = main_led_buffer;
-	leds = main_led_buffer;
+	memcpy(alt_led_buffer, main_led_buffer, NUM_LEDS*3);
 	led_screen.screen_buffer = leds;
 #endif
 
 	led_buffer_available = 1;
 	_update_matrix_thread = std::thread(update_matrix_func);
 }
-*/
+
 
 int main(int argc, char **argv){
 	srand(time(nullptr));
@@ -576,9 +577,16 @@ int main(int argc, char **argv){
 			
             }
         }
+
+		//wait for the screen drawing thread to end
+		if ( _update_matrix_thread.joinable() ) {
+			_update_matrix_thread.join();
+		}
+
 		SDL_FreeSurface(bitmapSurface);
 		SDL_DestroyTexture(bitmapTex);
 		SDL_DestroyRenderer(renderer);
+
         if (window) {
             SDL_DestroyWindow(window);
         }
@@ -589,10 +597,9 @@ int main(int argc, char **argv){
 #ifdef ENABLE_MULTITHREAD
 	worker_thread_stop();
 
-	if ( _update_matrix_thread.joinable() ) {
-		_update_matrix_thread.join();
-	}
+	
 #endif
+	
 
   	https_server.stop();
 	wss_server.stop();

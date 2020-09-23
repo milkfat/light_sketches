@@ -12,6 +12,8 @@ CRGB * leds;
 //CRGB temp_canvas[NUM_LEDS+1]; //object for teh drawing
 CRGB * temp_canvas; //object for teh drawing
 
+uint8_t light_rotation_x = 70;
+uint8_t light_rotation_y = 10;
 
 //uint8_t led_mask[NUM_LEDS];
 uint8_t * led_mask;
@@ -79,6 +81,7 @@ int growing = 0;
 int32_t y_buffer_max = 0;
 int32_t y_buffer_min = MATRIX_HEIGHT-1;
 
+#ifdef ENABLE_MULTITHREAD
 
 struct SHAPE_TO_FILL {
   int state = 1;
@@ -93,6 +96,8 @@ struct SHAPE_TO_FILL {
   CRGB rgb;
 };
 SHAPE_TO_FILL shape_to_fill;
+
+#endif
 
 struct Y_BUF {
     union {

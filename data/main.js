@@ -74,6 +74,7 @@ function onLoad() {
 function onOpen(evt) {
     state.className = "success";
     state.innerHTML = "Connected to server";
+    websocket.send('{"i":"1"}')
 }
 
 function onClose(evt) {
@@ -105,7 +106,7 @@ try {
         } else if (x == 'clients') {
         x2.innerHTML = '';
         for (y in json_stuff[x]) {
-        x2.innerHTML += '<br />' + json_stuff[x][y].name + '<a href="http://' + json_stuff[x][y].address + '">' + json_stuff[x][y].address + '</a>';
+        x2.innerHTML += '<br />' + json_stuff[x][y].name + ': <a href="http://' + json_stuff[x][y].address + '">' + json_stuff[x][y].address + '</a>';
         }
         } else {
         // variable is not a boolean
@@ -152,7 +153,12 @@ if (cnt > 0) {
 
 function am(jkey,jid) {
     message_buffer[jkey] = document.getElementById(jid).value;
-    document.getElementById('o'+jid).value = document.getElementById(jid).value;
+    try {
+        document.getElementById('o'+jid).value = document.getElementById(jid).value;
+    }
+    catch (err) {
+        
+    }
     wsSend();
 }
 

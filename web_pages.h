@@ -192,16 +192,16 @@ char * generate_client_list(char * inbuff) {
       mystrcat(p,udp_clients[i].name);
       mystrcat(p, "\",\"address\":\"");
       char str[4];
-      sprintf(str, "%d", ((uint8_t*)(&udp_clients[i].address))[3]);
+      sprintf(str, "%d", udp_clients[i].addr0());
       mystrcat(p,str);
       mystrcat(p, ".");
-      sprintf(str, "%d", ((uint8_t*)(&udp_clients[i].address))[2]);
+      sprintf(str, "%d", udp_clients[i].addr1());
       mystrcat(p,str);
       mystrcat(p, ".");
-      sprintf(str, "%d", ((uint8_t*)(&udp_clients[i].address))[1]);
+      sprintf(str, "%d", udp_clients[i].addr2());
       mystrcat(p,str);
       mystrcat(p, ".");
-      sprintf(str, "%d", ((uint8_t*)(&udp_clients[i].address))[0]);
+      sprintf(str, "%d", udp_clients[i].addr3());
       mystrcat(p,str);
       mystrcat(p,"\"}");
     }
@@ -282,6 +282,11 @@ void parse_json(std::streambuf * inbuf) {
       //reset sketch
       if (c == 'a' && inbuf->sbumpc() == '"' && inbuf->sbumpc() == ':' && inbuf->sbumpc() == '"') {
         light_sketches.reset();
+      }
+
+      //send sketch controls
+      if (c == 'i' && inbuf->sbumpc() == '"' && inbuf->sbumpc() == ':' && inbuf->sbumpc() == '"') {
+        light_sketches.send_sketch_controls();
       }
 
       //restart ESP32

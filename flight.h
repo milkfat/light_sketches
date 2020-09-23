@@ -34,6 +34,7 @@ class FLIGHT: public LIGHT_SKETCH {
         current_effect %= NUM_FLIGHT_EFFECTS;
     }
     void loop() {
+        handle_text();
         LED_show();
         LED_black();
 

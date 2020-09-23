@@ -78,7 +78,7 @@ class LIGHT_SKETCHES {
     static int next_light_sketch;
     static int largest_sketch;
     static bool need_to_allocate;
-    void (*send_sketch_controls)() = nullptr;
+    void (*_send_sketch_controls)() = nullptr;
 
     //allocate the memory necessary to store the largest registered light sketch
     //(if necessary)
@@ -295,7 +295,10 @@ class LIGHT_SKETCHES {
     public:
 
     void send_sketch_controls_reg(void (*func)()) {
-      send_sketch_controls = func;
+      _send_sketch_controls = func;
+    }
+    void send_sketch_controls() {
+      if (_send_sketch_controls) _send_sketch_controls();
     }
 
     void change_sketch() {
@@ -307,7 +310,7 @@ class LIGHT_SKETCHES {
       next_light_sketch %= number_of_light_sketches;
       current_light_sketch=next_light_sketch;
       light_sketches[current_light_sketch]->create();
-      if (send_sketch_controls) send_sketch_controls();
+      send_sketch_controls();
     }
 
     void loop() {
@@ -320,7 +323,7 @@ class LIGHT_SKETCHES {
 
     void reset() {
       light_sketches[current_light_sketch]->reset();
-      if (send_sketch_controls) send_sketch_controls();
+      send_sketch_controls();
     }
 
     char* name() {
@@ -341,7 +344,7 @@ class LIGHT_SKETCHES {
 
     void next_effect() {
       light_sketches[current_light_sketch]->next_effect();
-      if (send_sketch_controls) send_sketch_controls();
+      send_sketch_controls();
     }
 
     void next_sketch() {

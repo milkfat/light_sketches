@@ -29,10 +29,16 @@ static void draw_quad(VECTOR3 a, VECTOR3 b, VECTOR3 c, VECTOR3 d, VECTOR3 orig, 
     // draw_line_ybuffer(c, d);
     // draw_line_ybuffer(d, a);
 
-    int32_t z_depth = orig.z+norm.z; 
+    //int32_t z_depth = orig.z+norm.z; 
+    VECTOR3 midpoint = orig+norm;
+    midpoint -= led_screen.camera_position;
+    midpoint /= 128;
+    int32_t z_depth = sqrt(midpoint.x*midpoint.x+midpoint.y*midpoint.y+midpoint.z*midpoint.z); 
+    z_depth = -z_depth;
+    z_depth *= 128;
 
-    rotate_x(norm,26);
-    rotate_y(norm,40);
+    rotate_x(norm,light_rotation_x);
+    rotate_y(norm,light_rotation_y);
 
     //shading according to surface normal
     uint8_t bri = _min(_max((norm.z*7)/8,0)+32,255);
@@ -58,7 +64,7 @@ static void draw_quad(VECTOR3 a, VECTOR3 b, VECTOR3 c, VECTOR3 d, VECTOR3 orig, 
     
     //fill between the pixels of our lines
     
-    fill_shape(z_depth+256, rgb, alpha, do_fill);
+    fill_shape(z_depth, rgb, alpha, do_fill);
     //fill_shape_z(z_depth+256, rgb);
     
 
@@ -191,10 +197,24 @@ static void draw_cached_cube(const int16_t& cp) {
     VECTOR3(0,0,255),  //front
     VECTOR3(0,0,-255)  //back
   };
+  VECTOR3 normals_debug[] = {
+    VECTOR3(255,0,0),  //right
+    VECTOR3(-255,0,0), //left
+    VECTOR3(0,255,0),  //top
+    VECTOR3(0,-255,0), //bottom
+    VECTOR3(0,0,255),  //front
+    VECTOR3(0,0,-255)  //back
+  };
 
   for (int i = 0; i < 6; i++) {
     (c->r_fine) ? rotate16(normals[i],c->r) : rotate(normals[i],c->r);
-    led_screen.matrix.rotate(normals[i]);
+    led_screen.matrix.rotate_camera2(normals[i]);
+    
+    normals_debug[i]*=20;
+    (c->r_fine) ? rotate16(normals_debug[i],c->r) : rotate(normals_debug[i],c->r);
+    normals_debug[i]+=c->p;
+    led_screen.matrix.rotate_camera(normals_debug[i]);
+    led_screen.perspective(normals_debug[i]);
   }
 
   VECTOR3 points[] = {
@@ -255,38 +275,48 @@ static void draw_cached_cube(const int16_t& cp) {
 
   VECTOR3 p;
   led_screen.matrix.rotate_camera(c->p, p);
-  
+  VECTOR3 p_debug = p;
+  led_screen.perspective(p_debug);
+  //uint8_t hue = 0;
   //draw faces from back to front
   for (int i = 0; i < 6; i++) {
     uint8_t next_side = cube_face_order[i][1];
+    //c->rgb = CHSV(hue,255,255);//debug
+    //hue+=32;
     switch (next_side) {
         case 0:
             draw_quad(points[0],points[4],points[5],points[1],p,normals[0],c->rgb,c->alpha,c->do_fill);  //right
+            //draw_line_fine(led_screen, p_debug, normals_debug[0], c->rgb);
             //draw_triangle_fine(points[0],points[4],points[5],normals[0],normals[0],normals[0], c->rgb, VECTOR3(0,0,0), VECTOR3(0,255,0), VECTOR3(255,255,0));
             //draw_triangle_fine(points[0],points[5],points[1],normals[0],normals[0],normals[0], c->rgb, VECTOR3(0,0,0), VECTOR3(255,255,0), VECTOR3(255,0,0));
             break;
         case 1:
             draw_quad(points[2],points[6],points[7],points[3],p,normals[1],c->rgb,c->alpha,c->do_fill); //left
+            //draw_line_fine(led_screen, p_debug, normals_debug[1], c->rgb);
             //draw_triangle_fine(points[2],points[6],points[7],normals[0],normals[0],normals[0], c->rgb, VECTOR3(0,0,0), VECTOR3(0,255,0), VECTOR3(255,255,0));
             //draw_triangle_fine(points[2],points[7],points[3],normals[0],normals[0],normals[0], c->rgb, VECTOR3(0,0,0), VECTOR3(255,255,0), VECTOR3(255,0,0));
             break;
         case 2:
             draw_quad(points[0],points[1],points[2],points[3],p,normals[2],c->rgb,c->alpha,c->do_fill);  //top
+            //draw_line_fine(led_screen, p_debug, normals_debug[2], c->rgb);
             //draw_triangle_fine(points[0],points[1],points[2],normals[0],normals[0],normals[0], c->rgb, VECTOR3(0,0,0), VECTOR3(0,255,0), VECTOR3(255,255,0));
             //draw_triangle_fine(points[0],points[2],points[3],normals[0],normals[0],normals[0], c->rgb, VECTOR3(0,0,0), VECTOR3(255,255,0), VECTOR3(255,0,0));
             break;
         case 3:
             draw_quad(points[7],points[6],points[5],points[4],p,normals[3],c->rgb,c->alpha,c->do_fill); //bottom
+            //draw_line_fine(led_screen, p_debug, normals_debug[3], c->rgb);
             //draw_triangle_fine(points[7],points[6],points[5],normals[0],normals[0],normals[0], c->rgb, VECTOR3(0,0,0), VECTOR3(0,255,0), VECTOR3(255,255,0));
             //draw_triangle_fine(points[7],points[5],points[4],normals[0],normals[0],normals[0], c->rgb, VECTOR3(0,0,0), VECTOR3(255,255,0), VECTOR3(255,0,0));
             break;
         case 4:
             draw_quad(points[0],points[3],points[7],points[4],p,normals[4],c->rgb,c->alpha,c->do_fill);  //front
+            //draw_line_fine(led_screen, p_debug, normals_debug[4], c->rgb);
             //draw_triangle_fine(points[0],points[3],points[7],normals[0],normals[0],normals[0], c->rgb, VECTOR3(0,0,0), VECTOR3(0,255,0), VECTOR3(255,255,0));
             //draw_triangle_fine(points[0],points[7],points[4],normals[0],normals[0],normals[0], c->rgb, VECTOR3(0,0,0), VECTOR3(255,255,0), VECTOR3(255,0,0));
             break;
         case 5:
             draw_quad(points[1],points[5],points[6],points[2],p,normals[5],c->rgb,c->alpha,c->do_fill); //back
+            //draw_line_fine(led_screen, p_debug, normals_debug[5], c->rgb);
             //draw_triangle_fine(points[1],points[5],points[6],normals[0],normals[0],normals[0], CRGB(0,0,0), VECTOR3(0,0,0), VECTOR3(0,255,0), VECTOR3(255,255,0));
             //draw_triangle_fine(points[1],points[6],points[2],normals[0],normals[0],normals[0], CRGB(0,0,0), VECTOR3(0,0,0), VECTOR3(255,255,0), VECTOR3(255,0,0));
             break;
