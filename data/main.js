@@ -115,7 +115,17 @@ try {
     }
     }
     catch {
-    document.getElementById('s').innerHTML = evt.data;
+        //contents is HTML text, insert it into the page
+        document.getElementById('s').innerHTML = evt.data;
+        let range = document.querySelectorAll('input[type=range]');
+        let par = document.getElementById('s');
+        for (i of range) {
+            let node = document.createElement('output');
+            node.setAttribute('id', 'o' + i.getAttribute('id') );
+            node.innerHTML = i.value;
+            par.insertBefore(node, i);
+            i.setAttribute('oninput', 'am("' + i.getAttribute('id') + '","' + i.getAttribute('id') + '")');
+        }
     }
 }
 

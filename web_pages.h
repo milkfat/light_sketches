@@ -14,20 +14,15 @@ char * generate_html_controls(char * inbuff) {
         if (control_variables.read(i, v, vmin, vmax, n) ) {
             //range sliders
             mystrcat(p, n);
-            p+=sprintf(p, ": <output id='o%d'>%d</output><input type='range' min='", i, v);
-
-            p+=sprintf(p, "%d", vmin);
+            //p+=sprintf(p, ": <output id='o%d'>%d</output><input type='range' min='", i, v);
+            p+=sprintf(p, ": <input type='range' min='%d", vmin);
             mystrcat(p, "' max='");
             p+=sprintf(p, "%d", vmax);
             mystrcat(p, "' value='");
             p+=sprintf(p, "%d", v);
-            mystrcat(p, "' style='width:90%;margin: auto;display: block;' class='slider' id='");
+            mystrcat(p, "' id='");
             p+=sprintf(p, "%d", i);
-            mystrcat(p, "' oninput='am(\"");
-            p+=sprintf(p, "%d", i);
-            mystrcat(p, "\",\"");
-            p+=sprintf(p, "%d", i);
-            mystrcat(p, "\")'>\n");
+            mystrcat(p, "'>\n");
         }
       } else if (control_variables.type(i) == 7) {
         //color controls
@@ -132,7 +127,8 @@ const char * light_html_head() {
        body { -webkit-appearance: none;font-size:32px;}
        button,input[type='text'] { -webkit-appearance: none;font-size:32px;width:100%;}
        select { font-size:32px; }
-       input[type='range'] { width:100%;transform: scaleY(2); }
+       /* input[type='range'] { width:100%;transform: scaleY(2); } */
+       input[type='range'] { width:90%;margin: auto;display: block;transform: scaleY(2); }
        input[type='checkbox'] {transform: scale(2);}
        html { touch-action: manipulation;}
        </style>
